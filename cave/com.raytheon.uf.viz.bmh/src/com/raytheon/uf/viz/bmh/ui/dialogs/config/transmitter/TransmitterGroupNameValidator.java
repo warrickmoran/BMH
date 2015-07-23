@@ -21,11 +21,12 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 
 /**
- * Validates the transmitter group name. Verifies that a name has been
- * specified and that it is unique.
+ * Validates the transmitter group name. Verifies that a name has been specified
+ * and that it is unique.
  * 
  * <pre>
  * 
@@ -34,6 +35,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2015 4424       bkowal      Initial creation
+ * Jul 22, 2015 4424       bkowal      Improved validation.
  * 
  * </pre>
  * 
@@ -53,7 +55,8 @@ public class TransmitterGroupNameValidator {
     public TransmitterGroupNameValidator() {
     }
 
-    public boolean validate(String text) throws Exception {
+    public boolean validate(final TransmitterGroup tgToValidate, String text)
+            throws Exception {
         /*
          * Verify that a value has been specified.
          */
@@ -77,6 +80,26 @@ public class TransmitterGroupNameValidator {
         } catch (Exception e) {
             this.message = "Failed to validate the uniqueness of the Transmitter Group Name.";
             throw e;
+        }
+
+        /*
+         * Verify that there are not any naming conflicts with Transmitters.
+         */
+        Transmitter transmitter = null;
+        try {
+            transmitter = dataManager.getTransmitterByMnemonic(text);
+        } catch (Exception e) {
+            this.message = "Failed to verify that the transmitter group name does not conflict with existing transmitter mnemonics.";
+            throw e;
+        }
+
+        if (transmitter != null) {
+            /*
+             * Do not allow the user to potentially overwrite a standalone
+             * transmitter group.
+             */
+            this.message = "Transmitter Group Name conflicts with an existing Transmitter Mnemonic.";
+            return false;
         }
 
         return true;

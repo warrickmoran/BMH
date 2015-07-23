@@ -84,6 +84,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jul 17, 2015  4636     bkowal      Added {@link #getTransmitterGroupsWithIds(TransmitterRequest)}.
  * Jul 21, 2015  4424     bkowal      Added {@link #getTransmitterGroupByName(TransmitterRequest)} and
  *                                    {@link #getTransmitterByMnemonic(TransmitterRequest)}
+ * Jul 22, 2015  4424     bkowal      Added missing break statement.
  * </pre>
  * 
  * @author mpduff
@@ -103,6 +104,7 @@ public class TransmitterHandler extends
             break;
         case GetTransmitterGroupsWithIds:
             response = getTransmitterGroupsWithIds(request);
+            break;
         case GetTransmitterGroupByName:
             response = getTransmitterGroupByName(request);
             break;
