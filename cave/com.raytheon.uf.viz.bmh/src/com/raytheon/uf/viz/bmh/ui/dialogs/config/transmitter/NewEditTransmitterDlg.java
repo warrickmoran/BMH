@@ -103,7 +103,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 19, 2015     4490   bkowal      Limited the number of characters allowed in the mnemonic field.
  * Jul 21, 2015     4424   bkowal      Improved validation of the transmitter group name and transmitter
  *                                     mnemonic fields. Name and mnemonic can no longer be altered in edit mode.
- * Jul 22, 2015     4424   bkowal      Transmitter naming validation improvements.                                    
+ * Jul 22, 2015     4424   bkowal      Transmitter naming validation improvements.
+ * Jul 23, 2015     4679   bkowal      Handle new transmitter (named group -> standalone) transition
  * 
  * </pre>
  * 
@@ -915,6 +916,10 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      */
     private boolean checkGroupUpdate(TransmitterGroup tg) {
         if (tg.isStandalone()) {
+            if (this.group.isStandalone() == false) {
+                return true;
+            }
+
             if (!tg.getTimeZone().equals(group.getTimeZone())) {
                 return true;
             }
