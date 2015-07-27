@@ -25,19 +25,20 @@ import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.statushandlers.StatusManager;
+import ch.qos.logback.classic.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Marker;
+import org.slf4j.MarkerFactory;
 
-import com.raytheon.uf.common.message.StatusMessage;
+import com.raytheon.uf.common.logback.appender.AbstractJmsAppender;
 import com.raytheon.uf.common.status.AbstractHandlerFactory;
 import com.raytheon.uf.common.status.FilterPatternContainer;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.IUFStatusHandlerFactory;
 import com.raytheon.uf.common.status.StatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
-import com.raytheon.uf.viz.alertviz.AlertVizClient;
-import com.raytheon.uf.viz.alertviz.AlertvizException;
-import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.uf.viz.core.localization.LocalizationConstants;
-import com.raytheon.uf.viz.core.localization.LocalizationManager;
+import com.raytheon.uf.common.status.slf4j.Slf4JBridge;
+import com.raytheon.uf.common.status.slf4j.UFMarkers;
 
 /**
  * 
@@ -55,6 +56,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Date          Ticket#  Engineer    Description
  * ------------- -------- ----------- --------------------------
  * Mar 11, 2015  4266     bsteffen    Initial creation
+ * Jun 22, 2015  4570     bkowal      Updated to use the new slf4j CAVE logging.
  * 
  * </pre>
  * 
@@ -65,12 +67,14 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
 
     private static final String CATEGORY = "WORKSTATION";
 
+    private final Logger logger = (Logger) LoggerFactory
+            .getLogger("CaveLogger");
+
+    private final AbstractJmsAppender alertvizAppender = (AbstractJmsAppender) logger
+            .getAppender("AlertvizAppender");
+
     private static final StatusHandler instance = new StatusHandler(
             StatusHandler.class.getPackage().getName(), CATEGORY, CATEGORY);
-
-    private AlertVizClient alertClient;
-
-    private boolean useAlertViz = true;
 
     public BmhStatusHandlerFactory() {
         super(CATEGORY);
@@ -84,15 +88,39 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
     @Override
     protected void log(Priority priority, String pluginId, String category,
             String source, String message, Throwable throwable) {
-        IStatus status = new Status(getSeverity(priority), pluginId,
-                message, throwable);
-        boolean success = logToAlertViz(priority, pluginId, category, source,
-                message, throwable);
-        if (!success && priority != Priority.VERBOSE) {
+        IStatus status = new Status(getSeverity(priority), pluginId, message,
+                throwable);
+
+        /*
+         * com.raytheon.uf.viz.core.status.VizStatusHandlerFactory.log(Priority,
+         * String, String, String, String, Throwable) also creates a {@link
+         * Marker} using the same method. It may be a better idea to add a
+         * protected method to {@link AbstractHandlerFactory} so all required
+         * information could be passed in to create a {@link Marker}.
+         */
+        Marker m = MarkerFactory.getDetachedMarker("bmh");
+        if (pluginId != null) {
+            m.add(UFMarkers.getPluginMarker(pluginId));
+        }
+
+        if (category != null) {
+            m.add(UFMarkers.getCategoryMarker(category));
+        }
+        if (source != null) {
+            m.add(UFMarkers.getSourceMarker(source));
+        }
+        m.add(UFMarkers.getUFPriorityMarker(priority));
+
+        Slf4JBridge.logToSLF4J(logger, priority, m, message, throwable);
+
+        if (this.alertvizAppender.isConnected() == false
+                && priority != Priority.VERBOSE) {
+            /*
+             * It is unlikely that messages will be logged to AlertViz, display
+             * a notification dialog.
+             */
             logToDialog(status);
         }
-        /* Send to console, and/or anything else that cares. */
-        StatusManager.getManager().handle(status);
     }
 
     /**
@@ -111,37 +139,6 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
         default:
             return IStatus.INFO;
         }
-    }
-
-    protected boolean logToAlertViz(Priority priority, String pluginId,
-            String category, String source, String message, Throwable throwable) {
-        if (alertClient == null) {
-            String alertServer = LocalizationManager.getInstance()
-                    .getLocalizationStore()
-                    .getString(LocalizationConstants.P_ALERT_SERVER);
-            alertClient = new AlertVizClient(alertServer, false);
-            try {
-                alertClient.start();
-            } catch (AlertvizException e) {
-                useAlertViz = false;
-                IStatus status = new Status(IStatus.INFO, Activator.PLUGIN_ID,
-                        "Unable to start alertviz.", e);
-                StatusManager.getManager().handle(status);
-            }
-        }
-        if (useAlertViz) {
-            try {
-                StatusMessage statusMessage = new StatusMessage(source,
-                        category, priority, pluginId, message, throwable);
-                AlertVizClient.sendMessage(statusMessage);
-            } catch (AlertvizException e) {
-                useAlertViz = false;
-                IStatus status = new Status(IStatus.INFO, Activator.PLUGIN_ID,
-                        "Unable to send to alertviz.", e);
-                StatusManager.getManager().handle(status);
-            }
-        }
-        return useAlertViz;
     }
 
     private void logToDialog(final IStatus status) {
@@ -178,7 +175,5 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
     protected IUFStatusHandler createInstance(String pluginId, String category,
             String source) {
         return new StatusHandler(pluginId, category, source);
-
     }
-
 }
