@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,6 +32,12 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import javax.sound.sampled.AudioFileFormat.Type;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioFormat.Encoding;
+import javax.sound.sampled.AudioSystem;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -115,6 +122,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     public.
  * May 13, 2015 4429       rferrel     Changes to logs for traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging methods.
+ * Jul 28, 2015 3383       bkowal      Ensure wave file headers are written.
  * </pre>
  * 
  * @author bkowal
@@ -485,7 +493,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 try {
                     this.writeSynthesizedAudio(synthesizedAudio,
                             Paths.get(outputFile.getAbsolutePath()),
-                            logIdentifier.toString());
+                            logIdentifier.toString(), DEFAULT_OUTPUT_FORMAT);
                 } catch (IOException e) {
                     writeSuccess = false;
                     this.messageLogger.logError(null,
@@ -592,7 +600,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             boolean writeSuccess = true;
             try {
                 this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
-                        outputPath, logIdentifier.toString());
+                        outputPath, logIdentifier.toString(),
+                        message.getEncoding());
             } catch (IOException e) {
                 writeSuccess = false;
                 this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
@@ -751,8 +760,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * @return true if the file was written successfully; false, otherwise
      */
     private void writeSynthesizedAudio(final byte[] audio,
-            final Path outputPath, final String logIdentifier)
-            throws IOException {
+            final Path outputPath, final String logIdentifier,
+            BMHAudioFormat format) throws IOException {
         /*
          * Ensure that the required directories exist.
          */
@@ -801,8 +810,17 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          * of text that when synthesized are significantly > 10 minutes.
          */
         try (OutputStream os = Files.newOutputStream(outputPath)) {
-            os.write(audio, 0, writeLength);
-            os.flush();
+            if (format == BMHAudioFormat.WAV) {
+                final AudioFormat audioFormat = new AudioFormat(Encoding.ULAW,
+                        8000, 8, 1, 1, 8000, true);
+                final AudioInputStream audioInputStream = new AudioInputStream(
+                        new ByteArrayInputStream(audio), audioFormat,
+                        writeLength);
+                AudioSystem.write(audioInputStream, Type.WAVE, os);
+            } else {
+                os.write(audio, 0, writeLength);
+                os.flush();
+            }
             statusHandler.info("Successfully wrote audio output file: "
                     + outputPath.toString() + " for "
                     + logIdentifier.toString() + ". " + audio.length
