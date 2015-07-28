@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.stats;
 
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.stats.DacStatisticEvent;
 import com.raytheon.uf.common.event.EventBus;
 
 /**
@@ -32,6 +33,7 @@ import com.raytheon.uf.common.event.EventBus;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jan 6, 2015  3942      rjpeter     Initial creation
+ * Jul 28, 2015 4686      bkowal      Moved statistics to common.
  * 
  * </pre>
  * 

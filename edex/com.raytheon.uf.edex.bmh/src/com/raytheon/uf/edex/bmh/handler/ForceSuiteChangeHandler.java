@@ -23,10 +23,10 @@ import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
+import com.raytheon.uf.common.bmh.stats.SuiteChangeProcessingEvent;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistManager;
-import com.raytheon.uf.edex.bmh.stats.SuiteChangeProcessingEvent;
 
 /**
  * Request handler for {@code ForceSuiteChangeRequest} objects.
@@ -44,6 +44,7 @@ import com.raytheon.uf.edex.bmh.stats.SuiteChangeProcessingEvent;
  * Apr 20, 2015  #4397     bkowal      Forward the request time of the change suite
  *                                     request.
  * May 28, 2015  4429      rjpeter     Add ITraceable
+ * Jul 28, 2015  4686      bkowal      Moved statistics to common.
  * </pre>
  * 
  * @author dgilling

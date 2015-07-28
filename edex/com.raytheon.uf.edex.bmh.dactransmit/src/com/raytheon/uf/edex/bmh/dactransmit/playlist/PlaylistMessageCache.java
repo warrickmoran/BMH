@@ -49,6 +49,7 @@ import com.google.common.eventbus.Subscribe;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
@@ -61,7 +62,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
-import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
 
 /**
  * Cache for {@code PlaylistMessage} objects. Stores the contents of each audio
@@ -118,6 +118,7 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  *                                      in every case.
  * Jun 29, 2015 4602       bkowal       Fix updates in response to decibel changes.
  * Jul 08, 2015 4636       bkowal       Support same and alert decibel levels.
+ * Jul 28, 2015 4686       bkowal       Moved statistics to common.
  * 
  * </pre>
  * 

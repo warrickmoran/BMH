@@ -38,11 +38,11 @@ import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
-import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 15, 2015 4636       bkowal      Eliminate packet-level audio alterations.
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * </pre>
  * 
  * @author bkowal

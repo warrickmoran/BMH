@@ -27,6 +27,10 @@ function lookupWA_RPM()
 		export RPM_SPECIFICATION="${2}/Installer.bmh-shure"
 		return 0
 	fi
+	if [ "${1}" = "awips2-edex-request-bmh" ]; then
+		export RPM_SPECIFICATION="${2}/Installer.edex-request-bmh"
+		return 0
+	fi
 	
 	return 1
 }

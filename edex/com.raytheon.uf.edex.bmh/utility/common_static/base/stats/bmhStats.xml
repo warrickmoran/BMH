@@ -1,7 +1,7 @@
 <statisticsConfig>
     <!-- Event Type should be fully qualified name of stat event -->
     <!-- raw and aggregate OfflineRetentionDays: Value less than zero disables saving of raw statistic, zero is never purge -->
-    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.DacStatisticEvent"
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.DacStatisticEvent"
         displayName="Dac Statistics" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
@@ -13,7 +13,7 @@
             displayName="Unrecoverable Packet Errors" displayUnit="packets" />
     </statisticsEvent>
     
-    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent"
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent"
         displayName="Live Broadcast Latency" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
@@ -22,7 +22,7 @@
             displayName="Latency" displayUnit="ms" />
     </statisticsEvent>
     
-    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.MessageExpirationProcessingEvent"
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.MessageExpirationProcessingEvent"
         displayName="Expire Message Processing Time" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
@@ -30,7 +30,7 @@
             displayName="Processing Time" displayUnit="ms" />        
     </statisticsEvent>
     
-    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.SuiteChangeProcessingEvent"
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.SuiteChangeProcessingEvent"
         displayName="Suite Change Processing Time" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
@@ -46,7 +46,7 @@
             displayName="Processing Time" displayUnit="ms" />        
     </statisticsEvent>
     
-    <statisticsEvent type="com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent"
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent"
         displayName="Delivery Time" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
