@@ -24,6 +24,7 @@
  * ------------ ---------- ----------- --------------------------
  * May 21, 2015 4397       bkowal      Initial creation.
  * Jun 08, 2015 4397       bkowal      Added begin, end timestamp function parameters.
+ * Jul 29, 2015 4686       bkowal      Exclude inactive messages.
  **/
 ---
 --- This procedure will calculate the percentage of valid messages that were successfully
@@ -51,7 +52,8 @@ DECLARE
 	valid_msg_cursor CURSOR FOR SELECT v.* FROM validated_msg v
 		INNER JOIN input_msg i
 		ON v.transmissionstatus = 'ACCEPTED' AND
-		i.id = v.input_msg_id AND i.effectivetime >= begin_time AND
+		i.id = v.input_msg_id AND i.active = true AND 
+		i.effectivetime >= begin_time AND
 		i.effectivetime <= end_time;
 	---
 	--- Ensure that we only include transmitter group(s) that are currently
