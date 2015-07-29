@@ -41,7 +41,7 @@ DECLARE
 
 	expected_count decimal := 0;
 	actual_count decimal := 0;
-	message_broadcast boolean;
+	message_delivered boolean;
 	calculated_percent decimal;
 	final_result decimal;
 	
@@ -72,10 +72,10 @@ BEGIN
 		FOR valid_msg_trx_row IN valid_msg_trx_cursor(valid_msg_row.id) LOOP
 			expected_count := expected_count + 1;
 
-			SELECT bmsg.broadcast INTO message_broadcast FROM broadcast_msg bmsg WHERE
+			SELECT bmsg.delivered INTO message_delivered FROM broadcast_msg bmsg WHERE
 			bmsg.transmitter_group_id = valid_msg_trx_row.transmitter_group_id AND
 			bmsg.input_message_id = valid_msg_row.input_msg_id;
-			IF message_broadcast = true THEN
+			IF message_delivered = true THEN
 				actual_count := actual_count + 1;
 			END IF;
 		END LOOP;

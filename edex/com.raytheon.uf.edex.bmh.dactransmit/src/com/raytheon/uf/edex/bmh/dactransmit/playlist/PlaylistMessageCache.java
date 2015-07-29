@@ -119,6 +119,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jun 29, 2015 4602       bkowal       Fix updates in response to decibel changes.
  * Jul 08, 2015 4636       bkowal       Support same and alert decibel levels.
  * Jul 28, 2015 4686       bkowal       Moved statistics to common.
+ * Jul 29, 2015 4686       bkowal       Set the broadcast id on the {@link DeliveryTimeEvent}.
  * 
  * </pre>
  * 
@@ -486,6 +487,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
          * Generate a Delivery Time statistic.
          */
         DeliveryTimeEvent event = new DeliveryTimeEvent();
+        event.setBroadcastId(message.getBroadcastId());
         event.setDeliveryTime(TimeUtil.newGmtCalendar().getTimeInMillis()
                 - message.getInitialRecognitionTime());
 

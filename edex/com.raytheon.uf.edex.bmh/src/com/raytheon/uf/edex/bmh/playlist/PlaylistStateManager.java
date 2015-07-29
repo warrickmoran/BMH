@@ -83,7 +83,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 08, 2015   4478     bkowal      Prevent NPE in {@link #setToneFlags(PlaylistDataStructure, long)}.
  * May 21, 2015   4397     bkowal      Update the broadcast flag on {@link BroadcastMsg}.
  * May 22, 2015   4481     bkowal      Set the dynamic flag on the {@link MessagePlaybackPrediction}.
- * Jun 02, 2016   4369     rferrel     Added method {@link #processNoPlaybackMessageNotification(NoPlaybackMessageNotification)}.
+ * Jun 02, 2015   4369     rferrel     Added method {@link #processNoPlaybackMessageNotification(NoPlaybackMessageNotification)}.
+ * Jul 29, 2015   4686     bkowal      Removed setting of the broadcast flag on {@link BroadcastMsg}.
  * 
  * </pre>
  * 
@@ -357,7 +358,7 @@ public class PlaylistStateManager {
                 || interrupt) {
             if (broadcastMessage != null) {
                 if (tonesMatch(prediction, broadcastMessage)
-                        && interrupt == false && broadcastMessage.isBroadcast()) {
+                        && interrupt == false && broadcastMessage.isDelivered()) {
                     return;
                 }
             }
@@ -377,22 +378,9 @@ public class PlaylistStateManager {
                     broadcastMessage.setPlayedInterrupt(interrupt);
                     updated = true;
                 }
-                if (broadcastMessage.isBroadcast() == false) {
-                    broadcastMessage.setBroadcast(true);
-                    updated = true;
-                }
                 if (updated) {
                     broadcastMsgDao.persist(broadcastMessage);
                 }
-            }
-        } else {
-            if (broadcastMessage != null && broadcastMessage.isBroadcast()) {
-                return;
-            }
-            broadcastMessage = broadcastMsgDao.getByID(broadcastId);
-            if (broadcastMessage != null) {
-                broadcastMessage.setBroadcast(true);
-                broadcastMsgDao.persist(broadcastMessage);
             }
         }
     }

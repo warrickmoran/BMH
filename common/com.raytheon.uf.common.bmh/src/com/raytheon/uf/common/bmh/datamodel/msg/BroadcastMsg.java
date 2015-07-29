@@ -85,6 +85,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 05, 2015  4456     bkowal      Added {@link #playedInterrupt}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 21, 2015  4397     bkowal      Added {@link #broadcast}.
+ * May 29, 2015  4686     bkowal      Renamed the broadcast flag to {@link #delivered}.
  * </pre>
  * 
  * @author bkowal
@@ -185,14 +186,13 @@ public class BroadcastMsg {
 
     /**
      * boolean flag indicating whether or not this message has been successfully
-     * broadcast. This flag is used to calculate the message delivery
-     * statistics. This flag will be set at the same time the
-     * {@link #playedAlertTone}, {@link #playedSameTone}, and
-     * {@link #playedInterrupt} flags are set.
+     * delivered to Dac Transmit. This flag is used to calculate the message
+     * delivery statistics. This flag will be set when the
+     * {@link DeliveryTimeEvent} statistic event is received and processed.
      */
     @Column(nullable = false)
     @DynamicSerializeElement
-    private boolean broadcast = false;
+    private boolean delivered = false;
 
     @Column(nullable = false)
     @DynamicSerializeElement
@@ -390,17 +390,18 @@ public class BroadcastMsg {
     }
 
     /**
-     * @return the broadcast
+     * @return the delivered
      */
-    public boolean isBroadcast() {
-        return broadcast;
+    public boolean isDelivered() {
+        return delivered;
     }
 
     /**
-     * @param broadcast the broadcast to set
+     * @param delivered
+     *            the delivered to set
      */
-    public void setBroadcast(boolean broadcast) {
-        this.broadcast = broadcast;
+    public void setDelivered(boolean delivered) {
+        this.delivered = delivered;
     }
 
     public boolean getForcedExpiration() {

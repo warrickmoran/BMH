@@ -5,7 +5,9 @@
                       http://camel.apache.org/schema/spring
                       http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="statisticsAccumulator" class="com.raytheon.uf.edex.bmh.stats.StatisticsAccumulator" />
+	<bean id="statisticsAccumulator" class="com.raytheon.uf.edex.bmh.stats.StatisticsAccumulator">
+		<constructor-arg ref="broadcastMsgDao" />
+	</bean>
 
     <bean id="bmhStatisticBridge" class="com.raytheon.uf.edex.bmh.stats.StatusToStatisticBridge"/>
 
