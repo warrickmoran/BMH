@@ -53,9 +53,9 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 26, 2015  3928     bsteffen    Allow creation of a practice purger.
  * Feb 24, 2015  4160     bsteffen    Purge message files.
- * Apr 07, 205   4293     bkowal      Purge all audio generated for a single
+ * Apr 07, 2015  4293     bkowal      Purge all audio generated for a single
  *                                    Broadcast Message.
- * 
+ * Jul 29, 2015  4690     rjpeter     Added purging of reject files.
  * </pre>
  * 
  * @author bsteffen
@@ -77,6 +77,8 @@ public class MessagePurger {
 
     private final Path playlistPath;
 
+    private final Path rejectPath;
+
     public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
             final BroadcastMsgDao broadcastMessageDao, boolean operational) {
         this.purgeDays = purgeDays;
@@ -86,6 +88,19 @@ public class MessagePurger {
                 BMHConstants.AUDIO_DATA_DIRECTORY);
         playlistPath = BMHConstants.getBmhDataDirectory(operational).resolve(
                 "playlist");
+
+        String specifiedRejectionDirectory = System
+                .getProperty("bmh.data.reject");
+        if (operational && specifiedRejectionDirectory != null) {
+            specifiedRejectionDirectory = specifiedRejectionDirectory.trim();
+            if (specifiedRejectionDirectory.length() > 0) {
+                rejectPath = Paths.get(specifiedRejectionDirectory);
+            } else {
+                rejectPath = null;
+            }
+        } else {
+            rejectPath = null;
+        }
     }
 
     public void purge() {
@@ -97,7 +112,12 @@ public class MessagePurger {
         purgeDatabase(purgeTime);
         purgeAudioFiles(purgeTime);
         purgeMessageFiles(purgeTime);
-        this.purgeOldAudioContents(purgeTime);
+        purgeOldAudioContents(purgeTime);
+        if (rejectPath != null) {
+            logger.info("Purging reject files");
+            int val = purgeRejectFilesRecursive(rejectPath, purgeTime, false);
+            logger.info("Purged {} reject file{}", val, (val == 1 ? "" : "s"));
+        }
     }
 
     protected void purgeDatabase(Calendar purgeTime) {
@@ -233,7 +253,7 @@ public class MessagePurger {
                         .getTimeInMillis()) {
                     String fileName = messageFile.getFileName().toString();
                     long id = Long.parseLong(fileName.substring(0,
-                            fileName.indexOf('.')));
+                            fileName.indexOf('_')));
                     BroadcastMsg parent = broadcastMessageDao.getByID(id);
                     if (parent == null) {
                         logger.info("Deleting orphaned message file: {}",
@@ -300,5 +320,55 @@ public class MessagePurger {
                 }
             }
         }
+    }
+
+    protected int purgeRejectFilesRecursive(Path dir, Calendar purgeTime,
+            boolean deleteDir) {
+        int filesDeleted = 0;
+
+        if (Files.isDirectory(dir)) {
+            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
+                boolean empty = true;
+
+                for (Path entry : stream) {
+                    if (Files.isDirectory(entry)) {
+                        filesDeleted += purgeRejectFilesRecursive(entry,
+                                purgeTime, true);
+
+                        if (Files.exists(entry)) {
+                            empty = false;
+                        }
+                    } else {
+                        if (Files.getLastModifiedTime(entry).toMillis() < purgeTime
+                                .getTimeInMillis()) {
+                            try {
+                                Files.delete(entry);
+                                filesDeleted++;
+                            } catch (IOException e) {
+                                logger.error("Failed to purge reject file: "
+                                        + entry.toString(), e);
+                                empty = false;
+                            }
+                        } else {
+                            empty = false;
+                        }
+                    }
+                }
+
+                if (empty && deleteDir) {
+                    try {
+                        Files.delete(dir);
+                    } catch (IOException e) {
+                        logger.error(
+                                "Failed to delete empty reject directory: "
+                                        + dir.toString(), e);
+                    }
+                }
+            } catch (IOException e) {
+                logger.error("Failed to purge reject files.", e);
+            }
+        }
+
+        return filesDeleted;
     }
 }

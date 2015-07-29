@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.msg;
 
+import java.io.File;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
@@ -98,6 +99,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 19, 2015  4483     bkowal      Updated {@link #DUP_QUERY} to match effective and
  *                                    expiration times and removed mrd comparison.
+ * Jul 29, 2015  4690     rjpeter     Added originalFile.
  * </pre>
  * 
  * @author bsteffen
@@ -342,6 +344,8 @@ public class InputMessage {
     @Column(nullable = false)
     @DynamicSerializeElement
     private Calendar updateDate = TimeUtil.newGmtCalendar();
+
+    private transient File originalFile;
 
     public InputMessage() {
         super();
@@ -708,6 +712,21 @@ public class InputMessage {
      */
     public void setUpdateDate(Calendar updateDate) {
         this.updateDate = updateDate;
+    }
+
+    /**
+     * @return the originalFile
+     */
+    public File getOriginalFile() {
+        return originalFile;
+    }
+
+    /**
+     * @param originalFile
+     *            the originalFile to set
+     */
+    public void setOriginalFile(File originalFile) {
+        this.originalFile = originalFile;
     }
 
     @Override

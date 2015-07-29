@@ -17,7 +17,6 @@
         displayName="Live Broadcast Latency" category="BMH Events"
         rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
         <statisticsGroup name="transmitterGroup" displayName="Transmitter Group" />
-        <statisticsGroup name="broadcastIdentifier" displayName="Broadcast Identifier" />
         <statisticsAggregate field="latency"
             displayName="Latency" displayUnit="ms" />
     </statisticsEvent>

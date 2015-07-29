@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.validator;
 
+import java.io.File;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -38,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -71,6 +74,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 17, 2015  4482     rjpeter     Ignore all polygon data.
  * Jun 23, 2015  4572     bkowal      Extracted the afos id regex into {@link #AFOS_ID_REGEX}.
  * Jul 21, 2015  4671     bkowal      Ignore mrd follows.
+ * Jul 29, 2015  4690     rjpeter     Set originalFile for rejection use case.
  * </pre>
  * 
  * @author bsteffen
@@ -119,17 +123,20 @@ public class InputMessageParser {
         this.messageLogger = messageLogger;
     }
 
-    public InputMessage parse(@Body
-    CharSequence text, @Headers
-    Map<String, Object> headers) {
+    public InputMessage parse(@Body File file,
+            @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
+
         message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
+        message.setOriginalFile(file);
+
         message.setValidHeader(true);
         messageLogger.logParseActivity(message);
 
         try {
+            CharSequence text = FileUtil.file2String(file);
             int index = findStart(text);
             index = parseMessageFormat(message, text, index);
             index = parseAfosId(message, text, index);
@@ -147,17 +154,15 @@ public class InputMessageParser {
             index = parseExpirationDate(message, text, index);
             index = parseContent(message, text, index);
             deriveSameTransmitters(message);
-        } catch (ParseException e) {
+        } catch (ParseException | IOException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
                     fileName + " failed to parse", e);
             this.messageLogger.logError(null,
                     BMH_COMPONENT.INPUT_MESSAGE_PARSER,
                     BMH_ACTIVITY.MESSAGE_PARSING, message, e);
             message.setValidHeader(false);
-            if (message.getContent() == null) {
-                message.setContent(text.toString());
-            }
         }
+
         return message;
     }
 
@@ -458,5 +463,4 @@ public class InputMessageParser {
         c.setTime(d);
         return c;
     }
-
 }
