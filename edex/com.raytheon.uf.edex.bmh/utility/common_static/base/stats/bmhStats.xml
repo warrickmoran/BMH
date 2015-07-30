@@ -52,4 +52,12 @@
         <statisticsAggregate field="deliveryTime"
             displayName="Delivery Time" displayUnit="ms" />
     </statisticsEvent>
+    
+    <statisticsEvent type="com.raytheon.uf.common.bmh.stats.DeliveryPercentFiller"
+        displayName="Delivery % Success" category="BMH Events"
+        rawOfflineRetentionDays="-1" aggregateOfflineRetentionDays="90">
+        <statisticsGroup name="summary" displayName="Summary" />
+        <statisticsAggregate field="pctSuccess"
+            displayName="% Success" displayUnit="%" />
+    </statisticsEvent>
 </statisticsConfig>

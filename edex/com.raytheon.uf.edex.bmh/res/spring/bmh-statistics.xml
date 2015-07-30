@@ -5,6 +5,10 @@
                       http://camel.apache.org/schema/spring
                       http://camel.apache.org/schema/spring/camel-spring.xsd">
 
+	<bean id="messageDeliveryCalculator" 
+		class="com.raytheon.uf.edex.bmh.stats.MessageDeliveryCalculator" 
+		init-method="initialize" />
+
 	<bean id="statisticsAccumulator" class="com.raytheon.uf.edex.bmh.stats.StatisticsAccumulator">
 		<constructor-arg ref="broadcastMsgDao" />
 	</bean>
@@ -13,6 +17,19 @@
 
 	<camelContext id="bmhStatisticContext" xmlns="http://camel.apache.org/schema/spring"
 		errorHandlerRef="errorHandler">
+		
+		<endpoint id="calcDeliveryStatsCron" uri="clusteredquartz://bmh/calcDeliveryStats/?cron=0+0/5+*+*+*+?" />
+
+		<route id="calcDeliveryStats">
+			<from uri="calcDeliveryStatsCron" />
+			<doTry>
+				<bean ref="messageDeliveryCalculator" method="calculateAggregate" />
+				<doCatch>
+					<exception>java.lang.Throwable</exception>
+					<to uri="log:bmh?level=ERROR" />
+				</doCatch>
+			</doTry>
+		</route>
 
 		<route id="bmhStatisticRoute">
 			<from uri="jms-durable:topic:BMH.Statistic" />

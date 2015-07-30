@@ -32,7 +32,7 @@
 --- the user-specified starting and ending timestamp.
 ---
 DROP FUNCTION IF EXISTS messageDeliveryStat(timestamp, timestamp);
-CREATE FUNCTION messageDeliveryStat(timestamp, timestamp) RETURNS decimal AS $$
+CREATE FUNCTION messageDeliveryStat(timestamp, timestamp) RETURNS SETOF numeric AS $$
 DECLARE
 	begin_time ALIAS FOR $1;
 	end_time ALIAS FOR $2;
@@ -53,8 +53,9 @@ DECLARE
 		INNER JOIN input_msg i
 		ON v.transmissionstatus = 'ACCEPTED' AND
 		i.id = v.input_msg_id AND i.active = true AND 
-		i.effectivetime >= begin_time AND
-		i.effectivetime <= end_time;
+		i.updateDate >= begin_time AND
+		i.updateDate <= end_time AND
+		i.effectiveTime < end_time;
 	---
 	--- Ensure that we only include transmitter group(s) that are currently
 	--- enabled.
@@ -83,10 +84,16 @@ BEGIN
 		END LOOP;
 	END LOOP;
 	IF expected_count = 0 THEN
-		return 0;
+		RETURN NEXT 0;
+		RETURN NEXT actual_count;
+		RETURN NEXT 0;
+		RETURN;
 	END IF;
 	calculated_percent = (actual_count / expected_count);
 	final_result := calculated_percent * 100;
-	RETURN final_result;
+	RETURN NEXT expected_count;
+	RETURN NEXT actual_count;
+	RETURN NEXT final_result;
+	RETURN;
 END;
 $$ LANGUAGE plpgsql;
