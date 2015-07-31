@@ -186,6 +186,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private final int maxAudioByteCount;
 
+    private final boolean operational;
+
     private TTSSynthesisFactory synthesisFactory;
 
     private ScheduledThreadPoolExecutor heartbeatMonitor;
@@ -197,7 +199,12 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     private String ttsHost;
 
     public TTSManager(final IMessageLogger messageLogger) {
+        this(messageLogger, true);
+    }
+
+    public TTSManager(final IMessageLogger messageLogger, boolean operational) {
         this.messageLogger = messageLogger;
+        this.operational = operational;
 
         this.maxAudioDuration = Integer.getInteger(MAX_AUDIO_DURATION,
                 DEFAULT_MAX_AUDIO_DURATION_SECONDS);
@@ -312,9 +319,12 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         statusHandler
                 .info("TTS Retry Delays is: " + this.ttsRetryDelay + " ms");
         statusHandler.info("Starting TTS Server Monitor ...");
-        this.heartbeatMonitor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
-        this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
-                this.ttsHeartbeat, TimeUnit.MILLISECONDS);
+        if (this.operational) {
+            this.heartbeatMonitor = new ScheduledThreadPoolExecutor(
+                    CORE_POOL_SIZE);
+            this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
+                    this.ttsHeartbeat, TimeUnit.MILLISECONDS);
+        }
         statusHandler.info("Initialization Successful!");
 
         this.edexHost = SystemUtil.getHostName();
@@ -325,7 +335,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     }
 
     public void dispose() {
-        if (this.heartbeatMonitor != null) {
+        if (this.operational && this.heartbeatMonitor != null) {
             statusHandler.info("Stopping TTS Server Monitor ...");
             this.heartbeatMonitor.shutdownNow();
         }

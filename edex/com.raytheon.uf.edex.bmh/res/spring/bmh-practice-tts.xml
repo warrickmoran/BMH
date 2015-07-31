@@ -21,6 +21,7 @@
 	<bean id="practice_ttsManager" class="com.raytheon.uf.edex.bmh.tts.TTSManager"
 		destroy-method="dispose">
 		<constructor-arg ref="practice_edexMessageLogger" />
+		<constructor-arg value="false" />
 		<property name="synthesisFactory" ref="practice_ttsSynthesisFactory" />
 		<property name="bmhDataDirectory" value="${BMH_DATA}/practice" />
         <property name="bmhStatusDestination" ref="practice_bmhStatusDestination" />
