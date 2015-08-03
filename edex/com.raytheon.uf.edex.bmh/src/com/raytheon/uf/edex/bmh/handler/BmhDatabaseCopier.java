@@ -125,6 +125,8 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 12, 2015  4248     rjpeter     Updated copying of static message type.
  * Jul 23, 2015  4676     bkowal      Disseminate a {@link TransmitterGroupConfigNotification} as
  *                                    the practice database tables are truncated.
+ * Aug 03, 2015  4350     bkowal      Only assign a practice dac to a practice transmitter group if a
+ *                                    dac was originally assigned to the operational group.
  * 
  * </pre>
  * 
@@ -249,7 +251,11 @@ public class BmhDatabaseCopier {
             group.setProgramSummary(null);
             Dac dac = dacMap.get(group.getDac());
             if (dac == null) {
-                if (dacIter.hasNext()) {
+                /*
+                 * Only find a dac for the current transmitter group if one had
+                 * originally been assigned to it.
+                 */
+                if (group.getDac() != null && dacIter.hasNext()) {
                     dac = dacIter.next();
                     dacMap.put(group.getDac(), dac);
                     group.setDac(dac.getId());
