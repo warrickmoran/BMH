@@ -75,6 +75,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 23, 2015  4572     bkowal      Extracted the afos id regex into {@link #AFOS_ID_REGEX}.
  * Jul 21, 2015  4671     bkowal      Ignore mrd follows.
  * Jul 29, 2015  4690     rjpeter     Set originalFile for rejection use case.
+ * Aug 03, 2015  4350     bkowal      Fix spelling.
  * </pre>
  * 
  * @author bsteffen
@@ -123,8 +124,9 @@ public class InputMessageParser {
         this.messageLogger = messageLogger;
     }
 
-    public InputMessage parse(@Body File file,
-            @Headers Map<String, Object> headers) {
+    public InputMessage parse(@Body
+    File file, @Headers
+    Map<String, Object> headers) {
         InputMessage message = new InputMessage();
 
         message.setUpdateDate(TimeUtil.newGmtCalendar());
@@ -379,7 +381,7 @@ public class InputMessageParser {
         if (polygonText.length() > 0) {
             StringBuilder msg = new StringBuilder(160);
             msg.append("Found and ignored polygon(").append(polygonText)
-                    .append(") inforamtion in input message(")
+                    .append(") information in input message(")
                     .append(message.getName()).append(").");
             if (validationMsg != null || polyCount > 20) {
                 msg.append(" Polygon issues detected:");
