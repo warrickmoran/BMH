@@ -63,6 +63,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2015 4686       bkowal      Initial creation
+ * Aug 04, 2015 4424       bkowal      Retain the line separators in the
+ *                                     statistics sql.
  * 
  * </pre>
  * 
@@ -131,10 +133,16 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
             ClassPathResource cpResource = (ClassPathResource) resource;
             if (cpResource.exists()) {
                 StringBuffer sb = new StringBuffer();
+                boolean first = true;
                 try (BufferedReader br = new BufferedReader(
                         new InputStreamReader(cpResource.getInputStream()))) {
                     String line = StringUtils.EMPTY;
                     while ((line = br.readLine()) != null) {
+                        if (first) {
+                            first = false;
+                        } else {
+                            sb.append("\n");
+                        }
                         sb.append(line);
                     }
                 } catch (Exception e) {

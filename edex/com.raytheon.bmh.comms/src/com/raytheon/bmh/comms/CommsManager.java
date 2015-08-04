@@ -127,6 +127,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Apr 29, 2015  4394     bkowal      Handle shutdown notifications from non-clustered
  *                                    entities.
  * Jul 08, 2015  4636     bkowal      Updated to specify additional decibel level arguments.
+ * Aug 04, 2015  4424     bkowal      Notify the {@link ClusterServer} after {@link DacConfig}
+ *                                    has been updated.
  * </pre>
  * 
  * @author bsteffen
@@ -543,6 +545,7 @@ public class CommsManager {
 
         this.config = newConfig;
         transmitServer.reconfigure(config);
+        clusterServer.reconfigure(transmitServer.getActiveDacTransmits());
         lineTapServer.reconfigure(config);
         if ((jms == null) && (config.getJmsConnection() != null)) {
             try {

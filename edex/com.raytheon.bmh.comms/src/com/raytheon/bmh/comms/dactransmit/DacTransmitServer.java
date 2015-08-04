@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Apr 24, 2015  4423     rferrel     Added {@link #changeTimeZone}.
  * Apr 29, 2015  4394     bkowal      Handle {@link DacMaintenanceRegister}.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Aug 04, 2015  4424     bkowal      Added {@link #getActiveDacTransmits()}.
  * 
  * </pre>
  * 
@@ -135,6 +137,17 @@ public class DacTransmitServer extends AbstractServerThread {
             }
             this.channels = channels;
         }
+    }
+
+    /**
+     * Returns a {@link Set} of {@link DacTransmitKey}s consisting of the
+     * {@link DacTransmitKey}s that are associated with active dac transmit
+     * processes that have been specified in the comms configuration.
+     * 
+     * @return a {@link Set} of {@link DacTransmitKey}s
+     */
+    public Set<DacTransmitKey> getActiveDacTransmits() {
+        return new HashSet<>(this.channels.keySet());
     }
 
     /**
