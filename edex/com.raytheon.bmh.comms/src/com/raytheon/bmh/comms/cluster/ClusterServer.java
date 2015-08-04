@@ -59,6 +59,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Feb 10, 2015  4071     bsteffen    Synchronize State.
  * Apr 07, 2015  4370     rjpeter     Added sendConfigCheck.
  * Apr 08, 2015  4368     rjpeter     Fix ClusterCommunicator race condition.
+ * Aug 04, 2015  4424     bkowal      Added {@link #reconfigure(Set)}.
  * </pre>
  * 
  * @author bsteffen
@@ -396,5 +397,32 @@ public class ClusterServer extends AbstractServerThread {
      */
     public void sendConfigCheck() {
         sendDataToAll(new ClusterConfigMessage());
+    }
+
+    /**
+     * Reconfiguration method that verifies that the dac transmit that the
+     * cluster server may have requested is still defined in the configuration.
+     * If not defined, the requested key is removed.
+     * 
+     * @param activeDacTransmits
+     *            a {@link Set} of the {@link DacTransmitKey}s associated with
+     *            dac transmits defined in the latest version of the
+     *            configuration.
+     */
+    public void reconfigure(Set<DacTransmitKey> activeDacTransmits) {
+        synchronized (state) {
+            if (state.hasRequestedKey()) {
+                final DacTransmitKey requestedKey = state.getRequestedKey()
+                        .toKey();
+                if (activeDacTransmits.contains(requestedKey) == false) {
+                    /*
+                     * No longer wait for the process to start locally because
+                     * it is no longer even enabled.
+                     */
+                    state.setRequestedKey(null);
+                    requestTimeout = Long.MAX_VALUE;
+                }
+            }
+        }
     }
 }
