@@ -56,6 +56,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 16, 2014 3618       bkowal      Initial creation
+ * Aug 04, 2015 4424       bkowal      Ensured {@link #dictionaryLanguage} would
+ *                                     not be set to {@code null}.
  * 
  * </pre>
  * 
@@ -97,6 +99,10 @@ public class SelectDictionaryDlg extends CaveSWTDialog {
             final Language dictionaryLanguage) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+        if (dictionaryLanguage == null) {
+            throw new IllegalArgumentException(
+                    "Required argument dictionaryLanguage cannot be NULL.");
+        }
         this.dictionaryLanguage = dictionaryLanguage;
     }
 
