@@ -62,23 +62,21 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 03, 2015 4175       bkowal      Implemented voice registration.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jul 22, 2015 4676       bkowal      Toggle adding/removing dictionaries.
+ * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 
-public class VoiceConfigDialog extends AbstractBMHDialog {
+public class VoiceConfigDialog extends AbstractBMHDialog implements
+        IDictionarySelectionListener {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(VoiceConfigDialog.class);
 
     private final String GENDER_MALE = "MALE";
 
     private final String GENDER_FEMALE = "FEMALE";
-
-    private final String DICTIONARY_ADD = "Add...";
-
-    private final String DICTIONARY_CLEAR = "Clear";
 
     private final Map<String, Integer> voiceIdentifierMap = new HashMap<>();
 
@@ -95,9 +93,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
 
     private Label voiceGenderLabel;
 
-    private Label voiceDictionaryLabel;
-
-    private Button addClearBtn;
+    private DictionaryAssignmentComp dictionaryAssign;
 
     private Button saveBtn;
 
@@ -196,12 +192,6 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         this.populateVoiceAttributes();
     }
 
-    private void syncDictionaryMode() {
-        this.addClearBtn
-                .setText((this.selectedVoice.getDictionary() == null) ? DICTIONARY_ADD
-                        : DICTIONARY_CLEAR);
-    }
-
     /**
      * Constructs the {@link List} that will display the voices that are
      * registered in the system.
@@ -263,7 +253,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         attributesGroup.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gl = new GridLayout(3, false);
+        gl = new GridLayout(2, false);
         Composite attributesComp = new Composite(attributesGroup, SWT.NONE);
         attributesComp.setLayoutData(gd);
         attributesComp.setLayout(gl);
@@ -276,7 +266,6 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         nameLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
         gd.widthHint = 225;
-        gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
         voiceNameLabel = new Label(attributesComp, SWT.NONE);
         voiceNameLabel.setLayoutData(gd);
@@ -288,7 +277,6 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         languageLabel.setText("Language: ");
         languageLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
         voiceLanguageLabel = new Label(attributesComp, SWT.NONE);
         voiceLanguageLabel.setLayoutData(gd);
@@ -300,32 +288,14 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         genderLabel.setText("Gender: ");
         genderLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
         voiceGenderLabel = new Label(attributesComp, SWT.NONE);
         voiceGenderLabel.setLayoutData(gd);
 
         /* Voice Dictionary */
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.verticalIndent = 5;
-        Label dictionaryLabel = new Label(attributesComp, SWT.RIGHT);
-        dictionaryLabel.setText("Dictionary: ");
-        dictionaryLabel.setLayoutData(gd);
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.widthHint = 200;
-        gd.verticalIndent = 5;
-        voiceDictionaryLabel = new Label(attributesComp, SWT.BORDER);
-        voiceDictionaryLabel.setLayoutData(gd);
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.widthHint = 75;
-        addClearBtn = new Button(attributesComp, SWT.PUSH);
-        addClearBtn.setLayoutData(gd);
-        addClearBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                handleAddClearAction();
-            }
-        });
+        this.dictionaryAssign = new DictionaryAssignmentComp(attributesComp,
+                this.getShell(), this);
+        this.dictionaryAssign.disable();
 
         /*
          * Save Button - will only be enabled if the dictionary has been
@@ -442,60 +412,31 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
 
         this.voiceNameLabel.setText(selectedVoice.getVoiceName());
         this.voiceLanguageLabel.setText(selectedVoice.getLanguage().toString());
+        this.dictionaryAssign.setSelectedLanguage(this.selectedVoice
+                .getLanguage());
         final String voiceGender = selectedVoice.isMale() ? GENDER_MALE
                 : GENDER_FEMALE;
         this.voiceGenderLabel.setText(voiceGender);
-        if (selectedVoice.getDictionary() != null) {
-            this.voiceDictionaryLabel.setText(selectedVoice.getDictionary()
-                    .getName());
-        }
-
-        this.syncDictionaryMode();
-        this.addClearBtn.setEnabled(true);
+        this.dictionaryAssign.setSelectedDictionary(selectedVoice
+                .getDictionary());
+        this.dictionaryAssign.enable();
     }
 
     private void resetDisplay() {
         this.voiceNameLabel.setText(StringUtils.EMPTY);
         this.voiceLanguageLabel.setText(StringUtils.EMPTY);
         this.voiceGenderLabel.setText(StringUtils.EMPTY);
-        this.voiceDictionaryLabel.setText(StringUtils.EMPTY);
-
-        this.addClearBtn.setEnabled(false);
+        this.dictionaryAssign.disable();
         this.saveBtn.setEnabled(false);
-    }
-
-    private void handleAddClearAction() {
-        if (this.selectedVoice.getDictionary() == null) {
-            SelectDictionaryDlg selectDictDlg = new SelectDictionaryDlg(
-                    this.shell, this.selectedVoice.getLanguage());
-            selectDictDlg.setFilterDictionary(this.selectedVoice
-                    .getDictionary());
-            selectDictDlg.setCloseCallback(new ICloseCallback() {
-                @Override
-                public void dialogClosed(Object returnValue) {
-                    if (returnValue == null) {
-                        return;
-                    }
-
-                    if (returnValue instanceof Dictionary == false) {
-                        return;
-                    }
-                    dictionarySelected((Dictionary) returnValue);
-                }
-            });
-            selectDictDlg.open();
-        } else {
-            this.selectedVoice.setDictionary(null);
-            this.voiceDictionaryLabel.setText("");
-            this.syncDictionaryMode();
-            this.saveBtn.setEnabled(true);
-        }
     }
 
     private void handleSaveAction() {
         if (this.selectedVoice == null) {
             return;
         }
+
+        this.selectedVoice.setDictionary(this.dictionaryAssign
+                .getSelectedDictionary());
 
         try {
             this.vdm.saveTtsVoice(this.selectedVoice);
@@ -535,11 +476,10 @@ public class VoiceConfigDialog extends AbstractBMHDialog {
         this.handleSaveAction();
     }
 
-    private void dictionarySelected(Dictionary dictionary) {
-        this.selectedVoice.setDictionary(dictionary);
-        this.voiceDictionaryLabel.setText(dictionary.getName());
-        this.saveBtn.setEnabled(true);
-        this.syncDictionaryMode();
+    @Override
+    public void dictionarySelected(Dictionary dictionary) {
+        this.saveBtn.setEnabled(this.dictionaryAssign
+                .dictionaryChanged(this.selectedVoice.getDictionary()));
     }
 
     private void handleAddVoiceAction() {
