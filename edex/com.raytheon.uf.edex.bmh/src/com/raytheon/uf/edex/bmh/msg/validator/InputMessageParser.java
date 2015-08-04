@@ -76,6 +76,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jul 21, 2015  4671     bkowal      Ignore mrd follows.
  * Jul 29, 2015  4690     rjpeter     Set originalFile for rejection use case.
  * Aug 03, 2015  4350     bkowal      Fix spelling.
+ * Aug 04, 2015  4671     bkowal      Throw a {@link ParseException} when mrd follows is
+ *                                    encountered.
  * </pre>
  * 
  * @author bsteffen
@@ -245,7 +247,8 @@ public class InputMessageParser {
         return periodicity.end();
     }
 
-    private int parseMrd(InputMessage message, CharSequence text, int index) {
+    private int parseMrd(InputMessage message, CharSequence text, int index)
+            throws ParseException {
         Matcher mrd = mrdPattern.matcher(text);
         mrd.region(index, text.length());
         if (mrd.find()) {
@@ -253,18 +256,10 @@ public class InputMessageParser {
             /*
              * Determine if follows mrds are present.
              */
-            int followsIdx = mrdStr.indexOf('F');
-            if (followsIdx != -1) {
-                final String mrdFollows = mrdStr.substring(followsIdx);
-                mrdStr = mrdStr.substring(0, followsIdx);
-
-                StringBuilder sb = new StringBuilder(
-                        "Found and ignored mrd follows (");
-                sb.append(mrdFollows)
-                        .append(") information in input message (");
-                sb.append(message.getName()).append(").");
-
-                statusHandler.info(sb.toString());
+            if (mrdStr.contains("F")) {
+                throw new ParseException(
+                        "MRD Follows is no longer supported; discovered in mrd: "
+                                + mrdStr, index);
             }
             message.setMrd(mrdStr);
             return mrd.end();
