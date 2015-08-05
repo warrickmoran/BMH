@@ -59,7 +59,6 @@ import com.raytheon.uf.common.bmh.broadcast.TrxTransferMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
-import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter.TxMode;
@@ -1593,19 +1592,13 @@ public class TransmitterComp extends Composite implements INotificationObserver 
      * @return false if no program or program does not contain a GENERAL suite.
      */
     private boolean containsGeneralSuite(ProgramSummary ps) {
-        if (ps == null) {
-            return false;
-        }
-        Boolean value = null;
         try {
-            Program program = new Program();
-            program.setId(ps.getId());
-            value = BmhUtils.containsGeneralSuite(program);
+            return BmhUtils.containsGeneralSuite(ps);
         } catch (Exception e) {
             statusHandler.handle(Priority.PROBLEM,
                     "Unable to get program information.", e);
         }
-        return value;
+        return false;
     }
 
     /**
