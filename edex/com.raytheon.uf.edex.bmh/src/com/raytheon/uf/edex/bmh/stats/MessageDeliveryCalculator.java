@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Jul 29, 2015 4686       bkowal      Initial creation
  * Aug 04, 2015 4424       bkowal      Retain the line separators in the
  *                                     statistics sql.
+ * Aug 07, 2015 4424       bkowal      Fix aggregate end date.
  * 
  * </pre>
  * 
@@ -249,7 +250,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
                  */
                 AggregateRecord record = new AggregateRecord(
                         DeliveryPercentFiller.class.getName(), startTime,
-                        currentRunTime, this.groupingXml, "pctSuccess");
+                        endTime, this.groupingXml, "pctSuccess");
                 record.setSum(stats.getActualCount());
                 record.setMin(stats.getPercentage());
                 record.setMax(stats.getPercentage());

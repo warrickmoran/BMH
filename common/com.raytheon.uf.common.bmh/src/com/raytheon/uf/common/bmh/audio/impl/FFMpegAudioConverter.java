@@ -46,6 +46,7 @@ import com.raytheon.uf.common.util.RunProcess;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 2, 2014  3880       bkowal      Initial creation
+ * Aug 7, 2015  4424       bkowal      Added {@link #prepareInput(byte[], BMHAudioFormat)}.
  * 
  * </pre>
  * 
@@ -272,7 +273,7 @@ public abstract class FFMpegAudioConverter extends AbstractAudioConverter {
         Path outputPath = null;
         try {
             // create the temporary files.
-            inputPath = Files.createTempFile(null, srcFormat.getExtension());
+            inputPath = this.prepareInput(src, srcFormat);
             outputPath = Files.createTempFile(null, this.getOutputFormat()
                     .getExtension());
 
@@ -317,6 +318,9 @@ public abstract class FFMpegAudioConverter extends AbstractAudioConverter {
             }
         }
     }
+
+    protected abstract Path prepareInput(final byte[] src,
+            BMHAudioFormat srcFormat) throws IOException;
 
     /**
      * Builds a list of arguments specific to the desired output format that
