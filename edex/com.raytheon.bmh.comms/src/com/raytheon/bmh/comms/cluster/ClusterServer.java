@@ -60,6 +60,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Apr 07, 2015  4370     rjpeter     Added sendConfigCheck.
  * Apr 08, 2015  4368     rjpeter     Fix ClusterCommunicator race condition.
  * Aug 04, 2015  4424     bkowal      Added {@link #reconfigure(Set)}.
+ * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
  * </pre>
  * 
  * @author bsteffen
@@ -74,19 +75,27 @@ public class ClusterServer extends AbstractServerThread {
      */
     private static final int REQUEST_TIMEOUT_INTERVAL = 10 * 1000;
 
+    /**
+     * When connected to another comms manager. This is the maximum amount of
+     * time allowed between messages.
+     */
+    private static final int CLUSTER_TIMEOUT_INTERVAL = 60 * 1000;
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final CommsManager manager;
 
-    private final Map<InetAddress, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
+    private final Map<String, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
 
     private final Object communicatorLock = new Object();
 
-    private final Set<InetAddress> configuredAddresses = new CopyOnWriteArraySet<>();
+    private final Set<String> configuredAddresses = new CopyOnWriteArraySet<>();
 
     private final ClusterStateMessage state = new ClusterStateMessage();
 
     private long requestTimeout = Long.MAX_VALUE;
+
+    private String localIp;
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -113,8 +122,7 @@ public class ClusterServer extends AbstractServerThread {
             communicators.clear();
             return;
         }
-        Set<InetAddress> configuredAddresses = new HashSet<>();
-        String localIp = null;
+        Set<String> configuredAddresses = new HashSet<>();
         for (CommsHostConfig host : config.getClusterHosts()) {
             try {
                 if (host.isLocalHost()) {
@@ -134,39 +142,52 @@ public class ClusterServer extends AbstractServerThread {
             return;
         }
 
+        long timeoutThreshold = System.currentTimeMillis()
+                - CLUSTER_TIMEOUT_INTERVAL;
         for (CommsHostConfig host : config.getClusterHosts()) {
             if (localIp.equals(host.getIpAddress())) {
                 continue;
             }
 
+            String remoteAddress = host.getIpAddress();
             InetAddress address = null;
             try {
-                address = InetAddress.getByName(host.getIpAddress());
+                address = InetAddress.getByName(remoteAddress);
             } catch (UnknownHostException e) {
                 logger.error("Unable to resolve host of cluster member: {}",
                         host.getIpAddress(), e);
                 continue;
             }
 
-            configuredAddresses.add(address);
+            configuredAddresses.add(remoteAddress);
 
-            if (communicators.containsKey(address)) {
-                continue;
+            ClusterCommunicator communicator = communicators.get(remoteAddress);
+
+            if (communicator != null) {
+                if (communicator.getTimeLastMessageReceived() < timeoutThreshold) {
+                    logger.error(
+                            "Cluster time out for cluster member: {}.  Have not received heartbeat message within threshold",
+                            remoteAddress);
+                    communicator.disconnect();
+                } else {
+                    communicator.send(new ClusterHeartbeatMessage(localIp));
+                    continue;
+                }
             }
 
-            ClusterCommunicator communicator = null;
             try {
                 logger.info("Initiating cluster communication with {}",
-                        host.getIpAddress());
+                        remoteAddress);
                 Socket socket = new Socket(address, config.getClusterPort());
                 socket.setTcpNoDelay(true);
-                communicator = new ClusterCommunicator(manager, socket, localIp);
+                communicator = new ClusterCommunicator(manager, socket,
+                        host.getIpAddress());
                 if (communicator.send(localIp)) {
-                    addCommunicator(communicator, address);
+                    addCommunicator(communicator);
                 }
             } catch (Exception e) {
                 logger.warn("Unable to connect to cluster member: {}",
-                        host.getIpAddress());
+                        remoteAddress);
                 if (communicator != null) {
                     communicator.disconnect();
                 }
@@ -176,9 +197,9 @@ public class ClusterServer extends AbstractServerThread {
         this.configuredAddresses.addAll(configuredAddresses);
         this.configuredAddresses.retainAll(configuredAddresses);
 
-        Set<InetAddress> disconnectSet = new HashSet<>(communicators.keySet());
+        Set<String> disconnectSet = new HashSet<>(communicators.keySet());
         disconnectSet.removeAll(configuredAddresses);
-        for (InetAddress address : disconnectSet) {
+        for (String address : disconnectSet) {
             ClusterCommunicator communicator = communicators.remove(address);
             if (communicator != null) {
                 communicator.shutdown();
@@ -221,13 +242,13 @@ public class ClusterServer extends AbstractServerThread {
     protected void handleConnection(Socket socket)
             throws SerializationException, IOException {
         InetAddress address = socket.getInetAddress();
-        if (configuredAddresses.contains(address)) {
-            String id = getRemoteServerUniqueId(socket);
+        String id = getRemoteServerHost(socket);
+        if (configuredAddresses.contains(id)) {
             if (id != null) {
                 logger.info("Received new cluster request from {}", id);
                 ClusterCommunicator communicator = new ClusterCommunicator(
                         manager, socket, id);
-                addCommunicator(communicator, address);
+                addCommunicator(communicator);
             } else {
                 logger.warn(
                         "Cluster request did not send server id as first message, rejecting request from {}",
@@ -243,9 +264,9 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    protected String getRemoteServerUniqueId(Socket socket) {
+    protected String getRemoteServerHost(Socket socket) {
         try {
-            // first message from socket is to be its id
+            // first message from socket is to be its ip from comms.xml
             return SerializationUtil.transformFromThrift(String.class,
                     socket.getInputStream());
         } catch (Throwable e) {
@@ -256,16 +277,15 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    protected void addCommunicator(ClusterCommunicator communicator,
-            InetAddress address) {
+    protected void addCommunicator(ClusterCommunicator communicator) {
+        String remoteAddress = communicator.getClusterId();
         synchronized (communicatorLock) {
-            ClusterCommunicator prev = communicators.get(address);
+            ClusterCommunicator prev = communicators.get(remoteAddress);
 
             if (prev != null) {
                 // reject new communicator
                 if (prev.remoteAccepted()
-                        || prev.getUniqueId().compareTo(
-                                communicator.getUniqueId()) < 0) {
+                        || localIp.compareTo(remoteAddress) < 0) {
                     communicator.disconnect();
                     return;
                 }
@@ -274,7 +294,7 @@ public class ClusterServer extends AbstractServerThread {
                 prev.disconnect();
             }
 
-            communicators.put(address, communicator);
+            communicators.put(remoteAddress, communicator);
             communicator.start();
             synchronized (state) {
                 communicator.sendState(state);
