@@ -127,6 +127,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     running. Broadcast TTS connect errors to AlertViz.
  * Jul 28, 2015 3383       bkowal      Ensure wave file headers are written.
  * Aug 07, 2015 4424       bkowal      Convert audio to wav format before converting to mp3.
+ * Aug 10, 2015 4723       bkowal      Made the message processing and ldad processing methods
+ *                                     easily distinguishable.
  * </pre>
  * 
  * @author bkowal
@@ -516,7 +518,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *         file location when synthesis is successful
      * @throws Exception
      */
-    public LdadMsg process(LdadMsg message) throws Exception {
+    public LdadMsg processLdad(LdadMsg message) throws Exception {
         statusHandler
                 .info("Performing Text-to-Speech Transformation for ldad configuration: "
                         + message.getLdadId());
@@ -592,9 +594,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             /* Write the output file. */
             boolean writeSuccess = true;
             try {
-                this.writeSynthesizedAudio(audioData,
-                        outputPath, logIdentifier.toString(),
-                        message.getEncoding());
+                this.writeSynthesizedAudio(audioData, outputPath,
+                        logIdentifier.toString(), message.getEncoding());
             } catch (IOException e) {
                 writeSuccess = false;
                 this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,

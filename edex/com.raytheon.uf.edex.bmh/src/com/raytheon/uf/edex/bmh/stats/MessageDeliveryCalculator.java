@@ -66,6 +66,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Aug 04, 2015 4424       bkowal      Retain the line separators in the
  *                                     statistics sql.
  * Aug 07, 2015 4424       bkowal      Fix aggregate end date.
+ * Aug 10, 2015 4723       bkowal      Statistics calculation end time is now an
+ *                                     hour ago instead of five minutes ago.
  * 
  * </pre>
  * 
@@ -196,9 +198,9 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
         }
 
         /*
-         * The end time will be five minutes ago.
+         * The end time will be one hour ago.
          */
-        Date endDate = DateUtils.addMinutes(currentRunTime.getTime(), -5);
+        Date endDate = DateUtils.addHours(currentRunTime.getTime(), -1);
         Date startDate = null;
 
         /*
