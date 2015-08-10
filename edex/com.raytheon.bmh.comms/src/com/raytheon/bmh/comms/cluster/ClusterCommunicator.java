@@ -51,6 +51,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * Apr 07, 2015  4370     rjpeter     Add handling of ClusterConfigMessage.
  * Apr 08, 2015  4368     rjpeter     Add uniqueId and remoteAccepted.
+ * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
  * </pre>
  * 
  * @author bsteffen
@@ -68,14 +69,16 @@ public class ClusterCommunicator extends Thread {
 
     private ClusterStateMessage state;
 
-    private final String uniqueId;
+    private final String remoteHost;
+
+    private volatile long timeLastMessageReceived = System.currentTimeMillis();
 
     public ClusterCommunicator(CommsManager manager, Socket socket,
-            String uniqueId) {
-        super("ClusterCommunicator-" + socket.getRemoteSocketAddress());
+            String remoteHost) {
+        super("ClusterCommunicator-" + remoteHost);
         this.socket = socket;
         this.manager = manager;
-        this.uniqueId = uniqueId;
+        this.remoteHost = remoteHost;
     }
 
     @Override
@@ -84,6 +87,7 @@ public class ClusterCommunicator extends Thread {
             try {
                 Object message = SerializationUtil.transformFromThrift(
                         Object.class, socket.getInputStream());
+                timeLastMessageReceived = System.currentTimeMillis();
                 handleMessage(message);
             } catch (Throwable e) {
                 boolean lostConnection = false;
@@ -95,11 +99,11 @@ public class ClusterCommunicator extends Thread {
                 }
                 if (lostConnection) {
                     logger.error("Lost connection to cluster member: {}",
-                            getClusterId());
+                            remoteHost);
                 } else {
                     logger.error(
                             "Error reading message from cluster member: {}",
-                            getClusterId(), e);
+                            remoteHost, e);
                 }
                 disconnect();
             }
@@ -112,7 +116,7 @@ public class ClusterCommunicator extends Thread {
             ClusterStateMessage oldState = state;
             state = newState;
             logger.info("Clustered manager {} is connected to {} dac(s)",
-                    getClusterId(), newState.getKeys().size());
+                    remoteHost, newState.getKeys().size());
             if (oldState == null) {
                 for (ClusterDacTransmitKey key : newState.getKeys()) {
                     manager.dacConnectedRemote(key.toKey());
@@ -120,7 +124,7 @@ public class ClusterCommunicator extends Thread {
                 if (newState.hasRequestedKey()) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            getClusterId(), newState.getKeys().size());
+                            remoteHost, newState.getKeys().size());
                     manager.dacRequestedRemote(newState.getRequestedKey()
                             .toKey());
                 }
@@ -139,7 +143,7 @@ public class ClusterCommunicator extends Thread {
                         && !oldState.isRequestedKey(newState.getRequestedKey())) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            getClusterId(), newState.getKeys().size());
+                            remoteHost, newState.getKeys().size());
                     manager.dacRequestedRemote(newState.getRequestedKey()
                             .toKey());
                 }
@@ -149,7 +153,7 @@ public class ClusterCommunicator extends Thread {
                 disconnect();
             } else {
                 logger.info("Clustered manager {} is shutting down.",
-                        getClusterId());
+                        remoteHost);
                 send(new ClusterShutdownMessage(true));
                 disconnect();
             }
@@ -158,6 +162,14 @@ public class ClusterCommunicator extends Thread {
         } else if (message instanceof ILiveBroadcastMessage) {
             this.manager
                     .forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
+        } else if (message instanceof ClusterHeartbeatMessage) {
+            String heartbeatIp = ((ClusterHeartbeatMessage) message).getHost();
+            if (!remoteHost.equals(heartbeatIp)) {
+                logger.error(
+                        "Received wrong host for heartbeat.  Expected {} received {}.  Closing connection to {}",
+                        remoteHost, heartbeatIp, remoteHost);
+                disconnect();
+            }
         } else {
             logger.error("Unexpected message from cluster member of type: {}",
                     message.getClass().getSimpleName());
@@ -170,7 +182,7 @@ public class ClusterCommunicator extends Thread {
                 // No usable connection. Initiate cleanup.
                 this.disconnect();
                 logger.error("No active connection(s) to cluster member: {}.",
-                        this.getClusterId());
+                        this.remoteHost);
                 return false;
             }
             try {
@@ -178,7 +190,7 @@ public class ClusterCommunicator extends Thread {
                         socket.getOutputStream());
             } catch (Throwable e) {
                 logger.error("Error communicating with cluster member: {}",
-                        getClusterId(), e);
+                        remoteHost, e);
                 this.disconnect();
                 return false;
             }
@@ -213,7 +225,7 @@ public class ClusterCommunicator extends Thread {
             }
         } catch (IOException e) {
             logger.error("Error disconnecting from cluster member: {}",
-                    getClusterId(), e);
+                    remoteHost, e);
         }
         if (state != null) {
             for (ClusterDacTransmitKey key : state.getKeys()) {
@@ -244,14 +256,17 @@ public class ClusterCommunicator extends Thread {
         return state;
     }
 
-    public String getUniqueId() {
-        return uniqueId;
-    }
-
     /**
      * Convenience method, this is used in logging
      */
     public String getClusterId() {
-        return socket.getInetAddress().getHostAddress();
+        return remoteHost;
+    }
+
+    /**
+     * @return the timeLastMessageReceived
+     */
+    public long getTimeLastMessageReceived() {
+        return timeLastMessageReceived;
     }
 }
