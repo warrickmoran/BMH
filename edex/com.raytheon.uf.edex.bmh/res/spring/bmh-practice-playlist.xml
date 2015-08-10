@@ -14,6 +14,7 @@
     <property name="transmitterGroupDao" ref="practice_transmitterGroupDao" />
     <property name="messageTypeDao" ref="practice_messageTypeDao" />
     <property name="inputMessageDao" ref="practice_inputMessageDao" />
+    <property name="validatedMessageDao" ref="practice_validatedMessageDao" />
   </bean>
 
   <bean id="practice_playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">
