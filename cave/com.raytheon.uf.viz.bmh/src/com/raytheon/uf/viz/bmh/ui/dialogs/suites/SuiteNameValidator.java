@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Aug 18, 2014  #3490     lvenable     Initial creation
  * Aug 22, 2014  #3490     lvenable     Tweaked message.
  * Aug 26, 2014  #3490     lvenable     Tweaked message again.
+ * Aug 11, 2015  #4424     bkowal       Suite names cannot contain underscores.
  * 
  * </pre>
  * 
@@ -73,11 +74,11 @@ public class SuiteNameValidator implements IInputTextValidator {
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
 
-        if (text.matches("[\\sA-Za-z0-9._-]+") == false) {
+        if (text.matches("[\\sA-Za-z0-9.-]+") == false) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("The Suite name must be at least one character, be alphanumeric, and can only contain ");
-            sb.append("blank spaces, periods, dashes, or underscores.");
+            sb.append("blank spaces, periods, or dashes.");
 
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Invalid Name", sb.toString());
