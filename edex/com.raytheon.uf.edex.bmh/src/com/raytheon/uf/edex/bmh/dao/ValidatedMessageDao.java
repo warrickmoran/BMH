@@ -19,7 +19,9 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.transaction.TransactionStatus;
@@ -45,6 +47,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Apr 16, 2015  4396     rferrel     Added {@link #getAllUnexpiredMessages(Calendar)}.
  * May 13, 2015  4429     rferrel     Added {@link #getByTraceableId(TraceableId)}.
+ * Aug 10, 2015  4723     bkowal      Added {@link #getExpiredNonDeliveredMessages(Calendar)}.
  * 
  * 
  * </pre>
@@ -89,6 +92,24 @@ public class ValidatedMessageDao extends
         }
 
         return (ValidatedMessage) messages.get(0);
+    }
+
+    public List<ValidatedMessage> getExpiredNonDeliveredMessages(
+            Calendar currentTime) {
+        List<?> returnObjects = findByNamedQueryAndNamedParam(
+                ValidatedMessage.GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS,
+                "exprTime", currentTime);
+        if (returnObjects.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ValidatedMessage> validatedMessages = new ArrayList<>(
+                returnObjects.size());
+        for (Object object : returnObjects) {
+            validatedMessages.add((ValidatedMessage) object);
+        }
+
+        return validatedMessages;
     }
 
     @SuppressWarnings("unchecked")

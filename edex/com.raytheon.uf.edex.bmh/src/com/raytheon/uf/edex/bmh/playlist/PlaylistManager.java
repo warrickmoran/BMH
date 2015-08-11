@@ -60,7 +60,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
@@ -97,6 +99,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao;
+import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -200,6 +203,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    deactivated.
  * Jun 23, 2015  4490     bkowal      Cluster lock playlist directory deletions.
  * Jul 28, 2015  4686     bkowal      Moved statistics to common.
+ * Aug 10, 2015  4723     bkowal      Added {@link #checkStatusExpired()}.
  * </pre>
  * 
  * @author bsteffen
@@ -229,6 +233,8 @@ public class PlaylistManager implements IContextStateProcessor {
     private TransmitterGroupDao transmitterGroupDao;
 
     private MessageTypeDao messageTypeDao;
+
+    private ValidatedMessageDao validatedMessageDao;
 
     private final ReplacementManager replacementManager;
 
@@ -359,6 +365,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 }
             } else {
                 refreshTransmitterGroup(group, null, null, null, notification);
+                this.checkStatusExpired();
             }
         }
     }
@@ -752,6 +759,32 @@ public class PlaylistManager implements IContextStateProcessor {
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
         }
+    }
+
+    /**
+     * Sets the transmission status of {@link ValidatedMessage}s associated with
+     * expired {@link BroadcastMsg}s to EXPIRED instead of ACCEPTED if the
+     * {@link BroadcastMsg} has not been "delievered" yet. The expiration time
+     * of the {@link BroadcastMsg} is based on the expiration time of the
+     * associated {@link InputMessage}. So, a {@link BroadcastMsg} that expires
+     * on one {@link Transmitter} will expire on all {@link Transmitter}s.
+     */
+    private void checkStatusExpired() {
+        List<ValidatedMessage> validatedMsgs = this.validatedMessageDao
+                .getExpiredNonDeliveredMessages(TimeUtil.newGmtCalendar());
+        for (ValidatedMessage validatedMsg : validatedMsgs) {
+            validatedMsg.setTransmissionStatus(TransmissionStatus.EXPIRED);
+            final String msgHeader = TraceableUtil
+                    .createTraceMsgHeader(validatedMsg);
+
+            StringBuilder sb = new StringBuilder(msgHeader);
+            sb.append("Setting transmission status to ").append(
+                    TransmissionStatus.EXPIRED.name());
+            sb.append("for non-broadcast, expired message: ")
+                    .append(validatedMsg.getId()).append(".");
+            statusHandler.info(sb.toString());
+        }
+        this.validatedMessageDao.persistAll(validatedMsgs);
     }
 
     private DacPlaylist persistPlaylist(Playlist playlist,
@@ -1182,6 +1215,10 @@ public class PlaylistManager implements IContextStateProcessor {
         replacementManager.setMessageTypeDao(messageTypeDao);
     }
 
+    public void setValidatedMessageDao(ValidatedMessageDao validatedMessageDao) {
+        this.validatedMessageDao = validatedMessageDao;
+    }
+
     public void setInputMessageDao(InputMessageDao inputMessageDao) {
         replacementManager.setInputMessageDao(inputMessageDao);
     }
@@ -1214,6 +1251,9 @@ public class PlaylistManager implements IContextStateProcessor {
         } else if (messageTypeDao == null) {
             throw new IllegalStateException(
                     "MessageTypeDao has not been set on the PlaylistManager");
+        } else if (validatedMessageDao == null) {
+            throw new IllegalStateException(
+                    "ValidatedMessageDao has not been set on the PlaylistManager");
         }
     }
 
