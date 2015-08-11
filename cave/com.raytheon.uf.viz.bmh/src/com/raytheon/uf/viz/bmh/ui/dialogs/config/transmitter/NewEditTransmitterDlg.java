@@ -105,6 +105,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     mnemonic fields. Name and mnemonic can no longer be altered in edit mode.
  * Jul 22, 2015     4424   bkowal      Transmitter naming validation improvements.
  * Jul 23, 2015     4679   bkowal      Handle new transmitter (named group -> standalone) transition
+ * Aug 11, 2015     4715   bkowal      Cleanup validation failed messages.
  * 
  * </pre>
  * 
@@ -1046,29 +1047,19 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         StringBuilder sb = new StringBuilder(
                 "The following fields are incorrect:\n\n");
 
-        if (this.callSignTxt.getText().trim().length() == 0) {
-            valid = false;
-            sb.append("\tCall Sign\n");
-        }
-
         if (this.frequencyTxt.getText().trim().length() > 0) {
             try {
                 Float.parseFloat(this.frequencyTxt.getText().trim());
             } catch (NumberFormatException e) {
                 valid = false;
-                sb.append("\tFrequency\n");
+                sb.append("\tFrequency must be numeric.\n");
             }
         } else {
             /*
              * frequency is still invalid if it has not been specified.
              */
             valid = false;
-            sb.append("\tFrequency\n");
-        }
-
-        if (locationTxt.getText().trim().length() == 0) {
-            valid = false;
-            sb.append("\tLocation\n");
+            sb.append("\tFrequency must be specified.\n");
         }
 
         String callSign = this.callSignTxt.getText().trim();

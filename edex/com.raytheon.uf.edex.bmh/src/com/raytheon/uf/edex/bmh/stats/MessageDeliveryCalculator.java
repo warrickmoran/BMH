@@ -68,6 +68,8 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Aug 07, 2015 4424       bkowal      Fix aggregate end date.
  * Aug 10, 2015 4723       bkowal      Statistics calculation end time is now an
  *                                     hour ago instead of five minutes ago.
+ * Aug 11, 2015 4715       bkowal      Stats are only calculated for as long as the
+ *                                     start date is less than the end date now.
  * 
  * </pre>
  * 
@@ -230,7 +232,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
             startDate = DateUtils.addMinutes(endDate, -5);
         }
 
-        while (DateUtils.isSameInstant(startDate, endDate) == false) {
+        while (startDate.before(endDate)) {
             Calendar startTime = TimeUtil.newGmtCalendar(startDate);
             Calendar endTime = TimeUtil.newGmtCalendar(DateUtils.addMinutes(
                     startDate, 5));
