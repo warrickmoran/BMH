@@ -58,6 +58,8 @@ import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.config.ChangeTimeZoneConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
@@ -129,6 +131,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Jul 08, 2015  4636     bkowal      Updated to specify additional decibel level arguments.
  * Aug 04, 2015  4424     bkowal      Notify the {@link ClusterServer} after {@link DacConfig}
  *                                    has been updated.
+ * Aug 11, 2015  4372     bkowal      Lock/unlock transmitters associated with a live broadcast.
  * </pre>
  * 
  * @author bsteffen
@@ -821,9 +824,57 @@ public class CommsManager {
         if (jms != null) {
             jms.sendBmhStatus(statusObject);
         }
+        if (statusObject instanceof LiveBroadcastSwitchNotification) {
+            /*
+             * Notify other cluster members that a dac transmit has been locked
+             * / unlocked for load balancing.
+             */
+            this.clusterServer.sendDataToAll(statusObject);
+            this.checkLoadBalanceLockdown((LiveBroadcastSwitchNotification) statusObject);
+        }
         if (statusObject instanceof DacHardwareStatusNotification) {
             silenceAlarm
                     .handleDacHardwareStatus((DacHardwareStatusNotification) statusObject);
+        }
+    }
+
+    public void checkLoadBalanceLockdown(
+            final LiveBroadcastSwitchNotification notification) {
+        /*
+         * For now, we will not differentiate between Live Broadcast and
+         * Emergency Override.
+         */
+
+        /*
+         * Lookup the associated {@link DacTransmitKey}.
+         */
+        DacTransmitKey key = this.transmitServer
+                .lookupDacTransmitKeyByGroup(notification.getTransmitterGroup()
+                        .getName());
+        if (key == null) {
+            /*
+             * Considered an unlikely scenario.
+             */
+            return;
+        }
+
+        // Determine what state the live broadcast is in.
+        if (notification.getBroadcastState() == STATE.STARTED) {
+            /*
+             * "Lockdown" the dac transmit to ensure that it is never stopped
+             * mid-broadcast for load-balancing. It is important to note that a
+             * live broadcast cannot start sometime after the transmitter has
+             * been requested for load-balancing because the transmitter would
+             * not be available during the initialization phase of the live
+             * broadcast; so, the live broadcast would fail because all required
+             * transmitters were not available.
+             */
+            this.clusterServer.lockLoadBalanceDac(key);
+        } else if (notification.getBroadcastState() == STATE.FINISHED) {
+            /*
+             * Make the dac transmit available for load balancing.
+             */
+            this.clusterServer.unlockLoadBalanceDac(key);
         }
     }
 
