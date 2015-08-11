@@ -204,6 +204,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jun 23, 2015  4490     bkowal      Cluster lock playlist directory deletions.
  * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * Aug 10, 2015  4723     bkowal      Added {@link #checkStatusExpired()}.
+ * Aug 10, 2015  4424     bkowal      Updated to use the new playlist directory constant.
  * </pre>
  * 
  * @author bsteffen
@@ -248,7 +249,7 @@ public class PlaylistManager implements IContextStateProcessor {
     public PlaylistManager(boolean operational,
             final IMessageLogger messageLogger) throws IOException {
         playlistDir = BMHConstants.getBmhDataDirectory(operational).resolve(
-                "playlist");
+                BMHConstants.PLAYLIST_DIRECTORY);
         locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
         this.operational = operational;
         this.messageLogger = messageLogger;

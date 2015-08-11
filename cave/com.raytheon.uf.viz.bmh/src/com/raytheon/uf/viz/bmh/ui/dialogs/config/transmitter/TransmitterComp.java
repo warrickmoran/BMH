@@ -133,6 +133,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 14, 2015 4650       rferrel     Disable mode change when any transmitter in the group is not disabled.
  * Jul 21, 2015 4424       bkowal      Added rename menu options for transmitters and transmitter groups.
  * Jul 22, 2015 4424       bkowal      Transmitter naming validation improvements.
+ * Aug 10, 2015 4424       bkowal      Finish Transmitter rename.
  * </pre>
  * 
  * @author mpduff
@@ -924,24 +925,30 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             if (transmitter.getMnemonic().equals(name)) {
                 return;
             }
+            final String originalName = transmitter.getMnemonic();
             transmitter.setMnemonic(name);
+
+            try {
+                this.dataManager.saveTransmitter(transmitter);
+            } catch (Exception e) {
+                statusHandler.error("Failed to rename Transmitter: "
+                        + originalName + ".", e);
+            }
         } else {
             TransmitterGroup transmitterGroup = (TransmitterGroup) objectToRename;
             if (transmitterGroup.getName().equals(name)) {
                 return;
             }
+            final String originalName = transmitterGroup.getName();
             transmitterGroup.setName(name);
-        }
 
-        /*
-         * TODO: remove after server-side implementation is finalized.
-         */
-        DialogUtility
-                .showMessageBox(
-                        this.getShell(),
-                        SWT.ICON_INFORMATION | SWT.OK,
-                        "Not Implemented",
-                        "This functionality has not been implemented on the server yet. It will be available in the next changeset.");
+            try {
+                this.dataManager.saveTransmitterGroup(transmitterGroup);
+            } catch (Exception e) {
+                statusHandler.error("Failed to rename Transmitter Group: "
+                        + originalName + ".", e);
+            }
+        }
     }
 
     /**

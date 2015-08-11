@@ -85,6 +85,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jul 21, 2015  4424     bkowal      Added {@link #getTransmitterGroupByName(TransmitterRequest)} and
  *                                    {@link #getTransmitterByMnemonic(TransmitterRequest)}
  * Jul 22, 2015  4424     bkowal      Added missing break statement.
+ * Aug 10, 2015  4424     bkowal      Updated to handle transmitter / group renames.
  * </pre>
  * 
  * @author mpduff
@@ -231,12 +232,41 @@ public class TransmitterHandler extends
         TransmitterResponse response = new TransmitterResponse();
         Transmitter newTrans = request.getTransmitter();
         TransmitterDao dao = new TransmitterDao(request.isOperational());
+        TransmitterGroupDao tgDao = new TransmitterGroupDao(
+                request.isOperational());
         Transmitter oldTrans = null;
         if (logger.isPriorityEnabled(Priority.INFO) && (newTrans.getId() != 0)) {
             oldTrans = dao.getByID(newTrans.getId());
         }
 
-        dao.saveOrUpdate(newTrans);
+        boolean groupRename = false;
+        TransmitterGroup tg = null;
+        if (oldTrans != null
+                && oldTrans.getMnemonic().equals(newTrans.getMnemonic()) == false) {
+            tg = tgDao.getTransmitterGroupWithTransmitter(newTrans.getId());
+            if (tg.isStandalone()) {
+                tg.setName(newTrans.getMnemonic());
+                tg.getTransmitterList().get(0)
+                        .setMnemonic(newTrans.getMnemonic());
+                /*
+                 * Both the transmitter and group have been renamed. So,
+                 * directories will need to be relocated.
+                 */
+                groupRename = true;
+            }
+        }
+        if (groupRename) {
+            tgDao.saveRenamedTransmitterGroup(tg, oldTrans.getMnemonic());
+            /*
+             * Rename the {@link TransmitterGroup} in the {@link
+             * TransmitterRequest} to ensure that the generated notification
+             * includes the correct name.
+             */
+            request.getTransmitter().getTransmitterGroup()
+                    .setName(newTrans.getMnemonic());
+        } else {
+            dao.saveOrUpdate(newTrans);
+        }
 
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);
@@ -328,7 +358,14 @@ public class TransmitterHandler extends
                 }
             }
         } else {
-            tgDao.saveOrUpdate(group);
+            final boolean rename = (oldGroup != null && oldGroup.getName()
+                    .equals(group.getName()) == false);
+
+            if (rename) {
+                tgDao.saveRenamedTransmitterGroup(group, oldGroup.getName());
+            } else {
+                tgDao.saveOrUpdate(group);
+            }
             if ((oldGroup != null)
                     && !oldGroup.getTimeZone().equals(group.getTimeZone())
                     && (group.getDac() != null)
