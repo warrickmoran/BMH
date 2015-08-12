@@ -77,6 +77,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Apr 29, 2015  4394     bkowal      Handle {@link DacMaintenanceRegister}.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Aug 04, 2015  4424     bkowal      Added {@link #getActiveDacTransmits()}.
+ * Aug 11, 2015  4372     bkowal      Added {@link #lookupDacTransmitKeyByGroup(String)}.
  * 
  * </pre>
  * 
@@ -148,6 +149,17 @@ public class DacTransmitServer extends AbstractServerThread {
      */
     public Set<DacTransmitKey> getActiveDacTransmits() {
         return new HashSet<>(this.channels.keySet());
+    }
+
+    public DacTransmitKey lookupDacTransmitKeyByGroup(final String tgName) {
+        for (Entry<DacTransmitKey, DacChannelConfig> entry : this.channels
+                .entrySet()) {
+            if (tgName.equals(entry.getValue().getTransmitterGroup())) {
+                return entry.getKey();
+            }
+        }
+
+        return null;
     }
 
     /**

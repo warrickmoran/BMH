@@ -30,6 +30,7 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
@@ -52,6 +53,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Apr 07, 2015  4370     rjpeter     Add handling of ClusterConfigMessage.
  * Apr 08, 2015  4368     rjpeter     Add uniqueId and remoteAccepted.
  * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
+ * Aug 11, 2015  4372     bkowal      Handle {@link LiveBroadcastSwitchNotification} from other
+ *                                    cluster members.
  * </pre>
  * 
  * @author bsteffen
@@ -170,6 +173,9 @@ public class ClusterCommunicator extends Thread {
                         remoteHost, heartbeatIp, remoteHost);
                 disconnect();
             }
+        } else if (message instanceof LiveBroadcastSwitchNotification) {
+            LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) message;
+            this.manager.checkLoadBalanceLockdown(notification);
         } else {
             logger.error("Unexpected message from cluster member of type: {}",
                     message.getClass().getSimpleName());

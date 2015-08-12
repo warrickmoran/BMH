@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -61,6 +63,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Apr 08, 2015  4368     rjpeter     Fix ClusterCommunicator race condition.
  * Aug 04, 2015  4424     bkowal      Added {@link #reconfigure(Set)}.
  * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
+ * Aug 11, 2015  4372     bkowal      Added locking/unlocking of dacs participating in a
+ *                                    live broadcast to delay load balancing.
  * </pre>
  * 
  * @author bsteffen
@@ -96,6 +100,8 @@ public class ClusterServer extends AbstractServerThread {
     private long requestTimeout = Long.MAX_VALUE;
 
     private String localIp;
+
+    private final List<DacTransmitKey> unavailableLoadBalanceCandidates = new ArrayList<>();
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -310,6 +316,7 @@ public class ClusterServer extends AbstractServerThread {
                 requestTimeout = Long.MAX_VALUE;
             }
             sendStateToAll();
+            this.unlockLoadBalanceDac(key);
         }
     }
 
@@ -317,6 +324,7 @@ public class ClusterServer extends AbstractServerThread {
         synchronized (state) {
             state.remove(key);
             sendStateToAll();
+            this.unlockLoadBalanceDac(key);
         }
     }
 
@@ -326,6 +334,7 @@ public class ClusterServer extends AbstractServerThread {
                 requestTimeout = System.currentTimeMillis()
                         + REQUEST_TIMEOUT_INTERVAL;
             }
+            this.unlockLoadBalanceDac(key);
         }
     }
 
@@ -388,6 +397,22 @@ public class ClusterServer extends AbstractServerThread {
                         overloadId = communicator.getClusterId();
                     }
                 }
+
+                /*
+                 * Remove any transmitters that cannot be load balanced from the
+                 * overloaded keys list.
+                 */
+                synchronized (this.unavailableLoadBalanceCandidates) {
+                    Iterator<ClusterDacTransmitKey> iterator = overloaded
+                            .getKeys().iterator();
+                    while (iterator.hasNext()) {
+                        if (this.unavailableLoadBalanceCandidates
+                                .contains(iterator.next().toKey())) {
+                            iterator.remove();
+                        }
+                    }
+                }
+
                 if ((overloaded.getKeys().size() - 1) > state.getKeys().size()) {
                     logger.info(
                             "To balance the load 1 dac transmit has been requested from {}",
@@ -442,6 +467,34 @@ public class ClusterServer extends AbstractServerThread {
                     state.setRequestedKey(null);
                     requestTimeout = Long.MAX_VALUE;
                 }
+            }
+        }
+
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            Iterator<DacTransmitKey> iterator = this.unavailableLoadBalanceCandidates
+                    .iterator();
+            while (iterator.hasNext()) {
+                if (activeDacTransmits.contains(iterator.next()) == false) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    public void lockLoadBalanceDac(final DacTransmitKey key) {
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            logger.info(
+                    "Preventing load balancing from occuring for transmitter: {}.",
+                    key.toString());
+            this.unavailableLoadBalanceCandidates.add(key);
+        }
+    }
+
+    public void unlockLoadBalanceDac(final DacTransmitKey key) {
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            if (this.unavailableLoadBalanceCandidates.remove(key)) {
+                logger.info("Allowing the load balancing of transmitter: {}.",
+                        key.toString());
             }
         }
     }
