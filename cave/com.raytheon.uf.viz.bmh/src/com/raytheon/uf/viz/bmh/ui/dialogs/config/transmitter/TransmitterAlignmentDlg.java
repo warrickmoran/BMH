@@ -38,7 +38,6 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
@@ -109,6 +108,8 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jul 22, 2015 4676       bkowal      Prevent widget-disposed errors.
  * Aug 05, 2015 4685       bkowal      The maintenance -> enabled state transition will no
  *                                     longer be the only option.
+ * Aug 12, 2015 4724       bkowal      Allow users to close the dialog even when {@link Transmitters}
+ *                                     are in maintenance mode.
  * </pre>
  * 
  * @author mpduff
@@ -927,13 +928,14 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
                 sb.append(groupName).append(", ");
             }
             sb.replace(sb.length() - 2, sb.length(),
-                    ".\n\nPlease enable or disable the listed transmitter group(s).");
+                    ".\n\nAre you sure you want to close the dialog?");
 
-            MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.OK);
-            mb.setText("Transmitter Maintenance");
-            mb.setMessage(sb.toString());
-            mb.open();
-            return false;
+            int option = DialogUtility.showMessageBox(this.shell,
+                    SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                    "Transmitter Maintenance", sb.toString());
+            if (option != SWT.YES) {
+                return false;
+            }
         }
 
         return true;
