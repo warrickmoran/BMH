@@ -37,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
-import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -65,6 +63,8 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
  * Aug 11, 2015  4372     bkowal      Added locking/unlocking of dacs participating in a
  *                                    live broadcast to delay load balancing.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
+ *                                    
  * </pre>
  * 
  * @author bsteffen
@@ -101,7 +101,7 @@ public class ClusterServer extends AbstractServerThread {
 
     private String localIp;
 
-    private final List<DacTransmitKey> unavailableLoadBalanceCandidates = new ArrayList<>();
+    private final List<String> unavailableLoadBalanceCandidates = new ArrayList<>();
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -213,18 +213,18 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    public boolean isConnected(DacTransmitKey key) {
+    public boolean isConnected(final String transmitterGroup) {
         for (ClusterCommunicator communicator : this.communicators.values()) {
-            if (communicator.isConnected(key)) {
+            if (communicator.isConnected(transmitterGroup)) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean isRequested(DacTransmitKey key) {
+    public boolean isRequested(final String transmitterGroup) {
         for (ClusterCommunicator communicator : this.communicators.values()) {
-            if (communicator.isRequested(key)) {
+            if (communicator.isRequested(transmitterGroup)) {
                 return true;
             }
         }
@@ -308,33 +308,33 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    public void dacConnectedLocal(DacTransmitKey key) {
+    public void dacConnectedLocal(final String transmitterGroup) {
         synchronized (state) {
-            state.add(key);
-            if (state.isRequestedKey(key)) {
-                state.setRequestedKey(null);
+            state.add(transmitterGroup);
+            if (state.isRequestedTransmitter(transmitterGroup)) {
+                state.setRequestedTransmitter(null);
                 requestTimeout = Long.MAX_VALUE;
             }
             sendStateToAll();
-            this.unlockLoadBalanceDac(key);
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
-    public void dacDisconnectedLocal(DacTransmitKey key) {
+    public void dacDisconnectedLocal(final String transmitterGroup) {
         synchronized (state) {
-            state.remove(key);
+            state.remove(transmitterGroup);
             sendStateToAll();
-            this.unlockLoadBalanceDac(key);
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
-    public void dacDisconnectedRemote(DacTransmitKey key) {
+    public void dacDisconnectedRemote(final String transmitterGroup) {
         synchronized (state) {
-            if (state.isRequestedKey(key)) {
+            if (state.isRequestedTransmitter(transmitterGroup)) {
                 requestTimeout = System.currentTimeMillis()
                         + REQUEST_TIMEOUT_INTERVAL;
             }
-            this.unlockLoadBalanceDac(key);
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
@@ -381,7 +381,7 @@ public class ClusterServer extends AbstractServerThread {
 
     public void balanceDacTransmits(boolean allDacsRunning) {
         synchronized (state) {
-            boolean pendingRequest = state.hasRequestedKey();
+            boolean pendingRequest = state.hasRequestedTransmitter();
             boolean requestFailed = System.currentTimeMillis() > requestTimeout;
             if (allDacsRunning && (pendingRequest == false)
                     && (requestFailed == false)) {
@@ -389,31 +389,32 @@ public class ClusterServer extends AbstractServerThread {
                 ClusterStateMessage overloaded = state;
                 for (ClusterCommunicator communicator : communicators.values()) {
                     ClusterStateMessage other = communicator.getClusterState();
-                    if ((other == null) || other.hasRequestedKey()) {
+                    if ((other == null) || other.hasRequestedTransmitter()) {
                         return;
                     }
-                    if (other.getKeys().size() > overloaded.getKeys().size()) {
+                    if (other.getConnectedTransmitters().size() > overloaded
+                            .getConnectedTransmitters().size()) {
                         overloaded = other;
                         overloadId = communicator.getClusterId();
                     }
                 }
-
-                /*
-                 * Remove any transmitters that cannot be load balanced from the
-                 * overloaded keys list.
-                 */
-                synchronized (this.unavailableLoadBalanceCandidates) {
-                    Iterator<ClusterDacTransmitKey> iterator = overloaded
-                            .getKeys().iterator();
-                    while (iterator.hasNext()) {
-                        if (this.unavailableLoadBalanceCandidates
-                                .contains(iterator.next().toKey())) {
-                            iterator.remove();
+                if ((overloaded.getConnectedTransmitters().size() - 1) > state
+                        .getConnectedTransmitters().size()) {
+                    /*
+                     * Remove any transmitters that cannot be load balanced from
+                     * the overloaded keys list.
+                     */
+                    synchronized (this.unavailableLoadBalanceCandidates) {
+                        Iterator<String> iterator = overloaded
+                                .getConnectedTransmitters().iterator();
+                        while (iterator.hasNext()) {
+                            if (this.unavailableLoadBalanceCandidates
+                                    .contains(iterator.next())) {
+                                iterator.remove();
+                            }
                         }
                     }
-                }
 
-                if ((overloaded.getKeys().size() - 1) > state.getKeys().size()) {
                     logger.info(
                             "To balance the load 1 dac transmit has been requested from {}",
                             overloadId);
@@ -423,15 +424,16 @@ public class ClusterServer extends AbstractServerThread {
                      * minimize conflict it would be better if each requested a
                      * different key using a better key selection mechanism.
                      */
-                    ClusterDacTransmitKey request = overloaded.getKeys().get(0);
-                    state.setRequestedKey(request);
+                    String requestedGroup = overloaded
+                            .getConnectedTransmitters().get(0);
+                    state.setRequestedTransmitter(requestedGroup);
                     sendStateToAll();
                 }
             } else if (pendingRequest && requestFailed) {
                 logger.error(
                         "Load balancing has been disabled due to failure to start a requested dac: {}.",
-                        state.getRequestedKey());
-                state.setRequestedKey(null);
+                        state.getRequestedTransmitter());
+                state.setRequestedTransmitter(null);
                 sendStateToAll();
             }
         }
@@ -454,24 +456,24 @@ public class ClusterServer extends AbstractServerThread {
      *            dac transmits defined in the latest version of the
      *            configuration.
      */
-    public void reconfigure(Set<DacTransmitKey> activeDacTransmits) {
+    public void reconfigure(Set<String> activeDacTransmits) {
         synchronized (state) {
-            if (state.hasRequestedKey()) {
-                final DacTransmitKey requestedKey = state.getRequestedKey()
-                        .toKey();
-                if (activeDacTransmits.contains(requestedKey) == false) {
+            if (state.hasRequestedTransmitter()) {
+                final String requestedTransmitter = state
+                        .getRequestedTransmitter();
+                if (activeDacTransmits.contains(requestedTransmitter) == false) {
                     /*
                      * No longer wait for the process to start locally because
                      * it is no longer even enabled.
                      */
-                    state.setRequestedKey(null);
+                    state.setRequestedTransmitter(null);
                     requestTimeout = Long.MAX_VALUE;
                 }
             }
         }
 
         synchronized (this.unavailableLoadBalanceCandidates) {
-            Iterator<DacTransmitKey> iterator = this.unavailableLoadBalanceCandidates
+            Iterator<String> iterator = this.unavailableLoadBalanceCandidates
                     .iterator();
             while (iterator.hasNext()) {
                 if (activeDacTransmits.contains(iterator.next()) == false) {
@@ -481,20 +483,20 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    public void lockLoadBalanceDac(final DacTransmitKey key) {
+    public void lockLoadBalanceDac(final String transmitterGroup) {
         synchronized (this.unavailableLoadBalanceCandidates) {
             logger.info(
                     "Preventing load balancing from occuring for transmitter: {}.",
-                    key.toString());
-            this.unavailableLoadBalanceCandidates.add(key);
+                    transmitterGroup);
+            this.unavailableLoadBalanceCandidates.add(transmitterGroup);
         }
     }
 
-    public void unlockLoadBalanceDac(final DacTransmitKey key) {
+    public void unlockLoadBalanceDac(final String transmitterGroup) {
         synchronized (this.unavailableLoadBalanceCandidates) {
-            if (this.unavailableLoadBalanceCandidates.remove(key)) {
+            if (this.unavailableLoadBalanceCandidates.remove(transmitterGroup)) {
                 logger.info("Allowing the load balancing of transmitter: {}.",
-                        key.toString());
+                        transmitterGroup);
             }
         }
     }

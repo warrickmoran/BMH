@@ -22,7 +22,6 @@ package com.raytheon.bmh.comms.cluster;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -38,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Sep 24, 2014  3485     bsteffen    Initial creation
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * 
  * </pre>
  * 
@@ -47,152 +47,52 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class ClusterStateMessage {
 
-    @DynamicSerialize
-    public static class ClusterDacTransmitKey {
-
-        @DynamicSerializeElement
-        private String inputDirectory;
-
-        @DynamicSerializeElement
-        private int dataPort;
-
-        @DynamicSerializeElement
-        private String dacAddress;
-
-        public ClusterDacTransmitKey() {
-
-        }
-
-        public ClusterDacTransmitKey(DacTransmitKey key) {
-            this.inputDirectory = key.getInputDirectory();
-            this.dacAddress = key.getDacAddress();
-            this.dataPort = key.getDataPort();
-        }
-
-        public String getInputDirectory() {
-            return inputDirectory;
-        }
-
-        public void setInputDirectory(String inputDirectory) {
-            this.inputDirectory = inputDirectory;
-        }
-
-        public int getDataPort() {
-            return dataPort;
-        }
-
-        public void setDataPort(int dataPort) {
-            this.dataPort = dataPort;
-        }
-
-        public String getDacAddress() {
-            return dacAddress;
-        }
-
-        public void setDacAddress(String dacAddress) {
-            this.dacAddress = dacAddress;
-        }
-
-        public DacTransmitKey toKey() {
-            return new DacTransmitKey(inputDirectory, dataPort, dacAddress);
-        }
-
-        @Override
-        public int hashCode() {
-            final int prime = 31;
-            int result = 1;
-            result = prime * result
-                    + ((dacAddress == null) ? 0 : dacAddress.hashCode());
-            result = prime * result + dataPort;
-            result = prime
-                    * result
-                    + ((inputDirectory == null) ? 0 : inputDirectory.hashCode());
-            return result;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj)
-                return true;
-            if (obj == null)
-                return false;
-            if (getClass() != obj.getClass())
-                return false;
-            ClusterDacTransmitKey other = (ClusterDacTransmitKey) obj;
-            if (dacAddress == null) {
-                if (other.dacAddress != null)
-                    return false;
-            } else if (!dacAddress.equals(other.dacAddress))
-                return false;
-            if (dataPort != other.dataPort)
-                return false;
-            if (inputDirectory == null) {
-                if (other.inputDirectory != null)
-                    return false;
-            } else if (!inputDirectory.equals(other.inputDirectory))
-                return false;
-            return true;
-        }
-
-    }
+    @DynamicSerializeElement
+    private final List<String> connectedTransmitters = new ArrayList<>();
 
     @DynamicSerializeElement
-    private List<ClusterDacTransmitKey> keys = new ArrayList<>();
+    private String requestedTransmitter = null;
 
-    @DynamicSerializeElement
-    private ClusterDacTransmitKey requestedKey = null;
-
-    public List<ClusterDacTransmitKey> getKeys() {
-        return keys;
+    public void add(String transmitterGroup) {
+        this.connectedTransmitters.add(transmitterGroup);
     }
 
-    public void setKeys(List<ClusterDacTransmitKey> keys) {
-        this.keys = keys;
+    public boolean remove(String transmitterGroup) {
+        return connectedTransmitters.remove(transmitterGroup);
     }
 
-    public void add(DacTransmitKey key) {
-        if (keys == null) {
-            keys = new ArrayList<>();
-        }
-        keys.add(new ClusterDacTransmitKey(key));
+    public boolean contains(String transmitterGroup) {
+        return this.connectedTransmitters.contains(transmitterGroup);
     }
 
-    public boolean remove(DacTransmitKey key) {
-        if (keys == null) {
-            return false;
-        }
-        return keys.remove(new ClusterDacTransmitKey(key));
+    public boolean isRequestedTransmitter(String transmitterGroup) {
+        return this.requestedTransmitter != null
+                && this.requestedTransmitter.equals(transmitterGroup);
     }
 
-    public boolean contains(DacTransmitKey key) {
-        return contains(new ClusterDacTransmitKey(key));
+    public boolean hasRequestedTransmitter() {
+        return this.requestedTransmitter != null;
     }
 
-    public boolean contains(ClusterDacTransmitKey key) {
-        if (keys == null) {
-            return false;
-        }
-        return keys.contains(key);
+    /**
+     * @return the requestedTransmitter
+     */
+    public String getRequestedTransmitter() {
+        return requestedTransmitter;
     }
 
-    public ClusterDacTransmitKey getRequestedKey() {
-        return requestedKey;
+    /**
+     * @param requestedTransmitter
+     *            the requestedTransmitter to set
+     */
+    public void setRequestedTransmitter(String requestedTransmitter) {
+        this.requestedTransmitter = requestedTransmitter;
     }
 
-    public void setRequestedKey(ClusterDacTransmitKey requestedKey) {
-        this.requestedKey = requestedKey;
+    /**
+     * @return the connectedTransmitters
+     */
+    public List<String> getConnectedTransmitters() {
+        return connectedTransmitters;
     }
-
-    public boolean isRequestedKey(DacTransmitKey key) {
-        return isRequestedKey(new ClusterDacTransmitKey(key));
-    }
-
-    public boolean isRequestedKey(ClusterDacTransmitKey key) {
-        return requestedKey != null && requestedKey.equals(key);
-    }
-
-    public boolean hasRequestedKey() {
-        return requestedKey != null;
-    }
-
 }

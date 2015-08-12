@@ -27,8 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
-import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -54,6 +52,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Apr 08, 2015  4368     rjpeter     Add uniqueId and remoteAccepted.
  * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
  * Aug 11, 2015  4372     bkowal      Handle {@link LiveBroadcastSwitchNotification} from other
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  *                                    cluster members.
  * </pre>
  * 
@@ -119,36 +118,40 @@ public class ClusterCommunicator extends Thread {
             ClusterStateMessage oldState = state;
             state = newState;
             logger.info("Clustered manager {} is connected to {} dac(s)",
-                    remoteHost, newState.getKeys().size());
+                    remoteHost, newState.getConnectedTransmitters().size());
             if (oldState == null) {
-                for (ClusterDacTransmitKey key : newState.getKeys()) {
-                    manager.dacConnectedRemote(key.toKey());
+                for (String transmitterGroup : newState
+                        .getConnectedTransmitters()) {
+                    manager.dacConnectedRemote(transmitterGroup);
                 }
-                if (newState.hasRequestedKey()) {
+                if (newState.hasRequestedTransmitter()) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            remoteHost, newState.getKeys().size());
-                    manager.dacRequestedRemote(newState.getRequestedKey()
-                            .toKey());
+                            remoteHost);
+                    manager.dacRequestedRemote(newState
+                            .getRequestedTransmitter());
                 }
             } else {
-                for (ClusterDacTransmitKey key : newState.getKeys()) {
-                    if (!oldState.contains(key)) {
-                        manager.dacConnectedRemote(key.toKey());
+                for (String transmitterGroup : newState
+                        .getConnectedTransmitters()) {
+                    if (oldState.contains(transmitterGroup) == false) {
+                        manager.dacConnectedRemote(transmitterGroup);
                     }
                 }
-                for (ClusterDacTransmitKey key : oldState.getKeys()) {
-                    if (!newState.contains(key)) {
-                        manager.dacDisconnectedRemote(key.toKey());
+                for (String transmitterGroup : oldState
+                        .getConnectedTransmitters()) {
+                    if (newState.contains(transmitterGroup) == false) {
+                        manager.dacDisconnectedRemote(transmitterGroup);
                     }
                 }
-                if (newState.hasRequestedKey()
-                        && !oldState.isRequestedKey(newState.getRequestedKey())) {
+                if (newState.hasRequestedTransmitter()
+                        && !oldState.isRequestedTransmitter(newState
+                                .getRequestedTransmitter())) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            remoteHost, newState.getKeys().size());
-                    manager.dacRequestedRemote(newState.getRequestedKey()
-                            .toKey());
+                            remoteHost);
+                    manager.dacRequestedRemote(newState
+                            .getRequestedTransmitter());
                 }
             }
         } else if (message instanceof ClusterShutdownMessage) {
@@ -234,24 +237,24 @@ public class ClusterCommunicator extends Thread {
                     remoteHost, e);
         }
         if (state != null) {
-            for (ClusterDacTransmitKey key : state.getKeys()) {
-                manager.dacDisconnectedRemote(key.toKey());
+            for (String transmitterGroup : state.getConnectedTransmitters()) {
+                manager.dacDisconnectedRemote(transmitterGroup);
             }
         }
     }
 
-    public boolean isConnected(DacTransmitKey key) {
+    public boolean isConnected(String transmitterGroup) {
         if ((state == null) || socket.isClosed()) {
             return false;
         }
-        return state.contains(key);
+        return state.contains(transmitterGroup);
     }
 
-    public boolean isRequested(DacTransmitKey key) {
+    public boolean isRequested(String transmitterGroup) {
         if ((state == null) || socket.isClosed()) {
             return false;
         }
-        return state.isRequestedKey(key);
+        return state.isRequestedTransmitter(transmitterGroup);
     }
 
     public void shutdown() {

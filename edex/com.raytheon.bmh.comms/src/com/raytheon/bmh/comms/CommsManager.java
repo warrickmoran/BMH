@@ -132,6 +132,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Aug 04, 2015  4424     bkowal      Notify the {@link ClusterServer} after {@link DacConfig}
  *                                    has been updated.
  * Aug 11, 2015  4372     bkowal      Lock/unlock transmitters associated with a live broadcast.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * </pre>
  * 
  * @author bsteffen
@@ -212,9 +213,9 @@ public class CommsManager {
      */
     private volatile CommsConfig config;
 
-    private final Map<DacTransmitKey, Process> startedProcesses = new HashMap<>();
+    private final Map<String, Process> startedProcesses = new HashMap<>();
 
-    private final ConcurrentMap<DacTransmitKey, Long> disconnectedDacProcesses = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, Long> disconnectedDacProcesses = new ConcurrentHashMap<>();
 
     /**
      * Create a comms manager, this will fail if there are problems starting
@@ -377,8 +378,6 @@ public class CommsManager {
                     boolean allDacsRunning = true;
                     for (DacConfig dac : config.getDacs()) {
                         for (DacChannelConfig channel : dac.getChannels()) {
-                            DacTransmitKey key = new DacTransmitKey(dac,
-                                    channel);
                             /*
                              * Verify that there is a dac transmit process that
                              * has connected to a Comms Manager. - ELSE - Verify
@@ -386,24 +385,30 @@ public class CommsManager {
                              * THIS Comms Manager that it has sync with the dac.
                              * If not, the countdown starts.
                              */
-                            if (!transmitServer.isConnectedToDacTransmit(key)
-                                    && !clusterServer.isConnected(key)
-                                    && !clusterServer.isRequested(key)) {
-                                launchDacTransmit(key, channel, false);
+                            final String transmitterGroup = channel
+                                    .getTransmitterGroup();
+                            if (!transmitServer
+                                    .isConnectedToDacTransmit(transmitterGroup)
+                                    && !clusterServer
+                                            .isConnected(transmitterGroup)
+                                    && !clusterServer
+                                            .isRequested(transmitterGroup)) {
+                                launchDacTransmit(dac, channel, false);
                                 sleeptime += DAC_START_SLEEP_TIME;
                                 allDacsRunning = false;
                             } else if (this.transmitServer
-                                    .isConnectedToDacTransmit(key)
+                                    .isConnectedToDacTransmit(transmitterGroup)
                                     && this.transmitServer
-                                            .isConnectedToDac(key) == false) {
+                                            .isConnectedToDac(transmitterGroup) == false) {
                                 Long start = this.disconnectedDacProcesses
-                                        .get(key);
+                                        .get(transmitterGroup);
                                 long duration = 0;
                                 if (start != null) {
                                     duration = System.currentTimeMillis()
                                             - start;
                                 } else {
-                                    this.disconnectedDacProcesses.put(key,
+                                    this.disconnectedDacProcesses.put(
+                                            transmitterGroup,
                                             System.currentTimeMillis());
                                 }
                                 logger.warn(
@@ -415,8 +420,9 @@ public class CommsManager {
                                  * been connected to the dac.
                                  */
                                 if (duration >= MAX_DAC_DISCONNECT_TIME) {
-                                    this.disconnectedDacProcesses.remove(key);
-                                    launchDacTransmit(key, channel, true);
+                                    this.disconnectedDacProcesses
+                                            .remove(transmitterGroup);
+                                    launchDacTransmit(dac, channel, true);
                                     sleeptime += DAC_START_SLEEP_TIME;
                                     allDacsRunning = false;
                                 }
@@ -562,20 +568,20 @@ public class CommsManager {
                         e);
             }
         }
-        for (Entry<DacTransmitKey, Process> e : startedProcesses.entrySet()) {
+        for (Entry<String, Process> e : startedProcesses.entrySet()) {
             /*
              * Destroy any processes we have started that have not connected
              * since they may have bad config values.
              */
-            logger.debug("Stopping unconnected process for "
-                    + e.getKey().getInputDirectory());
+            logger.debug("Stopping unconnected process for Transmitter {}.",
+                    e.getKey());
             e.getValue().destroy();
         }
         silenceAlarm.reconfigure(config);
     }
 
-    protected void launchDacTransmit(DacTransmitKey key,
-            DacChannelConfig channel, boolean force) {
+    protected void launchDacTransmit(DacConfig dac, DacChannelConfig channel,
+            boolean force) {
         String group = channel.getTransmitterGroup();
         /*
          * If force has already been set. There is no need to determine if any
@@ -583,7 +589,7 @@ public class CommsManager {
          */
         Process p = null;
         if (force == false) {
-            p = startedProcesses.get(key);
+            p = startedProcesses.get(group);
             if (p != null) {
                 try {
                     int status = p.exitValue();
@@ -619,7 +625,7 @@ public class CommsManager {
             args.add("-k");
         }
         args.add("-" + DacTransmitArgParser.DAC_HOSTNAME_OPTION_KEY);
-        args.add(key.getDacAddress());
+        args.add(dac.getIpAddress());
         args.add("-" + DacTransmitArgParser.DATA_PORT_OPTION_KEY);
         args.add(Integer.toString(channel.getDataPort()));
         if (channel.getControlPort() != null) {
@@ -677,7 +683,7 @@ public class CommsManager {
         startCommand.redirectError(Redirect.appendTo(logFilePath.toFile()));
         try {
             p = startCommand.start();
-            startedProcesses.put(key, p);
+            startedProcesses.put(group, p);
         } catch (IOException e) {
             logger.error("Unable to start dac transmit for " + group, e);
         }
@@ -700,8 +706,8 @@ public class CommsManager {
     /**
      * Checks if a given key has an active connection on a remote comms maanger.
      */
-    public boolean isConnectedRemote(DacTransmitKey key) {
-        return clusterServer.isConnected(key);
+    public boolean isConnectedRemote(final String transmitterGroup) {
+        return clusterServer.isConnected(transmitterGroup);
     }
 
     /**
@@ -712,9 +718,9 @@ public class CommsManager {
      * a dac. Any other components that may need to refresh and/or notify will
      * be informed.
      */
-    public void dacTransmitConnected(DacTransmitKey key, String group) {
+    public void dacTransmitConnected(String group) {
         logger.info("dac transmit connected for {}", group);
-        startedProcesses.remove(key);
+        startedProcesses.remove(group);
     }
 
     /**
@@ -722,15 +728,15 @@ public class CommsManager {
      * transmit process that is successfully communicating with a dac. Any other
      * components that may need to refresh and/or notify will be informed.
      */
-    public void dacConnectedLocal(DacTransmitKey key, String group) {
+    public void dacConnectedLocal(String group) {
         logger.info("{} is now connected to the dac", group);
-        this.disconnectedDacProcesses.remove(key);
+        this.disconnectedDacProcesses.remove(group);
         if (jms != null) {
-            jms.listenForPlaylistChanges(key, group, transmitServer);
+            jms.listenForPlaylistChanges(group, transmitServer);
         }
-        transmitServer.dacConnected(key);
-        clusterServer.dacConnectedLocal(key);
-        broadcastStreamServer.dacConnected(key, group);
+        transmitServer.dacConnected(group);
+        clusterServer.dacConnectedLocal(group);
+        broadcastStreamServer.dacConnected(group);
         sendStatus();
     }
 
@@ -739,16 +745,16 @@ public class CommsManager {
      * comms manager that is successfully communicating with a dac. Any other
      * components that may need to refresh and/or notify will be informed.
      */
-    public void dacConnectedRemote(DacTransmitKey key) {
-        transmitServer.dacConnected(key);
+    public void dacConnectedRemote(String transmitterGroup) {
+        transmitServer.dacConnected(transmitterGroup);
     }
 
     /**
      * This method should be called when another cluster member would like to
      * take over a dac for load balancing.
      */
-    public void dacRequestedRemote(DacTransmitKey key) {
-        transmitServer.dacRequested(key);
+    public void dacRequestedRemote(String transmitterGroup) {
+        transmitServer.dacRequested(transmitterGroup);
     }
 
     /**
@@ -758,9 +764,9 @@ public class CommsManager {
      * Any other components that may need to refresh and/or notify will be
      * informed.
      */
-    public void dacTransmitDisconnected(DacTransmitKey key, String group) {
+    public void dacTransmitDisconnected(String group) {
         logger.info("dac transmit disconnected for {}", group);
-        transmitServer.dacTransmitDisconnected(key);
+        transmitServer.dacTransmitDisconnected(group);
         attemptLaunchDacTransmits();
     }
 
@@ -771,18 +777,19 @@ public class CommsManager {
      * disconnected. Any other components that may need to refresh and/or notify
      * will be informed.
      */
-    public void dacDisconnectedLocal(DacTransmitKey key, String group) {
+    public void dacDisconnectedLocal(String group) {
         logger.info("{} is now disconnected from the dac", group);
         if (jms != null) {
-            jms.unlistenForPlaylistChanges(key, group, transmitServer);
+            jms.unlistenForPlaylistChanges(group, transmitServer);
         }
-        clusterServer.dacDisconnectedLocal(key);
-        broadcastStreamServer.dacDisconnected(key, group);
+        clusterServer.dacDisconnectedLocal(group);
+        broadcastStreamServer.dacDisconnected(group);
         /*
          * ensure that the dac was not shutdown at the request of another member
          * of the cluster.
          */
-        if (!clusterServer.isConnected(key) && !clusterServer.isRequested(key)) {
+        if (!clusterServer.isConnected(group)
+                && !clusterServer.isRequested(group)) {
             this.silenceAlarm.handleDacDisconnect(group);
         } else {
             /*
@@ -802,8 +809,8 @@ public class CommsManager {
      * another comms manager. Any other components that may need to refresh
      * and/or notify will be informed.
      */
-    public void dacDisconnectedRemote(DacTransmitKey key) {
-        clusterServer.dacDisconnectedRemote(key);
+    public void dacDisconnectedRemote(String transmitterGroup) {
+        clusterServer.dacDisconnectedRemote(transmitterGroup);
         attemptLaunchDacTransmits();
     }
 
@@ -845,19 +852,6 @@ public class CommsManager {
          * Emergency Override.
          */
 
-        /*
-         * Lookup the associated {@link DacTransmitKey}.
-         */
-        DacTransmitKey key = this.transmitServer
-                .lookupDacTransmitKeyByGroup(notification.getTransmitterGroup()
-                        .getName());
-        if (key == null) {
-            /*
-             * Considered an unlikely scenario.
-             */
-            return;
-        }
-
         // Determine what state the live broadcast is in.
         if (notification.getBroadcastState() == STATE.STARTED) {
             /*
@@ -869,12 +863,14 @@ public class CommsManager {
              * broadcast; so, the live broadcast would fail because all required
              * transmitters were not available.
              */
-            this.clusterServer.lockLoadBalanceDac(key);
+            this.clusterServer.lockLoadBalanceDac(notification
+                    .getTransmitterGroup().getName());
         } else if (notification.getBroadcastState() == STATE.FINISHED) {
             /*
              * Make the dac transmit available for load balancing.
              */
-            this.clusterServer.unlockLoadBalanceDac(key);
+            this.clusterServer.unlockLoadBalanceDac(notification
+                    .getTransmitterGroup().getName());
         }
     }
 
@@ -900,11 +896,13 @@ public class CommsManager {
      *            the {@link DacTransmitShutdownNotification} to forward.
      */
     public void transmitDacShutdown(
-            DacTransmitShutdownNotification notification, DacTransmitKey key) {
+            DacTransmitShutdownNotification notification,
+            String transmitterGroup) {
         /*
          * Verify that another cluster member does not own the dac transmit.
          */
-        if (!clusterServer.isConnected(key) && !clusterServer.isRequested(key)) {
+        if (!clusterServer.isConnected(transmitterGroup)
+                && !clusterServer.isRequested(transmitterGroup)) {
             this.transmitDacShutdown(notification);
         }
     }
@@ -1046,9 +1044,8 @@ public class CommsManager {
                 if (config.getDacs() != null) {
                     for (DacConfig dac : config.getDacs()) {
                         for (DacChannelConfig channel : dac.getChannels()) {
-                            DacTransmitKey key = new DacTransmitKey(dac,
-                                    channel);
-                            if (transmitServer.isConnectedToDac(key)) {
+                            if (transmitServer.isConnectedToDac(channel
+                                    .getTransmitterGroup())) {
                                 status.addConnectedTransmitterGroup(channel
                                         .getTransmitterGroup());
                             }

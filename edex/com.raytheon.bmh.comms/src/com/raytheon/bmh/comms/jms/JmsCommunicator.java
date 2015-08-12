@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.logging.JmsStatusMessageAppender;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
@@ -68,6 +67,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Feb 16, 2015  4107     bsteffen    Notify the playlist observer when it is successfully observing.
  * Apr 15, 2015  4397     bkowal      Added {@link #bmhStatisticProducer}.
  * Apr 20, 2015  4407     bkowal      Cleanup of {@link PlaylistUpdateNotification}.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * 
  * </pre>
  * 
@@ -159,11 +159,10 @@ public class JmsCommunicator extends JmsNotificationManager {
         disconnectProducers();
     }
 
-    public void listenForPlaylistChanges(DacTransmitKey key, String group,
-            DacTransmitServer server) {
+    public void listenForPlaylistChanges(String group, DacTransmitServer server) {
         String topic = PlaylistUpdateNotification.getTopicName(operational);
         PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
-                server, key);
+                server, group);
         addObserver(topic, observer);
         synchronized (playlistObservers) {
             playlistObservers.add(observer);
@@ -173,11 +172,11 @@ public class JmsCommunicator extends JmsNotificationManager {
         }
     }
 
-    public void unlistenForPlaylistChanges(DacTransmitKey key, String group,
+    public void unlistenForPlaylistChanges(String group,
             DacTransmitServer server) {
         String topic = PlaylistUpdateNotification.getTopicName(operational);
         PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
-                server, key);
+                server, group);
         synchronized (playlistObservers) {
             playlistObservers.remove(observer);
             if (connected) {
