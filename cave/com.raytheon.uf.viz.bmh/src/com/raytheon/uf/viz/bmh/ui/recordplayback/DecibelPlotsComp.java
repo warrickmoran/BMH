@@ -51,6 +51,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * ------------ ---------- ----------- --------------------------
  * Nov 24, 2014 3863       bkowal      Initial creation
  * Dec 1, 2014  3863       bkowal      Average audio over one second.
+ * Aug 12, 2015 4424       bkowal      Increase range of decibel level meter.
  * 
  * </pre>
  * 
@@ -64,7 +65,7 @@ public class DecibelPlotsComp extends Composite implements
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DecibelPlotsComp.class);
 
-    private final double DECIBEL_MIN_VALUE = -20.0;
+    private final double DECIBEL_MIN_VALUE = -40.0;
 
     private final double DECIBEL_MAX_VALUE = 10.0;
 
