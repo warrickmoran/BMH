@@ -52,6 +52,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Aug 13, 2015  4424      bkowal      Removed extra quotes around the transmitter group name.
  * </pre>
  * 
  * @author bsteffen
@@ -82,7 +83,7 @@ public class StandaloneBroadcastLiveDlg extends BroadcastLiveDlg {
         for (String group : groups) {
             cld.addDataItem(group, false);
             TransmitterGroup g = new TransmitterGroup();
-            g.setName("group");
+            g.setName(group);
             transmitterGroupLookupMap.put(group, g);
         }
 
