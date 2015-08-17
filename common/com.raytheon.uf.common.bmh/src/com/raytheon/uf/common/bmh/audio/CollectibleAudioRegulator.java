@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.common.bmh.audio;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -25,7 +25,6 @@ import java.util.List;
 
 import org.apache.commons.lang.math.Range;
 
-import com.raytheon.uf.common.bmh.audio.BMHAudioConstants;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.PCMToUlawAlgorithm;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
 
@@ -40,6 +39,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2015 4636       bkowal      Initial creation
+ * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
  * 
  * </pre>
  * 

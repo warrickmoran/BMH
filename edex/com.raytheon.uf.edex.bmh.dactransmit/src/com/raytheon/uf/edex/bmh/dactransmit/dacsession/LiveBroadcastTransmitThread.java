@@ -29,7 +29,10 @@ import java.util.concurrent.TimeUnit;
 
 import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
+import com.raytheon.uf.common.bmh.audio.AudioRegulator;
+import com.raytheon.uf.common.bmh.audio.CollectibleAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
@@ -40,9 +43,6 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
-import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -82,6 +82,7 @@ import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 15, 2015 4636       bkowal      Eliminate packet-level audio alterations.
  * Jul 28, 2015 4686       bkowal      Moved statistics to common.
+ * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * </pre>
  * 
  * @author bkowal
