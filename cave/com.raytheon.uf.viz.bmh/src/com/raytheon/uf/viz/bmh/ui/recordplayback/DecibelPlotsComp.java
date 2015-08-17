@@ -52,6 +52,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Nov 24, 2014 3863       bkowal      Initial creation
  * Dec 1, 2014  3863       bkowal      Average audio over one second.
  * Aug 12, 2015 4424       bkowal      Increase range of decibel level meter.
+ * Aug 17, 2015 4424       bkowal      Calculate audio decibel range every 0.25 seconds.
  * 
  * </pre>
  * 
@@ -65,20 +66,20 @@ public class DecibelPlotsComp extends Composite implements
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DecibelPlotsComp.class);
 
-    private final double DECIBEL_MIN_VALUE = -40.0;
+    private final double DECIBEL_MIN_VALUE = -50.0;
 
     private final double DECIBEL_MAX_VALUE = 10.0;
 
     /* All must be specified for the level color bar to show up correctly. */
-    private final double METER_LOLO_LEVEL = -15.0;
+    private final double METER_LOLO_LEVEL = -35.0;
 
-    private final double METER_LO_LEVEL = -10.0;
+    private final double METER_LO_LEVEL = -30.0;
 
-    private final double METER_HI_LEVEL = 0.0;
+    private final double METER_HI_LEVEL = -5.0;
 
     private final double METER_HIHI_LEVEL = 2.0;
 
-    private final String TREND_X_TITLE = "Second";
+    private final String TREND_X_TITLE = "Segment";
 
     private final String TREND_Y_TITLE = "Decibels";
 
@@ -102,12 +103,12 @@ public class DecibelPlotsComp extends Composite implements
 
     private CircularBufferDataProvider trendData;
 
-    private double secondCount;
+    private double segmentCount;
 
     /*
-     * want to collect one full second of audio before plotting it.
+     * want to collect 0.25 seconds of audio before plotting it.
      */
-    private final int REQUIRED_SAMPLE_SIZE = 8000;
+    private final int REQUIRED_SAMPLE_SIZE = 2000;
 
     private final ByteBuffer audioBuffer = ByteBuffer
             .allocate(REQUIRED_SAMPLE_SIZE);
@@ -212,7 +213,7 @@ public class DecibelPlotsComp extends Composite implements
     public void resetPlots() {
         this.decibelMeter.setValue(0.0);
         this.trendData.clearTrace();
-        this.secondCount = 0;
+        this.segmentCount = 0;
         this.trendXMin = INITIAL_TREND_X_MIN;
         this.trendXMax = INITIAL_TREND_X_MAX;
         this.decibelTrend.primaryXAxis.setRange(trendXMin, trendXMax);
@@ -234,15 +235,15 @@ public class DecibelPlotsComp extends Composite implements
             @Override
             public void run() {
                 decibelMeter.setValue(sampleDecibelLevel);
-                ++secondCount;
+                ++segmentCount;
                 // determine if the min x, max x need to be adjusted
-                if (secondCount >= trendXMax - trendEmptyBuffer) {
+                if (segmentCount >= trendXMax - trendEmptyBuffer) {
                     trendXMin += trendEmptyBuffer;
                     trendXMax += trendEmptyBuffer;
                     decibelTrend.primaryXAxis.setRange(trendXMin, trendXMax);
                 }
                 trendData
-                        .addSample(new Sample(secondCount, sampleDecibelLevel));
+                        .addSample(new Sample(segmentCount, sampleDecibelLevel));
             }
         });
     }
@@ -256,7 +257,17 @@ public class DecibelPlotsComp extends Composite implements
      */
     @Override
     public void audioReady(byte[] audioData) {
-        this.audioBuffer.put(audioData);
+        /*
+         * Need to ensure we do not overrun the buffer for 0.25 seconds of
+         * audio: 2000 mod 160 != 0.
+         */
+        int offsetToCopy = 0;
+        if (audioData.length > this.audioBuffer.remaining()) {
+            offsetToCopy = this.audioBuffer.remaining();
+            this.audioBuffer.put(audioData, 0, this.audioBuffer.remaining());
+        } else {
+            this.audioBuffer.put(audioData);
+        }
         if (this.audioBuffer.hasRemaining()) {
             return;
         }
@@ -271,5 +282,9 @@ public class DecibelPlotsComp extends Composite implements
         }
         updateDecibelPlots(sampleDecibelLevel);
         this.audioBuffer.clear();
+        if (offsetToCopy > 0) {
+            final int copyLength = audioData.length - offsetToCopy;
+            this.audioBuffer.put(audioData, offsetToCopy, copyLength);
+        }
     }
 }

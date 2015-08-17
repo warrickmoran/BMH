@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 24, 2014  3485     bsteffen    Initial creation
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
+ * Aug 17, 2015  4424     bkowal      Added {@link #setConnectedTransmitters(List)}.
  * 
  * </pre>
  * 
@@ -48,7 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class ClusterStateMessage {
 
     @DynamicSerializeElement
-    private final List<String> connectedTransmitters = new ArrayList<>();
+    private List<String> connectedTransmitters = new ArrayList<>();
 
     @DynamicSerializeElement
     private String requestedTransmitter = null;
@@ -75,6 +76,21 @@ public class ClusterStateMessage {
     }
 
     /**
+     * @return the connectedTransmitters
+     */
+    public List<String> getConnectedTransmitters() {
+        return connectedTransmitters;
+    }
+
+    /**
+     * @param connectedTransmitters
+     *            the connectedTransmitters to set
+     */
+    public void setConnectedTransmitters(List<String> connectedTransmitters) {
+        this.connectedTransmitters = connectedTransmitters;
+    }
+
+    /**
      * @return the requestedTransmitter
      */
     public String getRequestedTransmitter() {
@@ -87,12 +103,5 @@ public class ClusterStateMessage {
      */
     public void setRequestedTransmitter(String requestedTransmitter) {
         this.requestedTransmitter = requestedTransmitter;
-    }
-
-    /**
-     * @return the connectedTransmitters
-     */
-    public List<String> getConnectedTransmitters() {
-        return connectedTransmitters;
     }
 }
