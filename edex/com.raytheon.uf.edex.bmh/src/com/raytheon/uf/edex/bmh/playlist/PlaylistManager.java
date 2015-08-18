@@ -78,6 +78,8 @@ import com.raytheon.uf.common.bmh.notify.config.SuiteConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
+import com.raytheon.uf.common.bmh.stats.AbstractBMHProcessingTimeEvent;
+import com.raytheon.uf.common.bmh.stats.MessageExpirationProcessingEvent;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.event.EventBus;
@@ -100,8 +102,6 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.replace.ReplacementManager;
-import com.raytheon.uf.edex.bmh.stats.AbstractBMHProcessingTimeEvent;
-import com.raytheon.uf.edex.bmh.stats.MessageExpirationProcessingEvent;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
@@ -199,6 +199,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jun 18, 2015  4490     bkowal      Refresh all potential playlists when a message is
  *                                    deactivated.
  * Jun 23, 2015  4490     bkowal      Cluster lock playlist directory deletions.
+ * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * </pre>
  * 
  * @author bsteffen

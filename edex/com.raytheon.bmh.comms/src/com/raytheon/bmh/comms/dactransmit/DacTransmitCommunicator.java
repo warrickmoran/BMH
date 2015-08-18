@@ -43,6 +43,8 @@ import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
+import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
@@ -51,8 +53,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
-import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
-import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
  * 
@@ -97,6 +97,8 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Jun 01, 2015  4490     bkowal      Added {@link #sameDurationTruncatedAlarm} and
  *                                    {@link #wtchOrWrnNotBroadcastAlarm}.
  * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * 
  * </pre>
  * 
@@ -119,7 +121,11 @@ public class DacTransmitCommunicator extends Thread {
 
     private int[] radios;
 
-    private double dbTarget;
+    private double audioDbTarget;
+
+    private double sameDbTarget;
+
+    private double alertDbTarget;
 
     private volatile DacTransmitStatus lastStatus;
 
@@ -134,7 +140,8 @@ public class DacTransmitCommunicator extends Thread {
     private final WtchOrWrnNotBroadcastAlarm wtchOrWrnNotBroadcastAlarm = new WtchOrWrnNotBroadcastAlarm();
 
     public DacTransmitCommunicator(CommsManager manager, DacTransmitKey key,
-            String groupName, int[] radios, Socket socket, double dbTarget) {
+            String groupName, int[] radios, Socket socket,
+            double audioDbTarget, double sameDbTarget, double alertDbTarget) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
         this.key = key;
@@ -142,7 +149,9 @@ public class DacTransmitCommunicator extends Thread {
         Arrays.sort(radios);
         this.radios = radios;
         this.socket = socket;
-        this.dbTarget = dbTarget;
+        this.audioDbTarget = audioDbTarget;
+        this.sameDbTarget = sameDbTarget;
+        this.alertDbTarget = alertDbTarget;
     }
 
     public String getGroupName() {
@@ -276,10 +285,16 @@ public class DacTransmitCommunicator extends Thread {
         }
     }
 
-    public void setTransmitterDBTarget(double dbTarget) {
-        if (this.dbTarget != dbTarget) {
-            this.send(new ChangeDecibelTarget(dbTarget));
-            this.dbTarget = dbTarget;
+    public void setTransmitterDBTarget(double audioDbTarget,
+            double sameDbTarget, double alertDbTarget) {
+        if (this.audioDbTarget != audioDbTarget
+                || this.sameDbTarget != sameDbTarget
+                || this.alertDbTarget != alertDbTarget) {
+            this.send(new ChangeDecibelTarget(audioDbTarget, sameDbTarget,
+                    alertDbTarget));
+            this.audioDbTarget = audioDbTarget;
+            this.sameDbTarget = sameDbTarget;
+            this.alertDbTarget = alertDbTarget;
         }
     }
 

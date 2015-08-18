@@ -1,7 +1,7 @@
 /**
  * 
  */
-package com.raytheon.uf.edex.bmh.stats;
+package com.raytheon.uf.common.bmh.stats;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -21,6 +21,8 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 24, 2015 4397       bkowal      Initial creation
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
+ * Jul 29, 2015 4686       bkowal      Added {@link #broadcastId}.
  * 
  * </pre>
  * 
@@ -38,6 +40,9 @@ public class DeliveryTimeEvent extends StatisticsEvent {
         m.put("deliveryTime", "ms");
         FIELD_UNIT_MAP = Collections.unmodifiableMap(m);
     }
+
+    @DynamicSerializeElement
+    private long broadcastId;
 
     @DynamicSerializeElement
     private String transmitterGroup;
@@ -69,6 +74,21 @@ public class DeliveryTimeEvent extends StatisticsEvent {
     @Override
     public void finalizeEvent() {
         /* Do Nothing. */
+    }
+
+    /**
+     * @return the broadcastId
+     */
+    public long getBroadcastId() {
+        return broadcastId;
+    }
+
+    /**
+     * @param broadcastId
+     *            the broadcastId to set
+     */
+    public void setBroadcastId(long broadcastId) {
+        this.broadcastId = broadcastId;
     }
 
     /**

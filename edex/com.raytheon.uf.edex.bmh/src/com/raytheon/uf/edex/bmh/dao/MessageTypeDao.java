@@ -26,10 +26,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.hibernate.Query;
-import org.hibernate.Session;
-import org.springframework.transaction.TransactionStatus;
-import org.springframework.transaction.support.TransactionCallback;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -59,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
  *                                    designation by language.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Jun 23, 2015  4572     bkowal      Added {@link #getByAfosIds(Set)}.
+ * Jul 17, 2015  4636     bkowal      Re-factored common code into {@link AbstractBMHDao}.
  * 
  * </pre>
  * 
@@ -168,21 +165,8 @@ public class MessageTypeDao extends AbstractBMHDao<MessageType, Integer> {
      *         were found.
      */
     public List<MessageTypeSummary> getByAfosIds(final Set<String> afosIds) {
-        if (CollectionUtils.isEmpty(afosIds)) {
-            return Collections.emptyList();
-        }
-
-        List<?> returnObjects = txTemplate
-                .execute(new TransactionCallback<List<?>>() {
-                    @Override
-                    public List<?> doInTransaction(TransactionStatus status) {
-                        Session session = getCurrentSession();
-                        Query query = session
-                                .getNamedQuery(MessageType.GET_MESSAGETYPES_FOR_AFOSIDS);
-                        return query.setParameterList("afosids", afosIds)
-                                .list();
-                    }
-                });
+        List<?> returnObjects = this.findAllByNamedInQuery(
+                MessageType.GET_MESSAGETYPES_FOR_AFOSIDS, "afosids", afosIds);
         if (CollectionUtils.isEmpty(returnObjects)) {
             return Collections.emptyList();
         }

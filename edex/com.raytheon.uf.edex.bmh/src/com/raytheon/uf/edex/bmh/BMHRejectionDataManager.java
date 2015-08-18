@@ -23,6 +23,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.TimeZone;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -41,7 +44,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Feb 19, 2015 4136       bkowal      Initial creation
  * Jun 17, 2015 4490       bkowal      Handle the case when a rejected data file may have the
  *                                     same name as a previously rejected data file.
- * 
+ * Jul 29, 2015 4690       rjpeter     Updated to use Date/Hour directory structure.
  * </pre>
  * 
  * @author bkowal
@@ -58,6 +61,8 @@ public class BMHRejectionDataManager {
     private final int MAX_UNIQUE_INDEX = 99;
 
     private final Path dataRejectionPath;
+
+    private final SimpleDateFormat sdf;
 
     /**
      * Constructor.
@@ -81,6 +86,10 @@ public class BMHRejectionDataManager {
         this.dataRejectionPath = Paths.get(specifiedRejectionDirectory);
         statusHandler.info("Using data rejection destination "
                 + this.dataRejectionPath.toString() + " ...");
+
+        sdf = new SimpleDateFormat("yyyyMMdd/HH/");
+        sdf.setTimeZone(TimeZone.getTimeZone("GMT"));
+
         /*
          * verify that the directory exists.
          */
@@ -126,8 +135,26 @@ public class BMHRejectionDataManager {
                     "Required argument rejectedFilePath can not be NULL.");
         }
 
-        Path targetFilePath = this.dataRejectionPath.resolve(rejectedFilePath
+        String curDate;
+        synchronized (sdf) {
+            curDate = sdf.format(new Date());
+        }
+
+        Path targetDirectoryPath = this.dataRejectionPath.resolve(curDate);
+        Path targetFilePath = targetDirectoryPath.resolve(rejectedFilePath
                 .getFileName());
+
+        if (!Files.exists(targetDirectoryPath)) {
+            try {
+                Files.createDirectories(targetDirectoryPath);
+            } catch (IOException e) {
+                /*
+                 * failed to create the data rejection destination. ensure that
+                 * spring initialization fails.
+                 */
+                throw new BMHRejectionException(targetFilePath, e);
+            }
+        }
 
         /*
          * Verify that a rejected file with the same name does not already
@@ -138,7 +165,7 @@ public class BMHRejectionDataManager {
              * Attempt to find a unique name for the rejected file.
              */
             int count = 1;
-            targetFilePath = this.dataRejectionPath.resolve(rejectedFilePath
+            targetFilePath = targetDirectoryPath.resolve(rejectedFilePath
                     .getFileName() + "_" + count);
             while (Files.exists(targetFilePath)) {
                 ++count;
@@ -157,8 +184,8 @@ public class BMHRejectionDataManager {
                                             + ".");
                     return;
                 }
-                targetFilePath = this.dataRejectionPath
-                        .resolve(rejectedFilePath.getFileName() + "_" + count);
+                targetFilePath = targetDirectoryPath.resolve(rejectedFilePath
+                        .getFileName() + "_" + count);
             }
         }
 

@@ -24,6 +24,7 @@
  * ------------ ---------- ----------- --------------------------
  * May 21, 2015 4397       bkowal      Initial creation.
  * Jun 08, 2015 4397       bkowal      Added begin, end timestamp function parameters.
+ * Jul 29, 2015 4686       bkowal      Exclude inactive messages.
  **/
 ---
 --- This procedure will calculate the percentage of valid messages that were successfully
@@ -31,7 +32,7 @@
 --- the user-specified starting and ending timestamp.
 ---
 DROP FUNCTION IF EXISTS messageDeliveryStat(timestamp, timestamp);
-CREATE FUNCTION messageDeliveryStat(timestamp, timestamp) RETURNS decimal AS $$
+CREATE FUNCTION messageDeliveryStat(timestamp, timestamp) RETURNS SETOF numeric AS $$
 DECLARE
 	begin_time ALIAS FOR $1;
 	end_time ALIAS FOR $2;
@@ -41,7 +42,7 @@ DECLARE
 
 	expected_count decimal := 0;
 	actual_count decimal := 0;
-	message_broadcast boolean;
+	message_delivered boolean;
 	calculated_percent decimal;
 	final_result decimal;
 	
@@ -51,8 +52,10 @@ DECLARE
 	valid_msg_cursor CURSOR FOR SELECT v.* FROM validated_msg v
 		INNER JOIN input_msg i
 		ON v.transmissionstatus = 'ACCEPTED' AND
-		i.id = v.input_msg_id AND i.effectivetime >= begin_time AND
-		i.effectivetime <= end_time;
+		i.id = v.input_msg_id AND i.active = true AND 
+		i.updateDate >= begin_time AND
+		i.updateDate <= end_time AND
+		i.effectiveTime < end_time;
 	---
 	--- Ensure that we only include transmitter group(s) that are currently
 	--- enabled.
@@ -72,19 +75,25 @@ BEGIN
 		FOR valid_msg_trx_row IN valid_msg_trx_cursor(valid_msg_row.id) LOOP
 			expected_count := expected_count + 1;
 
-			SELECT bmsg.broadcast INTO message_broadcast FROM broadcast_msg bmsg WHERE
+			SELECT bmsg.delivered INTO message_delivered FROM broadcast_msg bmsg WHERE
 			bmsg.transmitter_group_id = valid_msg_trx_row.transmitter_group_id AND
 			bmsg.input_message_id = valid_msg_row.input_msg_id;
-			IF message_broadcast = true THEN
+			IF message_delivered = true THEN
 				actual_count := actual_count + 1;
 			END IF;
 		END LOOP;
 	END LOOP;
 	IF expected_count = 0 THEN
-		return 0;
+		RETURN NEXT 0;
+		RETURN NEXT actual_count;
+		RETURN NEXT 0;
+		RETURN;
 	END IF;
 	calculated_percent = (actual_count / expected_count);
 	final_result := calculated_percent * 100;
-	RETURN final_result;
+	RETURN NEXT expected_count;
+	RETURN NEXT actual_count;
+	RETURN NEXT final_result;
+	RETURN;
 END;
 $$ LANGUAGE plpgsql;

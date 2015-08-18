@@ -44,6 +44,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  *                                     that the second matching group is used.
  * May 13, 2015 4403       bkowal      Reversed {@link #NON_ALPHA_REGEX} to match any rules that
  *                                     are not followed by alphanumeric characters or an apostrophe.
+ * Jul 02, 2015 4603       bkowal      Improved regex to handle additional scenarios.
  * 
  * </pre>
  * 
@@ -52,13 +53,6 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  */
 
 public class SimpleTextTransformation extends AbstractTextTransformation {
-
-    /*
-     * apostrophes allowed before the character.
-     */
-    private static final String NON_ALPHA_REGEX_APOSTROPHE = "([^\\w']+)";
-
-    private static final String NON_ALPHA_REGEX = "([^\\w]+)";
 
     private List<Serializable> appliedTransformation;
 
@@ -76,7 +70,6 @@ public class SimpleTextTransformation extends AbstractTextTransformation {
         super(text, ssmlReplacement);
         this.determineDefaultReplacement();
         this.originalText = text.toLowerCase();
-        super.setMatchGroup(2);
     }
 
     private void determineDefaultReplacement() throws SSMLConversionException {
@@ -85,8 +78,7 @@ public class SimpleTextTransformation extends AbstractTextTransformation {
 
     @Override
     protected String prepareTransformationRegex(String text) {
-        return NON_ALPHA_REGEX_APOSTROPHE + "(" + Pattern.quote(text) + ")"
-                + NON_ALPHA_REGEX;
+        return super.prepareTransformationRegex(Pattern.quote(text));
     }
 
     @Override

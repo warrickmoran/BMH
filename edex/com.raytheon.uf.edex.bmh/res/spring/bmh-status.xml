@@ -8,8 +8,6 @@
   <bean id="statusMonitor"
     class="com.raytheon.uf.edex.bmh.systemstatus.EdexStatusMonitor" />
 
-  <bean id="bmhStatisticBridge" class="com.raytheon.uf.edex.bmh.stats.StatusToStatisticBridge"/>
-
   <bean id="statusRequestHandler"
     class="com.raytheon.uf.edex.bmh.systemstatus.StatusRequestHandler">
     <property name="statusMonitor" ref="statusMonitor" />
@@ -35,18 +33,11 @@
       <to uri="jms-durable:topic:BMH.Status" />
     </route>
 
-    <route id="bmhCommsConfiguratorRoute">
+    <route id="bmhStatusRoute">
       <from uri="jms-durable:topic:BMH.Status" />
       <doTry>
         <bean ref="serializationUtil" method="transformFromThrift" />
-        <multicast>
-            <pipeline>
-                <bean ref="statusMonitor" method="handleStatusMessage" />
-            </pipeline>
-            <pipeline>
-                <bean ref="bmhStatisticBridge" method="handleStatusMessage" />
-            </pipeline>
-        </multicast>
+        <bean ref="statusMonitor" method="handleStatusMessage" />
         <doCatch>
           <exception>java.lang.Throwable</exception>
           <to uri="log:bmh?level=ERROR" />
@@ -55,9 +46,5 @@
     </route>
 
   </camelContext>
-  
-  <bean factory-bean="contextManager" factory-method="registerClusteredContext">
-	<constructor-arg ref="bmhStatusContext" />
-  </bean>
 
 </beans>

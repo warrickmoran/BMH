@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -61,6 +62,9 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Apr 14, 2015    4390    rferrel     Added {@link #saveTransmitterGroups(List, boolean)} to allow reordering.
  * May 06, 2015    4470    bkowal      Added {@link #disableTransmitterGroup(TransmitterGroup)}.
  * May 08, 2015    4470    bkowal      Added {@link #enableTransmitterGroup(TransmitterGroup)}.
+ * Jul 17, 2015    4636    bkowal      Added {@link #getTransmitterGroupsWithIds(Set)}.
+ * Jul 21, 2015    4424    bkowal      Added {@link #getTransmitterByMnemonic(String)} and
+ *                                     {@link #getTransmitterGroupByName(String)}.
  * </pre>
  * 
  * @author mpduff
@@ -76,6 +80,21 @@ public class TransmitterDataManager {
      */
     public List<TransmitterGroup> getTransmitterGroups() throws Exception {
         return getTransmitterGroups(null);
+    }
+
+    public List<TransmitterGroup> getTransmitterGroupsWithIds(
+            final Set<Integer> ids) throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitterGroupsWithIds);
+        request.setIds(ids);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        List<TransmitterGroup> tgList = response.getTransmitterGroupList();
+        if (tgList == null) {
+            return Collections.emptyList();
+        }
+        return tgList;
     }
 
     /**
@@ -106,6 +125,22 @@ public class TransmitterDataManager {
         }
 
         return tgList;
+    }
+
+    public TransmitterGroup getTransmitterGroupByName(String name)
+            throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitterGroupByName);
+        request.setArgument(name);
+
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+
+        if (response.getTransmitterGroupList() == null) {
+            return null;
+        }
+
+        return response.getTransmitterGroupList().get(0);
     }
 
     /**
@@ -253,6 +288,25 @@ public class TransmitterDataManager {
                 .sendRequest(request);
 
         return response.getTransmitterList();
+    }
+
+    /**
+     * Gets the {@link Transmitter} with the specified mnemonic.
+     * 
+     * @param mnemonic
+     *            the specified mnemonic.
+     * @return the retrieved {@link Transmitter} or {@code null} if no
+     *         transmitter was found.
+     * @throws Exception
+     */
+    public Transmitter getTransmitterByMnemonic(String mnemonic)
+            throws Exception {
+        TransmitterRequest request = new TransmitterRequest();
+        request.setAction(TransmitterRequestAction.GetTransmitterByMnemonic);
+        request.setArgument(mnemonic);
+        TransmitterResponse response = (TransmitterResponse) BmhUtils
+                .sendRequest(request);
+        return response.getTransmitter();
     }
 
     /**

@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  *                                    verify a connection to dac transmit.
  * Apr 24, 2015  4423     rferrel     Added {@link #changeTimeZone}.
  * Apr 29, 2015  4394     bkowal      Handle {@link DacMaintenanceRegister}.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Aug 04, 2015  4424     bkowal      Added {@link #getActiveDacTransmits()}.
  * 
  * </pre>
  * 
@@ -137,6 +140,17 @@ public class DacTransmitServer extends AbstractServerThread {
     }
 
     /**
+     * Returns a {@link Set} of {@link DacTransmitKey}s consisting of the
+     * {@link DacTransmitKey}s that are associated with active dac transmit
+     * processes that have been specified in the comms configuration.
+     * 
+     * @return a {@link Set} of {@link DacTransmitKey}s
+     */
+    public Set<DacTransmitKey> getActiveDacTransmits() {
+        return new HashSet<>(this.channels.keySet());
+    }
+
+    /**
      * Reload the configuration file. Shutdown any dac transmit processes that
      * are no longer in the configuration and ensure that all remaining
      * processes are configured correctly.
@@ -158,7 +172,10 @@ public class DacTransmitServer extends AbstractServerThread {
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
-                    communicator.setTransmitterDBTarget(channel.getDbTarget());
+                    communicator.setTransmitterDBTarget(
+                            channel.getAudioDbTarget(),
+                            channel.getSameDbTarget(),
+                            channel.getAlertDbTarget());
                 }
             }
         }
@@ -373,7 +390,8 @@ public class DacTransmitServer extends AbstractServerThread {
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
                 key, group, message.getTransmitters(), socket,
-                message.getDbTarget());
+                message.getAudioDbTarget(), message.getSameDbTarget(),
+                message.getAlertDbTarget());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(key);
         if (communicators == null) {
@@ -399,7 +417,8 @@ public class DacTransmitServer extends AbstractServerThread {
         comms.start();
         if (keep) {
             comms.setRadios(channel.getRadios());
-            comms.setTransmitterDBTarget(channel.getDbTarget());
+            comms.setTransmitterDBTarget(channel.getAudioDbTarget(),
+                    channel.getSameDbTarget(), channel.getAlertDbTarget());
         } else {
             comms.shutdown(true);
         }

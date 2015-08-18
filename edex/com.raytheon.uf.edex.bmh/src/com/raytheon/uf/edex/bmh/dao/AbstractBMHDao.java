@@ -23,12 +23,14 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.hibernate.Query;
 import org.hibernate.Session;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.edex.database.dao.CoreDao;
 import com.raytheon.uf.edex.database.dao.DaoConfig;
@@ -49,6 +51,7 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  *                                    getCurrentSession.
  * Nov 02, 2014  3746     rjpeter     Updated loadAll to return empty list on null.
  * Dec 08, 2014  3864     bsteffen    Support collections in findByNamedQueryAndNamedParam
+ * Jul 17, 2015  4636     bkowal      Added {@link #findAllByNamedInQuery(String, String, Set)}.
  * 
  * </pre>
  * 
@@ -195,4 +198,20 @@ public class AbstractBMHDao<T, I extends Serializable> extends CoreDao {
         });
     }
 
+    public List<?> findAllByNamedInQuery(final String queryName,
+            final String inParameterName,
+            final Set<? extends Serializable> inList) {
+        if (CollectionUtils.isEmpty(inList)) {
+            return Collections.emptyList();
+        }
+
+        return txTemplate.execute(new TransactionCallback<List<?>>() {
+            @Override
+            public List<?> doInTransaction(TransactionStatus status) {
+                Session session = getCurrentSession();
+                Query query = session.getNamedQuery(queryName);
+                return query.setParameterList(inParameterName, inList).list();
+            }
+        });
+    }
 }

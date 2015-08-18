@@ -101,6 +101,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     {@link TransmitterLanguageComp} when working with groups.
  * Apr 10, 2015     4373   rferrel     Purged ITransmitterStatusChange now handled by INotificationObserver.
  * Jun 19, 2015     4490   bkowal      Limited the number of characters allowed in the mnemonic field.
+ * Jul 21, 2015     4424   bkowal      Improved validation of the transmitter group name and transmitter
+ *                                     mnemonic fields. Name and mnemonic can no longer be altered in edit mode.
+ * Jul 22, 2015     4424   bkowal      Transmitter naming validation improvements.
+ * Jul 23, 2015     4679   bkowal      Handle new transmitter (named group -> standalone) transition
  * 
  * </pre>
  * 
@@ -325,8 +329,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
             grpNameValueTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER,
                     true, false));
             grpNameValueTxt.setText(group.getName());
-            groupControlList.add(grpNameValueTxt);
-
+            grpNameValueTxt.setEnabled(false);
         }
 
         Label dacLbl = new Label(leftComp, SWT.NONE);
@@ -425,7 +428,11 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         mnemonicTxt.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true,
                 false));
         mnemonicTxt.setTextLimit(Transmitter.MNEMONIC_LENGTH);
-        transmitterControlList.add(mnemonicTxt);
+        if (type == TransmitterEditType.EDIT_TRANSMITTER) {
+            this.mnemonicTxt.setEnabled(false);
+        } else {
+            transmitterControlList.add(mnemonicTxt);
+        }
 
         Label frequencyLbl = new Label(leftComp, SWT.NONE);
         frequencyLbl.setText("Frequency: ");
@@ -909,7 +916,7 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      */
     private boolean checkGroupUpdate(TransmitterGroup tg) {
         if (tg.isStandalone()) {
-            if (!tg.getName().equals(group.getName())) {
+            if (this.group.isStandalone() == false) {
                 return true;
             }
 
@@ -950,52 +957,33 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
      * @throws Exception
      */
     private boolean validateGroup(TransmitterGroup tg) throws Exception {
-        boolean valid = true;
         StringBuilder sb = new StringBuilder(
                 "The following fields are incorrect:\n\n");
-        if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
-            if (tg.getName().trim().length() == 0) {
-                valid = false;
-                sb.append("\tGroup Name\n");
-            }
-        }
 
-        if (!valid) {
-            DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
-                    sb.toString());
-            return valid;
+        if (type == TransmitterEditType.NEW_TRANSMITTER_GROUP) {
+            final TransmitterGroupNameValidator nameValidator = new TransmitterGroupNameValidator();
+            try {
+                if (nameValidator.validate(tg, tg.getName()) == false) {
+                    sb.append("\tGroup Name\n").append("\t")
+                            .append(nameValidator.getMessage());
+
+                    DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR,
+                            "Invalid", sb.toString());
+                    return false;
+                }
+            } catch (Exception e) {
+                statusHandler.error(nameValidator.getMessage(), e);
+                return false;
+            }
         }
 
         /*
          * Now validate the validity of the settings themselves
          */
+        boolean valid = true;
 
         // Reset the message buffer
         sb.setLength(0);
-
-        String grpName = tg.getName();
-
-        if (!grpName.equals(group.getName())) {
-            if (type != TransmitterEditType.EDIT_TRANSMITTER) {
-                for (String name : getGroupNames()) {
-                    if (name.equals(grpName)) {
-                        valid = false;
-                        sb.append("The Transmitter Group name must be unique\n");
-                        break;
-                    }
-                }
-            }
-
-            List<Transmitter> transmitterList = dataManager.getTransmitters();
-            transmitterList.remove(transmitter);
-            for (Transmitter t : transmitterList) {
-                if (t.getMnemonic().equals(grpName)) {
-                    valid = false;
-                    sb.append("The Transmitter Group name must be unique\n");
-                    break;
-                }
-            }
-        }
 
         if (tg.getDac() == null) {
             Set<Transmitter> enabledTransmitters = tg.getEnabledTransmitters();
@@ -1048,7 +1036,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (!valid) {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR, "Invalid",
                     sb.toString());
-            return valid;
         }
 
         return valid;
@@ -1082,12 +1069,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
         if (locationTxt.getText().trim().length() == 0) {
             valid = false;
             sb.append("\tLocation\n");
-        }
-
-        String mnemonic = this.mnemonicTxt.getText().trim();
-        if ((mnemonic.length() == 0) || (mnemonic.length() > 5)) {
-            valid = false;
-            sb.append("\tMnemonic must be btween 1 and 5 characters in length.\n");
         }
 
         String callSign = this.callSignTxt.getText().trim();
@@ -1139,6 +1120,22 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
          */
 
         StringBuilder sb = new StringBuilder();
+
+        /*
+         * Verify that there are not any transmitters with the same mnemonic.
+         */
+        String mnemonic = this.mnemonicTxt.getText().trim();
+        final TransmitterMnemonicValidator mnemonicValidator = new TransmitterMnemonicValidator();
+        try {
+            if (mnemonicValidator.validate(transToBeSaved, mnemonic) == false) {
+                valid = false;
+                sb.append("\t").append(mnemonicValidator.getMessage())
+                        .append("\n");
+            }
+        } catch (Exception e) {
+            statusHandler.error(mnemonicValidator.getMessage(), e);
+            return false;
+        }
 
         // Check for valid DAC and port.
         if (transToBeSaved.getDacPort() != null) {
@@ -1276,35 +1273,6 @@ public class NewEditTransmitterDlg extends CaveSWTDialog {
                         + transToBeSaved.getTxStatus().name() + " state.";
                 valid = false;
                 sb.append(msg).append("\n");
-            }
-        }
-
-        // Check for duplicate mnemonic
-        List<Transmitter> transmitterList = dataManager.getTransmitters();
-
-        final String mnemonic = this.mnemonicTxt.getText().trim();
-
-        // Remove the previous transmitter
-        transmitterList.remove(transmitter);
-        for (Transmitter t : transmitterList) {
-            if (t.getMnemonic().equals(mnemonic)) {
-                valid = false;
-                sb.append("Mnemonic must be unique.\n");
-                break;
-            }
-        }
-
-        if (grpNameCbo.getSelectionIndex() > 0) {
-            String grpName = grpNameCbo.getText();
-
-            if (grpName.equals(mnemonicTxt.getText().trim())) {
-                if (transToBeSaved.getTransmitterGroup().getTransmitters()
-                        .size() > 1) {
-                    valid = false;
-                    String msg = "Transmitter cannot have same mnemonic as the "
-                            + "group unless there is only one transmitter in the group\n";
-                    sb.append(msg);
-                }
             }
         }
 

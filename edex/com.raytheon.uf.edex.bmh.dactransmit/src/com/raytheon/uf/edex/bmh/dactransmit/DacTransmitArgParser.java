@@ -57,6 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Oct 22, 2014  #3687     bsteffen    keep original dac hostname
  * Nov 7, 2014   #3630     bkowal      Refactor for maintenance mode.
  * Apr 29, 2015  #4394     bkowal      No longer manages the management port argument.
+ * Jul 08, 2015  #4636     bkowal      Support same and alert decibel levels.
  * 
  * 
  * </pre>
@@ -70,6 +71,12 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
     public static final char INPUT_DIR_OPTION_KEY = 'i';
 
     public static final char TIMEZONE_KEY = 'z';
+
+    public static final String SAME_DB_TARGET_KEY = TRANSMISSION_DB_TARGET_KEY
+            + "s";
+
+    public static final String ALERT_DB_TARGET_KEY = TRANSMISSION_DB_TARGET_KEY
+            + "a";
 
     public DacTransmitArgParser() {
         super(false);
@@ -88,10 +95,22 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                         "The timezone associated with the transmitter.")
                 .hasArg().withArgName("timezone").create(TIMEZONE_KEY);
         timezone.setRequired(true);
+        Option sameDbTarget = OptionBuilder
+                .withDescription(
+                        "The target maximum of the SAME Tones (in decibels) allowed by the transmitter.")
+                .hasArg().withArgName("same db").create(SAME_DB_TARGET_KEY);
+        sameDbTarget.setRequired(true);
+        Option alertDbTarget = OptionBuilder
+                .withDescription(
+                        "The target maximum of the Alert Tones (in decibels) allowed by the transmitter.")
+                .hasArg().withArgName("alert db").create(ALERT_DB_TARGET_KEY);
+        alertDbTarget.setRequired(true);
 
         List<Option> options = new ArrayList<>();
         options.add(inputDirectory);
         options.add(timezone);
+        options.add(sameDbTarget);
+        options.add(alertDbTarget);
 
         return options;
     }
@@ -120,6 +139,13 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                             + timezoneStr + ".");
         }
 
-        return new DacSessionConfig(commonConfig, inputDirectory, timeZone);
+        double sameDbTarget = Double.parseDouble(cmd
+                .getOptionValue(SAME_DB_TARGET_KEY));
+
+        double alertDbTarget = Double.parseDouble(cmd
+                .getOptionValue(ALERT_DB_TARGET_KEY));
+
+        return new DacSessionConfig(commonConfig, inputDirectory, timeZone,
+                sameDbTarget, alertDbTarget);
     }
 }

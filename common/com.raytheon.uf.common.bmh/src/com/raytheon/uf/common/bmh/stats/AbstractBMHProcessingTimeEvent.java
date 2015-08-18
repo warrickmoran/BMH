@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.stats;
+package com.raytheon.uf.common.bmh.stats;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,6 +39,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * ------------ ---------- ----------- --------------------------
  * Apr 20, 2015 4397       bkowal      Initial creation
  * Jun 24, 2015 4397       bkowal      Added an empty constructor.
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * 
  * </pre>
  * 

@@ -30,6 +30,7 @@ package com.raytheon.uf.edex.bmh;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 11, 2015 4490       bkowal      Initial creation
+ * Jul 23, 2015 4676       bkowal      Added constructor that takes an {@link Exception}.
  * 
  * </pre>
  * 
@@ -47,5 +48,9 @@ public class BMHMaintenanceException extends Exception {
      */
     public BMHMaintenanceException(String message) {
         super(message);
+    }
+
+    public BMHMaintenanceException(String message, Exception e) {
+        super(message, e);
     }
 }

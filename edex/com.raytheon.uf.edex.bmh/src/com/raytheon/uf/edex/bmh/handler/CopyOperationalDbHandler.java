@@ -39,6 +39,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 16, 2014  3636     rferrel     Added logger information.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Jul 23, 2015  4676     bkowal      Provide an {@link ITraceable} to the 
+ *                                    {@link BmhDatabaseCopier}.
  * 
  * </pre>
  * 
@@ -61,7 +63,7 @@ public class CopyOperationalDbHandler extends
                     "Cannot copy operational db while in operational mode.");
         }
         new BmhDatabaseCopier(this.opMessageLogger, this.pracMessageLogger)
-                .copyAll();
+                .copyAll(request);
         IUFStatusHandler logger = BMHLoggerUtils.getSrvLogger(request);
         if (logger.isPriorityEnabled(Priority.INFO)) {
             String user = BMHLoggerUtils.getUser(request);

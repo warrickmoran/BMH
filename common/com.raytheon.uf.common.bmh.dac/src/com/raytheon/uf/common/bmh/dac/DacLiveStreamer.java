@@ -47,6 +47,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     second before starting audio.
  * Jun 22, 2015 4482       rjpeter     Added dedicated audio streaming thread with 0.5s 
  *                                     buffer in audio line and additional 0.5s in memory.
+ * Jul 15, 2015 4636       bkowal      Eliminate stream restarting notification.
  * </pre>
  * 
  * @author bkowal
@@ -227,7 +228,7 @@ public class DacLiveStreamer implements IDacListener, LineListener {
                          * audio line close and be recreated.
                          */
                         statusHandler
-                                .warn("Audio line error detected, closing audio line.  New audio line will be opened and buffered.");
+                                .debug("Audio line error detected, closing audio line.  New audio line will be opened and buffered.");
                         synchronized (buffer) {
                             /*
                              * Use entire buffer as it will have already wrapped

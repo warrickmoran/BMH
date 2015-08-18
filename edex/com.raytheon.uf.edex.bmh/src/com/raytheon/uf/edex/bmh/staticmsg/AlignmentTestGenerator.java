@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
@@ -30,6 +31,7 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
+import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
@@ -53,6 +55,9 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Mar 23, 2015 4299       bkowal      Do not add padding to the alignment tones.
  * Jun 08, 2015 4403       bkowal      Updated text content field in {@link TextToSpeechRequest}.
  * Jun 11, 2015 4490       bkowal      Initialized by Spring.
+ * Jul 08, 2015 4636       bkowal      Support transfer tone transmitter alignment tests.
+ * Jul 13, 2015 4636       bkowal      Create separate alignment test files for 1800 and 2400 Hz
+ *                                     transfer tones.
  * 
  * </pre>
  * 
@@ -98,6 +103,16 @@ public class AlignmentTestGenerator {
     private static final String SAME_ULAW_NAME = "maintenanceSame"
             + BMHAudioFormat.ULAW.getExtension();
 
+    private Path maintenance18TransferPath;
+
+    private static final String TRANSFER_18_ULAW_NAME = "maintenance18Transfer"
+            + BMHAudioFormat.ULAW.getExtension();
+
+    private Path maintenance24TransferPath;
+
+    private static final String TRANSFER_24_ULAW_NAME = "maintenance24Transfer"
+            + BMHAudioFormat.ULAW.getExtension();
+
     private final TextToSpeechHandler ttsHandler;
 
     /* Output root subdirectories */
@@ -129,6 +144,10 @@ public class AlignmentTestGenerator {
                 ALERT_ULAW_NAME);
         maintenanceSamePath = Paths.get(audioMaintenanceDirectory,
                 SAME_ULAW_NAME);
+        maintenance18TransferPath = Paths.get(audioMaintenanceDirectory,
+                TRANSFER_18_ULAW_NAME);
+        maintenance24TransferPath = Paths.get(audioMaintenanceDirectory,
+                TRANSFER_24_ULAW_NAME);
     }
 
     public void process() throws StaticGenerationException,
@@ -154,6 +173,12 @@ public class AlignmentTestGenerator {
         }
         if (Files.exists(maintenanceSamePath) == false) {
             this.generateSame();
+        }
+        if (Files.exists(maintenance18TransferPath) == false) {
+            this.generateTransfer();
+        }
+        if (Files.exists(maintenance24TransferPath) == false) {
+            this.generateTransfer();
         }
     }
 
@@ -251,6 +276,54 @@ public class AlignmentTestGenerator {
         }
     }
 
+    private void generateTransfer() throws StaticGenerationException {
+        boolean write18 = false;
+        boolean write24 = false;
+        if (Files.exists(maintenance18TransferPath) == false) {
+            statusHandler.info("Generating transfer maintenance file: "
+                    + maintenance18TransferPath.toString());
+            write18 = true;
+        }
+        if (Files.exists(maintenance24TransferPath) == false) {
+            statusHandler.info("Generating transfer maintenance file: "
+                    + maintenance24TransferPath.toString());
+            write24 = true;
+        }
+
+        byte[] audio;
+        try {
+            audio = TonesManager
+                    .generateTransferTone(TransferType.PRIMARY_TO_SECONDARY);
+        } catch (ToneGenerationException e) {
+            throw new StaticGenerationException(
+                    "Failed to generate the transfer tone audio!", e);
+        }
+
+        if (write18) {
+            byte[] audioToWrite = Arrays
+                    .copyOfRange(audio, 0, audio.length / 2);
+            try {
+                Files.write(maintenance18TransferPath, audioToWrite);
+            } catch (IOException e) {
+                throw new StaticGenerationException(
+                        "Failed to write the transfer tone maintenance audio to file: "
+                                + maintenance18TransferPath.toString(), e);
+            }
+        }
+
+        if (write24) {
+            try {
+                byte[] audioToWrite = Arrays.copyOfRange(audio,
+                        audio.length / 2, audio.length);
+                Files.write(maintenance24TransferPath, audioToWrite);
+            } catch (IOException e) {
+                throw new StaticGenerationException(
+                        "Failed to write the transfer tone maintenance audio to file: "
+                                + maintenance24TransferPath.toString(), e);
+            }
+        }
+    }
+
     private void validateDaos() throws IllegalStateException {
         if (this.ttsVoiceDao == null) {
             throw new IllegalStateException(
@@ -285,5 +358,16 @@ public class AlignmentTestGenerator {
      */
     public Path getMaintenanceSamePath() {
         return maintenanceSamePath;
+    }
+
+    /**
+     * @return the maintenanceTransferPath
+     */
+    public Path getMaintenance18TransferPath() {
+        return maintenance18TransferPath;
+    }
+
+    public Path getMaintenance24TransferPath() {
+        return maintenance24TransferPath;
     }
 }

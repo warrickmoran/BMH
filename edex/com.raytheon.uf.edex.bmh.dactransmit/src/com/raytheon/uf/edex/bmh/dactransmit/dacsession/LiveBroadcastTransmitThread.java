@@ -38,9 +38,11 @@ import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
+import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
+import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
+import com.raytheon.uf.edex.bmh.audio.CollectibleAudioRegulator;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -77,6 +79,9 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  * Feb 11, 2015 4098       bsteffen    Maintain jitter buffer during broadcast.
  * Apr 15, 2015 4397       bkowal      Added {@link #generateStatistics()}.
  * Apr 16, 2015 4405       rjpeter     Update to have hasSync initialized.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Jul 15, 2015 4636       bkowal      Eliminate packet-level audio alterations.
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * </pre>
  * 
  * @author bkowal
@@ -107,10 +112,11 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final double dbTarget, final BROADCASTTYPE type,
+            final double dbTarget, final double sameDbTarget,
+            final double alertDbTarget, final BROADCASTTYPE type,
             final long requestTime, final boolean hasSync) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
-                transmitters, dbTarget, hasSync);
+                transmitters, dbTarget, sameDbTarget, alertDbTarget, hasSync);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
@@ -135,7 +141,29 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.notifyBroadcastSwitch(STATE.STARTED);
         if (this.type == BROADCASTTYPE.EO) {
             // play the Alert / SAME tones.
-            this.playTones(this.config.getToneAudio(), "SAME / Alert");
+            AudioPacketLogger packetLog = new AudioPacketLogger("SAME Tones",
+                    getClass(), 30);
+            if (this.config.getToneAudio().getSameTones() != null) {
+                this.playTones(this.config.getToneAudio().getSameTones(),
+                        "SAME", this.sameDbTarget, packetLog);
+            }
+            if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
+                this.playTones(this.config.getToneAudio()
+                        .getBeforeAlertTonePause(), "SAME", this.dbTarget,
+                        packetLog);
+            }
+            packetLog.close();
+            packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
+            if (this.config.getToneAudio().getAlertTones() != null) {
+                this.playTones(this.config.getToneAudio().getAlertTones(),
+                        "Alert", this.alertDbTarget, packetLog);
+            }
+            if (this.config.getToneAudio().getBeforeMessagePause() != null) {
+                this.playTones(this.config.getToneAudio()
+                        .getBeforeMessagePause(), "Alert", this.dbTarget,
+                        packetLog);
+            }
+            packetLog.close();
         }
         BroadcastStatus status = new BroadcastStatus();
         status.setMsgSource(MSGSOURCE.DAC);
@@ -171,9 +199,13 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         }
         packetLog.close();
 
+        packetLog = new AudioPacketLogger("End of Message Tones", getClass(),
+                30);
         if (this.type == BROADCASTTYPE.EO) {
-            this.playTones(this.config.getEndToneAudio(), "End of Message");
+            this.playTones(this.config.getEndToneAudio(), "End of Message",
+                    this.sameDbTarget, packetLog);
         }
+        packetLog.close();
         this.notifyBroadcastSwitch(STATE.FINISHED);
 
         this.dataThread.resumePlayback(previousPacket);
@@ -185,12 +217,35 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             this.bytesReceived = true;
             this.generateStatistics();
         }
+        /*
+         * Attenuate / amplify all received data before it is added to the
+         * buffer. Here we know that the audio db target will be used.
+         */
+        CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
+                data);
+        try {
+            data = regulator.regulateAudioCollection(this.dbTarget);
+        } catch (Exception e) {
+            logger.error("Failed to amplify/attenuate received audio.", e);
+        }
+
         super.playAudio(data);
     }
 
-    private void playTones(byte[] toneAudio, final String toneType) {
-        AudioPacketLogger packetLog = new AudioPacketLogger(
-                "Live Broadcast Tones", getClass(), 30);
+    private void playTones(byte[] toneAudio, final String toneType,
+            final double dbTarget, AudioPacketLogger packetLog) {
+        /*
+         * Attenuate / amplify all received data before it is added to the
+         * buffer. Here we know that the audio db target will be used.
+         */
+        AudioRegulator regulator = new AudioRegulator();
+        try {
+            toneAudio = regulator.regulateAudioVolume(toneAudio, dbTarget,
+                    toneAudio.length);
+        } catch (Exception e) {
+            logger.error("Failed to amplify/attenuate the " + toneType
+                    + " tone audio.", e);
+        }
 
         ByteArrayInputStream tonesInputStream = new ByteArrayInputStream(
                 toneAudio);
@@ -206,7 +261,6 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             this.notifyDacError("Failed to stream the " + toneType + " Tones!",
                     e);
         }
-        packetLog.close();
     }
 
     private void waitForAudio() {

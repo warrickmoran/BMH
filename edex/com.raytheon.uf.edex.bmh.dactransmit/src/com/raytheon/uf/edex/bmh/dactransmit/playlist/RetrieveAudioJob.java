@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.tones.GeneratedTonesBuffer;
 import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -64,6 +65,9 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Dec 12, 2014 3603       bsteffen    Updates to TonesGenerator.
  * Jan 05, 2015 3651       bkowal      Use {@link DefaultMessageLogger} to log msg errors.
  * May 13, 2015 4429       rferrel     Changes to {@link DefaultMessageLogger} for traceId.
+ * Jun 29, 2015 4602       bkowal      Provide the buffer when notifying listeners that
+ *                                     the audio retrieval attempt is complete.
+ * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -85,12 +89,17 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      * @param dbTarget
      *            the target audio decibel. No portion of the audio should
      *            exceed the target.
+     * @param sameDbTarget
+     *            the target audio decibel for SAME Tones.
+     * @param alertDbTarget
+     *            the target audio decibel for Alert Tones.
      * @param message
      *            identifying information
      */
     public RetrieveAudioJob(final int priority, final double dbTarget,
+            final double sameDbTarget, final double alertDbTarget,
             final DacPlaylistMessage message) {
-        super(priority, dbTarget, message);
+        super(priority, dbTarget, sameDbTarget, alertDbTarget, message);
     }
 
     /**
@@ -102,6 +111,10 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      * @param dbTarget
      *            the target audio decibel. No portion of the audio should
      *            exceed the target.
+     * @param sameDbTarget
+     *            the target audio decibel for SAME Tones.
+     * @param alertDbTarget
+     *            the target audio decibel for Alert Tones.
      * @param message
      *            identifying information
      * @param listener
@@ -112,9 +125,10 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      *            purposes (optional)
      */
     public RetrieveAudioJob(final int priority, final double dbTarget,
+            final double sameDbTarget, final double alertDbTarget,
             final DacPlaylistMessage message, final IAudioJobListener listener,
             final String taskId) {
-        this(priority, dbTarget, message);
+        this(priority, dbTarget, sameDbTarget, alertDbTarget, message);
         this.listener = listener;
         this.taskId = taskId;
     }
@@ -167,7 +181,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 byte[] rawData = Files.readAllBytes(filePath);
                 concatenatedSize += rawData.length;
                 byte[] regulatedRawData = this.adjustAudio(rawData,
-                        "Body (segment " + i + ")");
+                        "Body (segment " + i + ")", this.dbTarget);
                 rawDataArrays.add(regulatedRawData);
                 /*
                  * Not dynamic data. So, no lookup key.
@@ -176,7 +190,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (IOException e) {
                 String msg = "Failed to buffer audio file for message: "
                         + message.getBroadcastId() + ", file: " + filePath;
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 AudioRetrievalException audioEx = new AudioRetrievalException(
                         msg, e);
                 DefaultMessageLogger.getInstance().logError(this.message,
@@ -184,7 +198,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         this.message, audioEx);
                 throw audioEx;
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 DefaultMessageLogger.getInstance().logError(this.message,
                         BMH_COMPONENT.DAC_TRANSMIT,
                         BMH_ACTIVITY.AUDIO_ALTERATION, this.message, e);
@@ -192,24 +206,24 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             }
         }
 
-        ByteBuffer tones = null;
+        GeneratedTonesBuffer generatedTones = null;
         if (message.isSAMETones()) {
             try {
-                tones = TonesGenerator.getSAMEAlertTones(message.getSAMEtone(),
-                        message.isAlertTone(), false);
+                generatedTones = TonesGenerator.getSAMEAlertTones(
+                        message.getSAMEtone(), message.isAlertTone(), false);
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate SAME/alert tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         } else if (message.isAlertTone()) {
             try {
-                tones = TonesGenerator.getOnlyAlertTones();
+                generatedTones = TonesGenerator.getOnlyAlertTones();
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate alert tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         }
@@ -221,29 +235,39 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate end of message SAME tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         }
 
         /* regulate tones (if they exist). */
-        if (tones != null) {
+        if (generatedTones != null) {
             try {
-                byte[] regulatedTones = adjustAudio(tones.array(),
-                        "SAME/Alert Tones");
-                tones = ByteBuffer.wrap(regulatedTones);
+                if (generatedTones.getSameTones() != null) {
+                    byte[] regulatedTones = adjustAudio(
+                            generatedTones.getSameTones(), "Same Tones",
+                            this.sameDbTarget);
+                    generatedTones.setSameTones(regulatedTones);
+                }
+                if (generatedTones.getAlertTones() != null) {
+                    byte[] regulatedTones = adjustAudio(
+                            generatedTones.getAlertTones(), "Alert Tones",
+                            this.alertDbTarget);
+                    generatedTones.setAlertTones(regulatedTones);
+                }
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw e;
             }
         }
         if (endOfMessage != null) {
             try {
                 byte[] regulatedEndOfMessage = adjustAudio(
-                        endOfMessage.array(), "End of Message");
+                        endOfMessage.array(), "End of Message",
+                        this.sameDbTarget);
                 endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete();
+                this.notifyAttemptComplete(null);
                 throw e;
             }
         }
@@ -260,8 +284,9 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 }
                 rawData = concatenation.array();
             }
-            buffer = new AudioFileBuffer(this.message, rawData, tones,
-                    endOfMessage);
+            buffer = new AudioFileBuffer(this.message, rawData,
+                    (generatedTones == null ? null
+                            : generatedTones.combineTonesArray()), endOfMessage);
         } else {
             /*
              * Adjust the time cache audio.
@@ -276,13 +301,16 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         rowKey,
                         columnKey,
                         super.adjustAudio(timeCell.getValue(), "Time Cache: { "
-                                + rowKey + ", " + columnKey + " }"));
+                                + rowKey + ", " + columnKey + " }",
+                                this.dbTarget));
             }
             timeCacheAdjustTimer.stop();
             logger.info("Successfully finished audio attenuation/amplification in "
                     + TimeUtil.prettyDuration(timeCacheAdjustTimer
                             .getElapsedTime()) + " for all time cached audio.");
-            buffer = new DynamicTimeAudioFileBuffer(this.message, tones,
+            buffer = new DynamicTimeAudioFileBuffer(this.message,
+                    (generatedTones == null ? null : generatedTones
+                            .combineTonesArray()),
                     rawDataArrays, dynamicAudioPositionMap, endOfMessage,
                     timeCache);
         }
@@ -291,14 +319,15 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 + message.getBroadcastId() + " in "
                 + TimeUtil.prettyDuration(System.currentTimeMillis() - start)
                 + ".");
-        this.notifyAttemptComplete();
+        this.notifyAttemptComplete(buffer);
 
         return buffer;
     }
 
-    private void notifyAttemptComplete() {
+    private void notifyAttemptComplete(final IAudioFileBuffer buffer) {
         if (this.listener != null && this.taskId != null) {
-            this.listener.audioRetrievalFinished(this.taskId, this.message);
+            this.listener.audioRetrievalFinished(this.taskId, this.message,
+                    buffer);
         }
     }
 }

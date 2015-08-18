@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * Sep 20, 2014 3640       rferrel     saveTransmitterDeleteGroup no longer deletes transmitter.
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Mar 25, 2015  4305     rferrel     Added {@link #getTransmitterByFips(String)}.
+ * Jul 21, 2015  4424     bkowal      Added {@link #getTransmitterByMnemonic(String)}.
  * 
  * </pre>
  * 
@@ -107,5 +108,23 @@ public class TransmitterDao extends AbstractBMHDao<Transmitter, Integer> {
     public List<Transmitter> getTransmitterByFips(String fipsCode) {
         return (List<Transmitter>) findByNamedQueryAndNamedParam(
                 Transmitter.GET_TRANSMITTERS_FOR_FIPS, "fipscode", fipsCode);
+    }
+
+    /**
+     * Retrieves the {@link Transmitter} with the specified mnemonic.
+     * 
+     * @param mnemonic
+     *            the specified mnemonic.
+     * @return the retrieved {@link Transmitter} or {@code null} if no
+     *         transmitter was found.
+     */
+    public Transmitter getTransmitterByMnemonic(String mnemonic) {
+        List<?> returnObjects = this.findByNamedQueryAndNamedParam(
+                Transmitter.GET_TRANSMITTER_FOR_MNEMONIC, "mnemonic", mnemonic);
+        if (returnObjects == null || returnObjects.isEmpty()) {
+            return null;
+        }
+
+        return (Transmitter) returnObjects.get(0);
     }
 }

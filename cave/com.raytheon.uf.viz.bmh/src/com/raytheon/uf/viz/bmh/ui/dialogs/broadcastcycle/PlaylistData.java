@@ -91,6 +91,10 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * May 20, 2015   4490     bkowal      Ensure that an interrupt message is only displayed in
  *                                     red during the initial playback.
  * May 22, 2015   4481     bkowal      Set the dynamic flag on {@link BroadcastCycleTableDataEntry}.
+ * Jul 20, 2015   4424     bkowal      Ensure the local playlist data structure always references
+ *                                     the correct suite.
+ * Aug 03, 2015   4686     bkowal      Do not display messages that expire before their next periodic
+ *                                     broadcast.
  * </pre>
  * 
  * @author mpduff
@@ -161,6 +165,7 @@ public class PlaylistData {
             playlistData = new PlaylistDataStructure();
             playlistDataMap.put(tg, playlistData);
         }
+        playlistData.setSuiteName(notification.getSuiteName());
         Map<Long, MessagePlaybackPrediction> predictionMap = playlistData
                 .getPredictionMap();
 
@@ -399,14 +404,16 @@ public class PlaylistData {
                             .getPeriodicColor());
                 }
 
-                if (inputMsg.getInterrupt()
-                        && message.isPlayedInterrupt() == false) {
-                    cycleTableData.setMessageIdColor(colorManager
-                            .getInterruptColor());
-                }
                 if (message.getReplacementType() != null) {
                     cycleTableData.setMessageIdColor(colorManager
                             .getReplaceColor());
+                }
+
+                if (inputMsg.getInterrupt()
+                        && (message.isPlayedInterrupt() == false || playlistDataStructure
+                                .getSuiteName().startsWith("Interrupt"))) {
+                    cycleTableData.setMessageIdColor(colorManager
+                            .getInterruptColor());
                 }
             }
 
@@ -548,8 +555,11 @@ public class PlaylistData {
                  * broadcast cycle table was populated.
                  */
                 if (playlistMessage.isPeriodic()) {
-                    tableData.addDataRow(createPeriodicTableRow(prediction,
-                            playlistMessage));
+                    TableRowData trd = createPeriodicTableRow(prediction,
+                            playlistMessage);
+                    if (trd != null) {
+                        tableData.addDataRow(trd);
+                    }
                 }
             }
         }
@@ -557,7 +567,10 @@ public class PlaylistData {
                 .values()) {
             BroadcastMsg broadcast = playlistMap.get(prediction
                     .getBroadcastId());
-            tableData.addDataRow(createPeriodicTableRow(prediction, broadcast));
+            TableRowData trd = createPeriodicTableRow(prediction, broadcast);
+            if (trd != null) {
+                tableData.addDataRow(trd);
+            }
         }
         return tableData;
     }
@@ -583,6 +596,14 @@ public class PlaylistData {
             }
         }
         if (nextTransmitTime != null) {
+            if (nextTransmitTime.after(broadcast.getInputMessage()
+                    .getExpirationTime())) {
+                /*
+                 * The message expires before the next time it is supposed to be
+                 * broadcast, exclude it.
+                 */
+                return null;
+            }
             rowData.addTableCellData(new TableCellData(sdf
                     .format(nextTransmitTime.getTime())));
         }

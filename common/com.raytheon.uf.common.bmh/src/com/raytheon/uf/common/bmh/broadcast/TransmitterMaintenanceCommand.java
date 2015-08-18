@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.common.bmh.broadcast;
 
-import java.util.Set;
-
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -39,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 15, 2014 3630       bkowal      Added allowedDataPorts
  * Dec 12, 2014 3603       bsteffen    Rename and add maintenanceDetails
  * Apr 09, 2015 4364       bkowal      Added {@link #broadcastTimeout}.
- * 
+ * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * </pre>
  * 
  * @author bkowal
@@ -56,7 +54,7 @@ public class TransmitterMaintenanceCommand extends
     private String dacHostname;
 
     @DynamicSerializeElement
-    private Set<Integer> allowedDataPorts;
+    private int dataPort;
 
     @DynamicSerializeElement
     private int[] radios;
@@ -102,16 +100,16 @@ public class TransmitterMaintenanceCommand extends
     /**
      * @return the allowedDataPorts
      */
-    public Set<Integer> getAllowedDataPorts() {
-        return allowedDataPorts;
+    public int getDataPort() {
+        return dataPort;
     }
 
     /**
-     * @param allowedDataPorts
-     *            the allowedDataPorts to set
+     * @param dataPort
+     *            the dataPort to set
      */
-    public void setAllowedDataPorts(Set<Integer> allowedDataPorts) {
-        this.allowedDataPorts = allowedDataPorts;
+    public void setDataPort(int dataPort) {
+        this.dataPort = dataPort;
     }
 
     /**
@@ -197,17 +195,8 @@ public class TransmitterMaintenanceCommand extends
         stringBuilder.append(this.maintenanceDetails);
         stringBuilder.append("dacHostname=");
         stringBuilder.append(this.dacHostname);
-        stringBuilder.append(", allowedDataPorts={");
-        boolean firstPort = true;
-        for (Integer dataPort : this.allowedDataPorts) {
-            if (firstPort == false) {
-                stringBuilder.append(", ");
-            } else {
-                firstPort = false;
-            }
-            stringBuilder.append(dataPort);
-        }
-        stringBuilder.append("}");
+        stringBuilder.append(", dataPort=");
+        stringBuilder.append(this.dataPort);
         stringBuilder.append(", radios=");
         StringBuilder radiosSB = new StringBuilder("{");
         boolean firstRadio = true;

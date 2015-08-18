@@ -64,6 +64,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 21, 2014  3845     bkowal      Added getAreaForTransmitter
  * Feb 23, 2015  4140     rjpeter     Named foreign key constraints.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 22, 2015  4676     bkowal      Update comment documentation.
  * </pre>
  * 
  * @author rjpeter
@@ -100,7 +101,7 @@ public class Area {
      * 
      * <pre>
      * SS - State
-     * X - C for county code, and a numeral (i.e., 1 through 9) for a partial area code
+     * X - C for county code, or a numeral (i.e., 1 through 9) for a partial area code
      * NNN - county code number
      * </pre>
      */

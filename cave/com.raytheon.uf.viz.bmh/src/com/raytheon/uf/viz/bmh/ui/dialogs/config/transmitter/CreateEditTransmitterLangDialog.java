@@ -57,7 +57,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
-import com.raytheon.uf.viz.bmh.ui.dialogs.voice.SelectDictionaryDlg;
+import com.raytheon.uf.viz.bmh.ui.dialogs.voice.DictionaryAssignmentComp;
+import com.raytheon.uf.viz.bmh.ui.dialogs.voice.IDictionarySelectionListener;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -91,13 +92,15 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
  * Jun 18, 2015 4490       bkowal      Ensure multiple static message types with the same
  *                                     afos ids are not created when creating a new transmitter.
+ * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 
-public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
+public class CreateEditTransmitterLangDialog extends CaveSWTDialog implements
+        IDictionarySelectionListener {
 
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CreateEditTransmitterLangDialog.class);
@@ -154,18 +157,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
      */
     private Combo voiceCombo;
 
-    /*
-     * Used for dictionary management.
-     */
-    private Label selectedDictionaryLabel;
-
-    private Button changeBtn;
-
-    /*
-     * the dictionary that is currently selected for the transmitter language.
-     * will be NULL if a dictionary has not been selected yet.
-     */
-    private Dictionary selectedDictionary;
+    private DictionaryAssignmentComp dictionaryAssign;
 
     private RateOfSpeechComp rateOfSpeechComp;
 
@@ -257,7 +249,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         attributesGroup.setLayoutData(gd);
 
         /* The composite for the fields. */
-        gl = new GridLayout(3, false);
+        gl = new GridLayout(2, false);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         final Composite attributesComp = new Composite(attributesGroup,
                 SWT.NONE);
@@ -274,7 +266,6 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         languageLabel.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
         gd.widthHint = 180;
         if (this.transmitterLanguage == null) {
@@ -319,7 +310,6 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         voiceLabel.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.horizontalSpan = 2;
         gd.verticalIndent = 5;
         this.voiceCombo = new Combo(attributesComp, SWT.BORDER | SWT.READ_ONLY);
         this.voiceCombo.setLayoutData(gd);
@@ -334,39 +324,16 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         /*
          * Dictionary field. No limits.
          */
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
-        Label dictionaryLabel = new Label(attributesComp, SWT.NONE);
-        dictionaryLabel.setText("Dictionary:");
-        dictionaryLabel.setLayoutData(gd);
-
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.verticalIndent = 5;
-        gd.widthHint = 200;
-        selectedDictionaryLabel = new Label(attributesComp, SWT.BORDER);
-        selectedDictionaryLabel.setLayoutData(gd);
-
-        /*
-         * Dictionary selection button. Only enabled when a language has been
-         * selected.
-         */
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        changeBtn = new Button(attributesComp, SWT.PUSH);
-        changeBtn.setText("Change...");
-        changeBtn.setLayoutData(gd);
-        changeBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                handleChangeAction();
-            }
-        });
-        changeBtn.setEnabled(false);
+        this.dictionaryAssign = new DictionaryAssignmentComp(attributesComp,
+                this.getShell(), this);
+        this.dictionaryAssign.disable();
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label rateOfSpeechLabel = new Label(attributesComp, SWT.NONE);
         rateOfSpeechLabel.setText("Rate of Speech:");
         rateOfSpeechLabel.setLayoutData(gd);
 
-        this.rateOfSpeechComp = new RateOfSpeechComp(attributesComp, 2);
+        this.rateOfSpeechComp = new RateOfSpeechComp(attributesComp, 1);
 
         this.createStaticMessageTypesGroup();
     }
@@ -636,12 +603,11 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         this.voiceCombo.setText(this.transmitterLanguage.getVoice()
                 .getVoiceName());
 
-        this.selectedDictionary = this.transmitterLanguage.getDictionary();
-        if (this.selectedDictionary != null) {
-            this.selectedDictionaryLabel.setText(this.selectedDictionary
-                    .getName());
-        }
-        this.changeBtn.setEnabled(true);
+        this.dictionaryAssign.setSelectedLanguage(this.transmitterLanguage
+                .getLanguage());
+        this.dictionaryAssign.setSelectedDictionary(this.transmitterLanguage
+                .getDictionary());
+        this.dictionaryAssign.enable();
 
         this.handleVoiceSelection();
 
@@ -734,9 +700,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
             this.voiceCombo.setEnabled(false);
             this.voiceNameIdentifierMap.clear();
 
-            selectedDictionary = null;
-            this.selectedDictionaryLabel.setText("");
-            this.changeBtn.setEnabled(false);
+            this.dictionaryAssign.setSelectedDictionary(null);
+            this.dictionaryAssign.disable();
             return;
         }
 
@@ -750,6 +715,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
                 break;
             }
         }
+        this.dictionaryAssign.setSelectedLanguage(this.selectedLanguage);
 
         /*
          * Retrieve applicable voices and populate the voice combo.
@@ -759,7 +725,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         /*
          * Enable dictionary selection.
          */
-        this.changeBtn.setEnabled(true);
+        this.dictionaryAssign.enable();
     }
 
     private void populateVoices() {
@@ -783,25 +749,6 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         }
         this.voiceCombo.setEnabled(true);
         this.voiceCombo.select(0);
-    }
-
-    private void handleChangeAction() {
-        SelectDictionaryDlg selectDictDlg = new SelectDictionaryDlg(this.shell,
-                this.selectedLanguage);
-        selectDictDlg.setFilterDictionary(this.selectedDictionary);
-        selectDictDlg.setCloseCallback(new ICloseCallback() {
-            @Override
-            public void dialogClosed(Object returnValue) {
-                if ((returnValue == null)
-                        || ((returnValue instanceof Dictionary) == false)) {
-                    return;
-                }
-
-                selectedDictionary = (Dictionary) returnValue;
-                selectedDictionaryLabel.setText(selectedDictionary.getName());
-            }
-        });
-        selectDictDlg.open();
     }
 
     private void createBottomButtons(final Shell shell) {
@@ -961,7 +908,8 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
         /*
          * dictionary
          */
-        this.transmitterLanguage.setDictionary(this.selectedDictionary);
+        this.transmitterLanguage.setDictionary(this.dictionaryAssign
+                .getSelectedDictionary());
 
         /*
          * rate of speech.
@@ -1004,5 +952,9 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog {
 
             this.addMsgTypeButton.setEnabled(this.selectedVoice != null);
         }
+    }
+
+    @Override
+    public void dictionarySelected(Dictionary dictionary) {
     }
 }

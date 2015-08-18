@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
@@ -49,7 +50,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistDirectoryObserver;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PlaylistScheduler;
 import com.raytheon.uf.edex.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
-import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
 
 /**
  * Manages a transmission session to the DAC. Class pre-buffers all audio data
@@ -111,6 +111,8 @@ import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
  * Apr 16, 2015  #4405     rjpeter      Fail live broadcast if we don't have sync to dac.
  * Apr 27, 2015  #4397     bkowal       Added {@link #handleDeliveryTimeStat(DeliveryTimeEvent)} and
  *                                      {@link #deliverAllStartupStats()}.
+ * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
+ * Jul 28, 2015  #4686     bkowal       Moved statistics to common.
  * </pre>
  * 
  * @author dgilling
@@ -444,7 +446,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
                     this.commsManager, config, this.config.getDbTarget(),
-                    startCommand.getType(), startCommand.getRequestTime(), true);
+                    this.config.getSameDbTarget(),
+                    this.config.getAlertDbTarget(), startCommand.getType(),
+                    startCommand.getRequestTime(), true);
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "
                     + startCommand.getBroadcastId() + "!", e);

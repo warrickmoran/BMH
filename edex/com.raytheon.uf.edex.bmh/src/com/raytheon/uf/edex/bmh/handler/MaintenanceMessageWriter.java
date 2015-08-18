@@ -23,11 +23,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import javax.xml.bind.JAXB;
+import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
+import com.raytheon.uf.common.serialization.JAXBManager;
 import com.raytheon.uf.common.util.SystemUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BMHMaintenanceException;
@@ -46,6 +47,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * ------------ ---------- ----------- --------------------------
  * Apr 24, 2015 4394       bkowal      Initial creation
  * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
+ * Jul 23, 2015 4676       bkowal      Use {@link JAXBManager}.
  * 
  * </pre>
  * 
@@ -59,6 +61,8 @@ public class MaintenanceMessageWriter {
             .getInstance(MaintenanceMessageWriter.class);
 
     private static final String MESSAGES_DIRECTORY = "messages";
+
+    private static JAXBManager jaxbManager;
 
     /**
      * Constructor
@@ -82,6 +86,14 @@ public class MaintenanceMessageWriter {
     public static String writeMaintenanceMessage(DacMaintenanceMessage message,
             final AbstractBMHServerRequest request)
             throws BMHMaintenanceException {
+        if (jaxbManager == null) {
+            try {
+                jaxbManager = new JAXBManager(DacMaintenanceMessage.class);
+            } catch (JAXBException e) {
+                throw new BMHMaintenanceException(
+                        "Failed to instantiate the JAXB Manager.", e);
+            }
+        }
         /*
          * Determine where to save the file and the name of the file.
          */
@@ -121,8 +133,8 @@ public class MaintenanceMessageWriter {
         Path output = maintenanceMessagesPath.resolve(fileName);
 
         try {
-            JAXB.marshal(message, Files.newOutputStream(output));
-        } catch (IOException e) {
+            jaxbManager.marshalToXmlFile(message, output.toString());
+        } catch (Exception e) {
             BMHMaintenanceException ex = new BMHMaintenanceException(
                     "Failed to marshal the maintenance message.");
             statusHandler.error(BMH_CATEGORY.UNKNOWN,

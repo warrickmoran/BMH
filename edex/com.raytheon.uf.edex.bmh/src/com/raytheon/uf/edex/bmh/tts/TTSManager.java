@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.tts;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -31,6 +32,12 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+
+import javax.sound.sampled.AudioFileFormat.Type;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioFormat.Encoding;
+import javax.sound.sampled.AudioSystem;
 
 import org.apache.commons.io.FilenameUtils;
 
@@ -50,6 +57,7 @@ import com.raytheon.uf.common.bmh.notify.status.TTSStatus;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.SystemUtil;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
@@ -115,6 +123,9 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     public.
  * May 13, 2015 4429       rferrel     Changes to logs for traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging methods.
+ * Jul 27, 2015 4679       bkowal      Do not prevent EDEX startup if the TTS Server is not
+ *                                     running. Broadcast TTS connect errors to AlertViz.
+ * Jul 28, 2015 3383       bkowal      Ensure wave file headers are written.
  * </pre>
  * 
  * @author bkowal
@@ -150,8 +161,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private static final String TTS_RETRY_DELAY_PROPERTY = "bmh.tts.retry-delay";
 
-    private static final String TTS_DISABLED_PROPERTY = "bmh.tts.disabled";
-
     private static final int DEFAULT_MAX_AUDIO_DURATION_SECONDS = 600;
 
     /*
@@ -177,7 +186,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private final int maxAudioByteCount;
 
-    private final boolean disabled;
+    private final boolean operational;
 
     private TTSSynthesisFactory synthesisFactory;
 
@@ -185,9 +194,17 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
     private final IMessageLogger messageLogger;
 
+    private String edexHost;
+
+    private String ttsHost;
+
     public TTSManager(final IMessageLogger messageLogger) {
-        this.disabled = Boolean.getBoolean(TTS_DISABLED_PROPERTY);
+        this(messageLogger, true);
+    }
+
+    public TTSManager(final IMessageLogger messageLogger, boolean operational) {
         this.messageLogger = messageLogger;
+        this.operational = operational;
 
         this.maxAudioDuration = Integer.getInteger(MAX_AUDIO_DURATION,
                 DEFAULT_MAX_AUDIO_DURATION_SECONDS);
@@ -201,12 +218,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     @Override
     public void preStart() {
-        if (this.disabled) {
-            statusHandler
-                    .info("TTS Manager is currently disabled. Skipping Initialization.");
-            return;
-        }
-
         try {
             this.initialize();
         } catch (BMHConfigurationException | IOException e) {
@@ -301,22 +312,30 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             throw new BMHConfigurationException("TTS Retry Delay must be >= 0!");
         }
 
-        this.validateSynthesis();
-
-        statusHandler.info("TTS Heartbeat Interval is " + this.ttsHeartbeat);
+        statusHandler.info("TTS Heartbeat Interval is: " + this.ttsHeartbeat
+                + " ms");
         statusHandler.info("BMH Audio Directory is: " + this.bmhDataDirectory);
         statusHandler.info("TTS Retry Threshold is: " + this.ttsRetryThreshold);
         statusHandler
                 .info("TTS Retry Delays is: " + this.ttsRetryDelay + " ms");
         statusHandler.info("Starting TTS Server Monitor ...");
-        this.heartbeatMonitor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
-        this.heartbeatMonitor.scheduleAtFixedRate(this, this.ttsHeartbeat,
-                this.ttsHeartbeat, TimeUnit.MILLISECONDS);
+        if (this.operational) {
+            this.heartbeatMonitor = new ScheduledThreadPoolExecutor(
+                    CORE_POOL_SIZE);
+            this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
+                    this.ttsHeartbeat, TimeUnit.MILLISECONDS);
+        }
         statusHandler.info("Initialization Successful!");
+
+        this.edexHost = SystemUtil.getHostName();
+        this.ttsHost = ("localhost"
+                .equals(this.synthesisFactory.getTtsServer())) ? this.edexHost
+                : InetAddress.getByName(this.synthesisFactory.getTtsServer())
+                        .getCanonicalHostName();
     }
 
     public void dispose() {
-        if (this.heartbeatMonitor != null) {
+        if (this.operational && this.heartbeatMonitor != null) {
             statusHandler.info("Stopping TTS Server Monitor ...");
             this.heartbeatMonitor.shutdownNow();
         }
@@ -332,40 +351,43 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     private void validateSynthesis() throws BMHConfigurationException,
             IOException {
-        int attempt = 0;
-        boolean retry = true;
 
-        while (retry) {
-            ++attempt;
-
-            TTSReturn ttsReturn;
-            try {
-                ttsReturn = this.synthesisFactory.synthesize("TEST",
-                        this.ttsValidationVoice, TTS_DEFAULT_FORMAT);
-            } catch (TTSSynthesisException e) {
-                statusHandler.error(BMH_CATEGORY.UNKNOWN,
-                        "TTS Synthesis validation has failed!", e);
-                this.notifyTTSStatus(false);
-                continue;
-            }
-
-            this.notifyTTSStatus((ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS));
-            retry = this.checkRetry(attempt, ttsReturn.getReturnValue());
+        TTSReturn ttsReturn;
+        try {
+            ttsReturn = this.synthesisFactory.synthesize("TEST",
+                    this.ttsValidationVoice, TTS_DEFAULT_FORMAT);
+        } catch (TTSSynthesisException e) {
+            statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                    "TTS Synthesis validation has failed!", e);
+            this.notifyTTSStatus(false);
+            return;
         }
 
-        statusHandler.info("Verified the TTS Server at "
-                + this.synthesisFactory.getTtsServer() + " running on Port "
-                + this.synthesisFactory.getTtsSynthesisPort()
-                + " is available.");
+        this.notifyTTSStatus((ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS));
+
+        if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+            statusHandler.info("Verified the TTS Server at " + this.ttsHost
+                    + " running on Port "
+                    + this.synthesisFactory.getTtsSynthesisPort()
+                    + " is available.");
+        } else {
+            StringBuilder stringBuilder = new StringBuilder(
+                    "Connection to the TTS Server ");
+            stringBuilder.append(this.ttsHost);
+            stringBuilder.append(" has failed! ");
+            stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
+                    .getReturnValue()));
+            stringBuilder.append(".");
+            statusHandler.error(ttsReturn.getReturnValue()
+                    .getAssociatedBMHCategory(), stringBuilder.toString());
+        }
     }
 
     private void notifyTTSStatus(final boolean connected) {
         if (this.bmhStatusDestination != null) {
             try {
-                TTSStatus status = new TTSStatus(InetAddress.getLocalHost()
-                        .getHostName(), InetAddress.getByName(
-                        this.synthesisFactory.getTtsServer())
-                        .getCanonicalHostName(), connected);
+                TTSStatus status = new TTSStatus(this.edexHost, this.ttsHost,
+                        connected);
                 EDEXUtil.getMessageProducer().sendAsyncUri(
                         bmhStatusDestination,
                         SerializationUtil.transformToThrift(status));
@@ -374,26 +396,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                         "Unable to send status of TTS", e);
             }
         }
-    }
-
-    private boolean checkRetry(int attempt, TTS_RETURN_VALUE returnValue) {
-        if (returnValue == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
-            return false;
-        }
-
-        StringBuilder stringBuilder = new StringBuilder("Connection Attempt (");
-        stringBuilder.append(attempt);
-        stringBuilder.append(") to the TTS Server ");
-        stringBuilder.append(this.synthesisFactory.getTtsServer());
-        stringBuilder.append(" has failed! ");
-        stringBuilder.append(this.getTTSErrorLogStatement(returnValue));
-        stringBuilder.append(". Retrying ...");
-        statusHandler.warn(returnValue.getAssociatedBMHCategory(),
-                stringBuilder.toString());
-
-        this.sleepDelayTime();
-
-        return true;
     }
 
     /**
@@ -439,16 +441,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     "Receieved an uninitialized or incomplete Broadcast Message to process!");
         }
 
-        if (this.disabled) {
-            statusHandler
-                    .info("TTS Manager is currently disabled. No messages can be processed.");
-            for (BroadcastFragment fragment : message
-                    .getLatestBroadcastContents().getFragments()) {
-                fragment.setSuccess(false);
-            }
-            return message;
-        }
-
         statusHandler
                 .info("Performing Text-to-Speech Transformation for message: "
                         + message.getId() + ".");
@@ -485,7 +477,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 try {
                     this.writeSynthesizedAudio(synthesizedAudio,
                             Paths.get(outputFile.getAbsolutePath()),
-                            logIdentifier.toString());
+                            logIdentifier.toString(), DEFAULT_OUTPUT_FORMAT);
                 } catch (IOException e) {
                     writeSuccess = false;
                     this.messageLogger.logError(null,
@@ -592,7 +584,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             boolean writeSuccess = true;
             try {
                 this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
-                        outputPath, logIdentifier.toString());
+                        outputPath, logIdentifier.toString(),
+                        message.getEncoding());
             } catch (IOException e) {
                 writeSuccess = false;
                 this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
@@ -751,8 +744,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * @return true if the file was written successfully; false, otherwise
      */
     private void writeSynthesizedAudio(final byte[] audio,
-            final Path outputPath, final String logIdentifier)
-            throws IOException {
+            final Path outputPath, final String logIdentifier,
+            BMHAudioFormat format) throws IOException {
         /*
          * Ensure that the required directories exist.
          */
@@ -801,8 +794,17 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          * of text that when synthesized are significantly > 10 minutes.
          */
         try (OutputStream os = Files.newOutputStream(outputPath)) {
-            os.write(audio, 0, writeLength);
-            os.flush();
+            if (format == BMHAudioFormat.WAV) {
+                final AudioFormat audioFormat = new AudioFormat(Encoding.ULAW,
+                        8000, 8, 1, 1, 8000, true);
+                final AudioInputStream audioInputStream = new AudioInputStream(
+                        new ByteArrayInputStream(audio), audioFormat,
+                        writeLength);
+                AudioSystem.write(audioInputStream, Type.WAVE, os);
+            } else {
+                os.write(audio, 0, writeLength);
+                os.flush();
+            }
             statusHandler.info("Successfully wrote audio output file: "
                     + outputPath.toString() + " for "
                     + logIdentifier.toString() + ". " + audio.length

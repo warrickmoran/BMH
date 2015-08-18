@@ -43,6 +43,8 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Oct 13, 2014 3654       rjpeter     Updated to use ProgramSummary.
  * Oct 23, 2014 3617       dgilling    Updated for single time zone field.
  * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
+ * Jul 08, 2015   4636     bkowal      Encode/decode additional decibel levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -106,6 +108,10 @@ public class TransmitterGroupAdapter implements
         serializer.writeBool(group.getDeadAirAlarm());
         serializer.writeObject(group.getTimeZone());
         serializer.writeDouble(group.getAudioDBTarget());
+        serializer.writeDouble(group.getSameDBTarget());
+        serializer.writeDouble(group.getAlertDBTarget());
+        serializer.writeDouble(group.getTransferLowDBTarget());
+        serializer.writeDouble(group.getTransferHighDBTarget());
         serializer.writeObject(group.getProgramSummary());
     }
 
@@ -127,6 +133,10 @@ public class TransmitterGroupAdapter implements
         tg.setDeadAirAlarm(deserializer.readBool());
         tg.setTimeZone((String) deserializer.readObject());
         tg.setAudioDBTarget(deserializer.readDouble());
+        tg.setSameDBTarget(deserializer.readDouble());
+        tg.setAlertDBTarget(deserializer.readDouble());
+        tg.setTransferLowDBTarget(deserializer.readDouble());
+        tg.setTransferHighDBTarget(deserializer.readDouble());
         tg.setProgramSummary((ProgramSummary) deserializer.readObject());
 
         return tg;

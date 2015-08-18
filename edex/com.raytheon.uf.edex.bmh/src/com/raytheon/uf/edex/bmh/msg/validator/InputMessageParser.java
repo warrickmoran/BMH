@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.edex.bmh.msg.validator;
 
+import java.io.File;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -38,6 +40,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -70,6 +73,11 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 21, 2015  4429     rjpeter     Added additional logging.
  * Jun 17, 2015  4482     rjpeter     Ignore all polygon data.
  * Jun 23, 2015  4572     bkowal      Extracted the afos id regex into {@link #AFOS_ID_REGEX}.
+ * Jul 21, 2015  4671     bkowal      Ignore mrd follows.
+ * Jul 29, 2015  4690     rjpeter     Set originalFile for rejection use case.
+ * Aug 03, 2015  4350     bkowal      Fix spelling.
+ * Aug 04, 2015  4671     bkowal      Throw a {@link ParseException} when mrd follows is
+ *                                    encountered.
  * </pre>
  * 
  * @author bsteffen
@@ -119,16 +127,20 @@ public class InputMessageParser {
     }
 
     public InputMessage parse(@Body
-    CharSequence text, @Headers
+    File file, @Headers
     Map<String, Object> headers) {
         InputMessage message = new InputMessage();
+
         message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
+        message.setOriginalFile(file);
+
         message.setValidHeader(true);
         messageLogger.logParseActivity(message);
 
         try {
+            CharSequence text = FileUtil.file2String(file);
             int index = findStart(text);
             index = parseMessageFormat(message, text, index);
             index = parseAfosId(message, text, index);
@@ -146,17 +158,15 @@ public class InputMessageParser {
             index = parseExpirationDate(message, text, index);
             index = parseContent(message, text, index);
             deriveSameTransmitters(message);
-        } catch (ParseException e) {
+        } catch (ParseException | IOException e) {
             statusHandler.error(BMH_CATEGORY.INPUT_MESSAGE_PARSE_ERROR,
                     fileName + " failed to parse", e);
             this.messageLogger.logError(null,
                     BMH_COMPONENT.INPUT_MESSAGE_PARSER,
                     BMH_ACTIVITY.MESSAGE_PARSING, message, e);
             message.setValidHeader(false);
-            if (message.getContent() == null) {
-                message.setContent(text.toString());
-            }
         }
+
         return message;
     }
 
@@ -237,11 +247,21 @@ public class InputMessageParser {
         return periodicity.end();
     }
 
-    private int parseMrd(InputMessage message, CharSequence text, int index) {
+    private int parseMrd(InputMessage message, CharSequence text, int index)
+            throws ParseException {
         Matcher mrd = mrdPattern.matcher(text);
         mrd.region(index, text.length());
         if (mrd.find()) {
-            message.setMrd(mrd.group());
+            String mrdStr = mrd.group();
+            /*
+             * Determine if follows mrds are present.
+             */
+            if (mrdStr.contains("F")) {
+                throw new ParseException(
+                        "MRD Follows is no longer supported; discovered in mrd: "
+                                + mrdStr, index);
+            }
+            message.setMrd(mrdStr);
             return mrd.end();
         } else {
             return index;
@@ -356,7 +376,7 @@ public class InputMessageParser {
         if (polygonText.length() > 0) {
             StringBuilder msg = new StringBuilder(160);
             msg.append("Found and ignored polygon(").append(polygonText)
-                    .append(") inforamtion in input message(")
+                    .append(") information in input message(")
                     .append(message.getName()).append(").");
             if (validationMsg != null || polyCount > 20) {
                 msg.append(" Polygon issues detected:");
@@ -440,5 +460,4 @@ public class InputMessageParser {
         c.setTime(d);
         return c;
     }
-
 }

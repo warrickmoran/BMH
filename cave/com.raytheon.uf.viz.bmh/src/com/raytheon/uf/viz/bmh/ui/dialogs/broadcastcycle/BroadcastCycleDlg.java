@@ -206,6 +206,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     of the selected dac is altered.
  * Jun 19, 2015  4481      bkowal      Set the time zone on the {@link SimpleDateFormat}.
  * Jun 22, 2015  4481      bkowal      Display the timezone display id in the time zone field.
+ * Jul 13, 2015  4636      bkowal      Handle initial maintenance playback statuses.
  * </pre>
  * 
  * @author mpduff
@@ -794,12 +795,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             IPlaylistData playlistDataRecord = this.dataManager
                     .getPlaylistDataForTransmitter(selectedTransmitterGrp);
             PlaylistDataStructure dataStruct = null;
-            LiveBroadcastSwitchNotification notification = null;
+            LiveBroadcastSwitchNotification liveNotification = null;
+            MaintenanceMessagePlayback maintNotification = null;
             if (playlistDataRecord instanceof PlaylistDataStructure) {
                 dataStruct = (PlaylistDataStructure) playlistDataRecord;
-            } else {
-                notification = (LiveBroadcastSwitchNotification) playlistDataRecord;
-                dataStruct = notification.getActualPlaylist();
+            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
+                liveNotification = (LiveBroadcastSwitchNotification) playlistDataRecord;
+                dataStruct = liveNotification.getActualPlaylist();
+            } else if (playlistDataRecord instanceof MaintenanceMessagePlayback) {
+                maintNotification = (MaintenanceMessagePlayback) playlistDataRecord;
+                this.playlistData
+                        .handleMaintenanceNotification((MaintenanceMessagePlayback) playlistDataRecord);
             }
 
             if (dataStruct != null) {
@@ -809,7 +815,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 this.selectedSuite = dataStruct.getSuiteName();
             }
 
-            if ((notification == null) && (dataStruct != null)) {
+            if ((liveNotification == null) && (dataStruct != null)) {
                 if (this.selectedSuite != null) {
                     suiteValueLbl.setText(this.selectedSuite);
                 } else {
@@ -833,8 +839,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 }
                 handleTableSelection();
             } else {
-                playlistData
-                        .handleLiveBroadcastSwitchNotification(notification);
+                INonStandardBroadcast notification = null;
+                if (liveNotification != null) {
+                    playlistData
+                            .handleLiveBroadcastSwitchNotification(liveNotification);
+                    notification = liveNotification;
+                } else {
+                    this.playlistData
+                            .handleMaintenanceNotification(maintNotification);
+                    notification = maintNotification;
+                }
                 TableData tableData = playlistData
                         .getNonStandardTableData(notification);
                 this.updateDisplayForNonStandardBroadcast(tableData,

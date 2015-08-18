@@ -102,6 +102,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  *                                    during startup to Comms Manager.
  * May 04, 2015  4452     bkowal      Handle {@link SAMEMessageTruncatedNotification}.
  * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
+ * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * 
  * </pre>
  * 
@@ -191,7 +192,9 @@ public final class CommsManagerCommunicator extends Thread {
                                     config.getDataPort(),
                                     config.getDacHostname(),
                                     Ints.toArray(config.getTransmitters()),
-                                    config.getDbTarget());
+                                    config.getDbTarget(),
+                                    config.getSameDbTarget(),
+                                    config.getAlertDbTarget());
                             SerializationUtil.transformToThriftUsingStream(
                                     registration, outputStream);
                             if (statusToSend.isConnectedToDac()) {

@@ -45,6 +45,8 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Apr 29, 2015 4394       bkowal      Include the Transmitter Group Name in the
  *                                     {@link DacMaintenanceMessage}.
  * Jun 11, 2015 4490       bkowal      Maintenance traceability improvements.
+ * Jul 08, 2015 4636       bkowal      Support transfer tone transmitter alignment tests.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * 
  * </pre>
  * 
@@ -100,6 +102,12 @@ public class MaintenanceMessageHandler extends
             break;
         case TEXT:
             audioPath = generator.getMaintenanceTextPath();
+            break;
+        case TRANSFER_18:
+            audioPath = generator.getMaintenance18TransferPath();
+            break;
+        case TRANSFER_24:
+            audioPath = generator.getMaintenance24TransferPath();
             break;
         }
 

@@ -26,6 +26,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.DisposeEvent;
@@ -54,7 +55,7 @@ import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.swt.widgets.Widget;
 
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
-import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
+import com.raytheon.uf.common.bmh.broadcast.TrxTransferMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -76,6 +77,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DetailsDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.NewEditTransmitterDlg.TransmitterEditType;
@@ -124,6 +127,13 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 08, 2015    4470    bkowal      It is now possible to enable all configured Transmitter(s) within
  *                                     a group.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
+ * Jul 01, 2015 4602       rjpeter     Use specific dataport.
+ * Jul 08, 2015 4636       bkowal      Use the decibel target specific to transfer tones.
+ * Jul 13, 2015 4636       bkowal      Ensure that a port is selected for the transmitter that transfer tones
+ *                                     will be completed on.
+ * Jul 14, 2015 4650       rferrel     Disable mode change when any transmitter in the group is not disabled.
+ * Jul 21, 2015 4424       bkowal      Added rename menu options for transmitters and transmitter groups.
+ * Jul 22, 2015 4424       bkowal      Transmitter naming validation improvements.
  * </pre>
  * 
  * @author mpduff
@@ -330,6 +340,22 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     }
                 });
 
+                enableItem = CollectionUtils.isEmpty(group
+                        .getEnabledTransmitters())
+                        && CollectionUtils.isEmpty(group
+                                .getTransmitterWithStatus(TxStatus.MAINT));
+                MenuItem renameItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Group cannot be renamed when active.");
+                renameItem.setText("Rename Group...");
+                renameItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if (enabledWidget(e.widget)) {
+                            renameMenuAction();
+                        }
+                    }
+                });
+
                 enableItem = group.getTransmitters().isEmpty();
                 MenuItem deleteItem = createItem(menu, SWT.PUSH, enableItem,
                         "Group cannot be deleted when it contains transmitters.");
@@ -419,6 +445,24 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                         .getTxStatus() == TxStatus.ENABLED))
                         || ((standaloneGroup != null) && (standaloneGroup
                                 .getTransmitterList().get(0).getTxStatus() == TxStatus.ENABLED));
+
+                /*
+                 * Rename menu option.
+                 */
+                enableItem = transmitterMaint == false
+                        && transmitterEnabled == false;
+                MenuItem renameItem = createItem(menu, SWT.PUSH, enableItem,
+                        "Transmitter cannot be renamed when active.");
+                renameItem.setText("Rename Transmitter...");
+                renameItem.addSelectionListener(new SelectionAdapter() {
+                    @Override
+                    public void widgetSelected(SelectionEvent e) {
+                        if (enabledWidget(e.widget)) {
+                            renameMenuAction();
+                        }
+                    }
+                });
+
                 if (transmitterEnabled == false) {
                     transmitterDecommissioned = ((groupTransmitter != null) && (groupTransmitter
                             .getTxStatus() == TxStatus.DECOMM))
@@ -535,27 +579,22 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                 if (enableItem) {
                     if (groupTransmitter != null) {
                         /*
-                         * if not standalone, need to ensure all transmitters on
-                         * same port are disabled
+                         * When not standalone, need to ensure all transmitters
+                         * in the group are disabled.
                          */
                         List<Transmitter> problemTransmitters = new LinkedList<>();
                         for (Transmitter t : groupTransmitter
                                 .getTransmitterGroup().getTransmitters()) {
-                            if (t.getDacPort() == groupTransmitter.getDacPort()) {
-                                TxStatus status = t.getTxStatus();
-
-                                if (TxStatus.ENABLED.equals(status)
-                                        || TxStatus.MAINT.equals(status)) {
-                                    problemTransmitters.add(t);
-                                }
+                            if (TxStatus.ENABLED.equals(t.getTxStatus())
+                                    || TxStatus.MAINT.equals(t.getTxStatus())) {
+                                problemTransmitters.add(t);
                             }
                         }
 
                         if (!problemTransmitters.isEmpty()) {
                             enableItem = false;
-                            StringBuilder msg = new StringBuilder(80);
-                            msg.append("Cannot change mode of daisy chained transmitters unless all are disabled.  Transmitter");
-
+                            StringBuilder msg = new StringBuilder(130);
+                            msg.append("Cannot change mode of transmitter unless all transmitters in the group are disabled.  Transmitter");
                             if (problemTransmitters.size() > 1) {
                                 msg.append("s (");
                             } else {
@@ -826,6 +865,84 @@ public class TransmitterComp extends Composite implements INotificationObserver 
         }
 
         newEditDlg.open();
+    }
+
+    private void renameMenuAction() {
+        Object o = tree.getSelection()[0].getData();
+        TransmitterGroup group = null;
+        Transmitter transmitter = null;
+        if (o instanceof Transmitter) {
+            transmitter = (Transmitter) o;
+        } else if (o instanceof TransmitterGroup) {
+            group = (TransmitterGroup) o;
+            if (group.getTransmitters().isEmpty() == false) {
+                /*
+                 * there is a possibility that this is a standalone transmitter
+                 * group.
+                 */
+                transmitter = group.getTransmitterList().get(0);
+            }
+        }
+
+        String currentName = StringUtils.EMPTY;
+        String dialogTitle = "Rename ";
+        String dialogDescription = "Enter a new ";
+        IInputTextValidator renameValidator = null;
+        final Object objectToRename;
+        if (group == null || group.isStandalone()) {
+            currentName = transmitter.getMnemonic();
+            dialogTitle += "Transmitter";
+            dialogDescription += "Mnemonic:";
+            renameValidator = new InputTextTransmitterMnemonicValidator(
+                    currentName, transmitter);
+            objectToRename = transmitter;
+        } else {
+            currentName = group.getName();
+            dialogTitle += "Transmitter Group";
+            dialogDescription += "Name:";
+            renameValidator = new InputTextTransmitterGroupNameValidator(
+                    currentName, group);
+            objectToRename = group;
+        }
+
+        InputTextDlg inputDlg = new InputTextDlg(this.getShell(), dialogTitle,
+                dialogDescription, currentName, renameValidator, false);
+        inputDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue instanceof String) {
+                    executeRename(objectToRename, (String) returnValue);
+                }
+            }
+        });
+        inputDlg.open();
+    }
+
+    private void executeRename(Object objectToRename, String name) {
+        name = name.trim();
+        if (objectToRename instanceof Transmitter) {
+            Transmitter transmitter = (Transmitter) objectToRename;
+            if (transmitter.getMnemonic().equals(name)) {
+                return;
+            }
+            transmitter.setMnemonic(name);
+        } else {
+            TransmitterGroup transmitterGroup = (TransmitterGroup) objectToRename;
+            if (transmitterGroup.getName().equals(name)) {
+                return;
+            }
+            transmitterGroup.setName(name);
+        }
+
+        /*
+         * TODO: remove after server-side implementation is finalized.
+         */
+        DialogUtility
+                .showMessageBox(
+                        this.getShell(),
+                        SWT.ICON_INFORMATION | SWT.OK,
+                        "Not Implemented",
+                        "This functionality has not been implemented on the server yet. It will be available in the next changeset.");
     }
 
     /**
@@ -1129,15 +1246,27 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     String inputAudioFile = (String) BmhUtils
                             .sendRequest(request);
 
-                    TransmitterMaintenanceCommand command = new TransmitterMaintenanceCommand();
+                    TrxTransferMaintenanceCommand command = new TrxTransferMaintenanceCommand();
                     command.setMaintenanceDetails("Transfer Tone");
                     command.setMsgSource(MSGSOURCE.VIZ);
                     command.addTransmitterGroup(transmitterGroup);
                     command.setDacHostname(dac.getAddress());
-                    command.setAllowedDataPorts(dac.getDataPorts());
+                    List<Integer> radios = new LinkedList<>();
+
+                    for (Transmitter trans : transmitterGroup.getTransmitters()) {
+                        if (trans.getTxStatus() != TxStatus.DECOMM) {
+                            radios.add(trans.getDacPort());
+                        }
+                    }
+
+                    Collections.sort(radios);
+                    command.setDataPort(dac.getDataPorts().get(
+                            radios.get(0) - 1));
                     command.setRadios(new int[] { port });
                     command.setDecibelTarget(transmitterGroup
-                            .getAudioDBTarget());
+                            .getTransferLowDBTarget());
+                    command.setDecibelTarget24(transmitterGroup
+                            .getTransferHighDBTarget());
                     command.setInputAudioFile(inputAudioFile);
                     command.setBroadcastDuration(-1);
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));

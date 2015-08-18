@@ -101,6 +101,9 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Apr 14, 2015 4394       bkowal      Added {@link #GET_CONFIGURED_TRANSMITTER_GROUPS}.
  * May 08, 2015 4470       bkowal      Configured transmitters must have both an associated dac and port.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 08, 2015 4636       bkowal      Support multiple decibel target levels.
+ * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 17, 2015 4636       bkowal      Added {@link #GET_TRANSMITTER_GROUPS_FOR_IDS}.
  * </pre>
  * 
  * @author rjpeter
@@ -111,7 +114,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
         @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS_QUERY),
-        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS, query = TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS_QUERY) })
 @Entity
 @Table(name = "transmitter_group", uniqueConstraints = { @UniqueConstraint(name = "uk_tx_group_name", columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, allocationSize = 1, name = TransmitterGroup.GEN, sequenceName = "transmitter_group_seq")
@@ -141,6 +145,10 @@ public class TransmitterGroup implements PositionOrdered {
 
     protected static final String GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY = "SELECT MAX(position) FROM TransmitterGroup";
 
+    public static final String GET_TRANSMITTER_GROUPS_FOR_IDS = "getTransmitterGroupsForIds";
+
+    protected static final String GET_TRANSMITTER_GROUPS_FOR_IDS_QUERY = "FROM TransmitterGroup tg WHERE tg.id IN :tgids";
+
     public static final int NAME_LENGTH = 40;
 
     @Id
@@ -168,12 +176,20 @@ public class TransmitterGroup implements PositionOrdered {
     @Column(nullable = false)
     private int position;
 
-    /*
-     * TODO: defaults? we may at least need defaults for the import of legacy
-     * information?
-     */
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
     private double audioDBTarget = -10.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double sameDBTarget = -10.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double alertDBTarget = -10.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double transferLowDBTarget = -10.0;
+
+    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
+    private double transferHighDBTarget = -10.0;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @Fetch(FetchMode.SUBSELECT)
@@ -279,6 +295,66 @@ public class TransmitterGroup implements PositionOrdered {
      */
     public void setAudioDBTarget(double audioDBTarget) {
         this.audioDBTarget = audioDBTarget;
+    }
+
+    /**
+     * @return the sameDBTarget
+     */
+    public double getSameDBTarget() {
+        return sameDBTarget;
+    }
+
+    /**
+     * @param sameDBTarget
+     *            the sameDBTarget to set
+     */
+    public void setSameDBTarget(double sameDBTarget) {
+        this.sameDBTarget = sameDBTarget;
+    }
+
+    /**
+     * @return the alertDBTarget
+     */
+    public double getAlertDBTarget() {
+        return alertDBTarget;
+    }
+
+    /**
+     * @param alertDBTarget
+     *            the alertDBTarget to set
+     */
+    public void setAlertDBTarget(double alertDBTarget) {
+        this.alertDBTarget = alertDBTarget;
+    }
+
+    /**
+     * @return the transferDBTarget
+     */
+    public double getTransferLowDBTarget() {
+        return transferLowDBTarget;
+    }
+
+    /**
+     * @param transferDBTarget
+     *            the transferDBTarget to set
+     */
+    public void setTransferLowDBTarget(double transferLowDBTarget) {
+        this.transferLowDBTarget = transferLowDBTarget;
+    }
+
+    /**
+     * @return the transferHighDBTarget
+     */
+    public double getTransferHighDBTarget() {
+        return transferHighDBTarget;
+    }
+
+    /**
+     * @param transferHighDBTarget
+     *            the transferHighDBTarget to set
+     */
+    public void setTransferHighDBTarget(double transferHighDBTarget) {
+        this.transferHighDBTarget = transferHighDBTarget;
     }
 
     public Set<Transmitter> getTransmitters() {

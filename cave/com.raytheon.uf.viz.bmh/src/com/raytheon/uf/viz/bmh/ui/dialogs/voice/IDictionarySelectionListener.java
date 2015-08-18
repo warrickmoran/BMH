@@ -17,12 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.stats;
+package com.raytheon.uf.viz.bmh.ui.dialogs.voice;
 
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 
 /**
- * Stat event used to track suite change processing time.
+ * Defines a listener for when the selected dictionary changes.
  * 
  * <pre>
  * 
@@ -30,31 +30,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 20, 2015 4397       bkowal      Initial creation
- * Jun 24, 2015 4397       bkowal      Added an empty constructor.
+ * Aug 4, 2015  4424       bkowal      Initial creation
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-@DynamicSerialize
-public class SuiteChangeProcessingEvent extends AbstractBMHProcessingTimeEvent {
 
-    private static final long serialVersionUID = -415299845757146279L;
+public interface IDictionarySelectionListener {
 
-    /**
-     * Constructor.
-     * 
-     * Empty constructor for {@link DynamicSerialize}.
-     */
-    public SuiteChangeProcessingEvent() {
-    }
+    public void dictionarySelected(Dictionary dictionary);
 
-    /**
-     * @param requestTime
-     */
-    public SuiteChangeProcessingEvent(long requestTime) {
-        super(requestTime);
-    }
 }

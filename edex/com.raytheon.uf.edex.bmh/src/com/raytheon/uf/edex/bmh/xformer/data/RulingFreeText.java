@@ -38,6 +38,7 @@ import org.apache.commons.lang.math.IntRange;
  * Jun 26, 2014 3302       bkowal      Initial creation
  * Feb 09, 2015 4102       bkowal      Set the lastEndIndex to the endIndex instead of
  *                                     accumulating the indices.
+ * Jul 06, 2015 4603       bkowal      Prevent the creation of elements for empty strings.
  * 
  * </pre>
  * 
@@ -103,8 +104,10 @@ public class RulingFreeText extends AbstractTextRuling implements IFreeText {
             }
             String beforeTarget = this.getText().substring(lastEndIndex,
                     beginIndex);
-            ITextRuling freeText = new RulingFreeText(beforeTarget);
-            transformedCandidates.add(freeText);
+            if (beforeTarget.trim().isEmpty() == false) {
+                ITextRuling freeText = new RulingFreeText(beforeTarget);
+                transformedCandidates.add(freeText);
+            }
 
             String target = this.getText().substring(beginIndex, endIndex);
             IBoundText boundText = new RulingBoundText(target);
@@ -112,8 +115,10 @@ public class RulingFreeText extends AbstractTextRuling implements IFreeText {
             transformedCandidates.add(boundText);
 
             String afterTarget = this.getText().substring(endIndex);
-            freeText = new RulingFreeText(afterTarget);
-            transformedCandidates.add(freeText);
+            if (afterTarget.trim().isEmpty() == false) {
+                ITextRuling freeText = new RulingFreeText(afterTarget);
+                transformedCandidates.add(freeText);
+            }
 
             lastEndIndex = endIndex;
         }

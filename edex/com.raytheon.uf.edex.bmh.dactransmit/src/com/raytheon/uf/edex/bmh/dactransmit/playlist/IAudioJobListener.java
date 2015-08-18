@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 8, 2014  3532       bkowal      Initial creation
+ * Jun 29, 2015 4602       bkowal      Added buffer as a parameter.
  * 
  * </pre>
  * 
@@ -47,6 +48,9 @@ public interface IAudioJobListener {
      *            generic identifier used for tracking and grouping purposes
      * @param message
      *            used to identify the audio that was retrieved
+     * @param buffer
+     *            the {@link IAudioFileBuffer} that was retrieved
      */
-    public void audioRetrievalFinished(String taskId, DacPlaylistMessage message);
+    public void audioRetrievalFinished(String taskId,
+            DacPlaylistMessage message, IAudioFileBuffer buffer);
 }

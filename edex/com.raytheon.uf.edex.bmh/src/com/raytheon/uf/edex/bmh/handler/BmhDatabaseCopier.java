@@ -38,6 +38,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.util.CollectionUtils;
+
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -61,6 +64,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
@@ -85,6 +91,8 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EdexException;
 
 /**
@@ -115,12 +123,20 @@ import com.raytheon.uf.edex.core.EdexException;
  * Apr 16, 2015  4395     rferrel     No longer copy expired {@link InputMessage}s.
  * Apr 16, 2015  4350     rferrel     Fix selected transmitters in {@link #copyInputMessages(Calendar)}.
  * May 12, 2015  4248     rjpeter     Updated copying of static message type.
+ * Jul 23, 2015  4676     bkowal      Disseminate a {@link TransmitterGroupConfigNotification} as
+ *                                    the practice database tables are truncated.
+ * Aug 03, 2015  4350     bkowal      Only assign a practice dac to a practice transmitter group if a
+ *                                    dac was originally assigned to the operational group.
+ * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
 public class BmhDatabaseCopier {
+
+    protected static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(BmhDatabaseCopier.class);
 
     private Map<Integer, Transmitter> transmitterMap;
 
@@ -146,10 +162,10 @@ public class BmhDatabaseCopier {
         this.pracMessageLogger = pracMessageLogger;
     }
 
-    public void copyAll() throws EdexException, SerializationException,
-            IOException {
+    public void copyAll(ITraceable traceable) throws EdexException,
+            SerializationException, IOException {
         Calendar currentTime = TimeUtil.newGmtCalendar();
-        clearAllPracticeTables();
+        clearAllPracticeTables(traceable);
         copyDictionaries();
         copyTtsVoices();
         copyTransmitterGroups();
@@ -165,7 +181,7 @@ public class BmhDatabaseCopier {
         BmhMessageProducer.sendConfigMessage(new ResetNotification(), false);
     }
 
-    private void clearAllPracticeTables() {
+    private void clearAllPracticeTables(ITraceable traceable) {
         clearTable(new PlaylistDao(false, this.pracMessageLogger));
         clearTable(new BroadcastMsgDao(false, this.pracMessageLogger));
         clearTable(new ValidatedMessageDao(false, this.pracMessageLogger));
@@ -177,16 +193,35 @@ public class BmhDatabaseCopier {
         clearTable(new AreaDao(false));
         clearTable(new TransmitterLanguageDao(false));
         clearTable(new TtsVoiceDao(false));
-        clearTable(new TransmitterGroupDao(false));
+        List<?> objects = clearTable(new TransmitterGroupDao(false));
+        if (CollectionUtils.isEmpty(objects) == false) {
+            List<TransmitterGroup> groups = new ArrayList<>(objects.size());
+            for (Object object : objects) {
+                groups.add((TransmitterGroup) object);
+            }
+
+            try {
+                BmhMessageProducer.sendConfigMessage(
+                        new TransmitterGroupConfigNotification(
+                                ConfigChangeType.Delete, groups, traceable),
+                        false);
+            } catch (Exception e) {
+                statusHandler
+                        .error(BMH_CATEGORY.UNKNOWN,
+                                "Error occurred sending transmitter group config delete notification for operational database copy",
+                                e);
+            }
+        }
         clearTable(new DictionaryDao(false));
         clearTable(new WordDao(false));
     }
 
-    private void clearTable(AbstractBMHDao<?, ?> dao) {
+    private List<?> clearTable(AbstractBMHDao<?, ?> dao) {
         List<?> all = dao.getAll();
         if ((all != null) && !all.isEmpty()) {
             dao.deleteAll(all);
         }
+        return all;
     }
 
     private void copyTtsVoices() {
@@ -216,7 +251,11 @@ public class BmhDatabaseCopier {
             group.setProgramSummary(null);
             Dac dac = dacMap.get(group.getDac());
             if (dac == null) {
-                if (dacIter.hasNext()) {
+                /*
+                 * Only find a dac for the current transmitter group if one had
+                 * originally been assigned to it.
+                 */
+                if (group.getDac() != null && dacIter.hasNext()) {
                     dac = dacIter.next();
                     dacMap.put(group.getDac(), dac);
                     group.setDac(dac.getId());

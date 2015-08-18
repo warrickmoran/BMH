@@ -126,6 +126,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Apr 23, 2015  4423     rferrel     Added {@link #changeTimeZone(String, String)}.
  * Apr 29, 2015  4394     bkowal      Handle shutdown notifications from non-clustered
  *                                    entities.
+ * Jul 08, 2015  4636     bkowal      Updated to specify additional decibel level arguments.
+ * Aug 04, 2015  4424     bkowal      Notify the {@link ClusterServer} after {@link DacConfig}
+ *                                    has been updated.
  * </pre>
  * 
  * @author bsteffen
@@ -542,6 +545,7 @@ public class CommsManager {
 
         this.config = newConfig;
         transmitServer.reconfigure(config);
+        clusterServer.reconfigure(transmitServer.getActiveDacTransmits());
         lineTapServer.reconfigure(config);
         if ((jms == null) && (config.getJmsConnection() != null)) {
             try {
@@ -630,7 +634,11 @@ public class CommsManager {
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
         args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_TARGET_KEY);
-        args.add(Double.toString(channel.getDbTarget()));
+        args.add(Double.toString(channel.getAudioDbTarget()));
+        args.add("-" + DacTransmitArgParser.SAME_DB_TARGET_KEY);
+        args.add(Double.toString(channel.getSameDbTarget()));
+        args.add("-" + DacTransmitArgParser.ALERT_DB_TARGET_KEY);
+        args.add(Double.toString(channel.getAlertDbTarget()));
         if (channel.getTimezone() != null) {
             args.add("-" + DacTransmitArgParser.TIMEZONE_KEY);
             args.add(channel.getTimezone());
