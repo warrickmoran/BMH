@@ -64,7 +64,9 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Aug 11, 2015  4372     bkowal      Added locking/unlocking of dacs participating in a
  *                                    live broadcast to delay load balancing.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- *                                    
+ * Aug 19, 2015  4764     bkowal      Handle the case when there are not any transmitters
+ *                                    that can be load balanced due to restrictions.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -386,9 +388,10 @@ public class ClusterServer extends AbstractServerThread {
             if (allDacsRunning && (pendingRequest == false)
                     && (requestFailed == false)) {
                 String overloadId = null;
-                ClusterStateMessage overloaded = state;
+                ClusterStateMessage overloaded = new ClusterStateMessage(state);
                 for (ClusterCommunicator communicator : communicators.values()) {
-                    ClusterStateMessage other = communicator.getClusterState();
+                    ClusterStateMessage other = new ClusterStateMessage(
+                            communicator.getClusterState());
                     if ((other == null) || other.hasRequestedTransmitter()) {
                         return;
                     }
@@ -415,18 +418,21 @@ public class ClusterServer extends AbstractServerThread {
                         }
                     }
 
-                    logger.info(
-                            "To balance the load 1 dac transmit has been requested from {}",
-                            overloadId);
-                    /*
-                     * TODO its entirely possible for 2 cluster members to be
-                     * here at the same time and both request the same key, to
-                     * minimize conflict it would be better if each requested a
-                     * different key using a better key selection mechanism.
-                     */
-                    String requestedGroup = overloaded
-                            .getConnectedTransmitters().get(0);
-                    state.setRequestedTransmitter(requestedGroup);
+                    if (overloaded.getConnectedTransmitters().isEmpty() == false) {
+                        logger.info(
+                                "To balance the load 1 dac transmit has been requested from {}",
+                                overloadId);
+                        /*
+                         * TODO its entirely possible for 2 cluster members to
+                         * be here at the same time and both request the same
+                         * key, to minimize conflict it would be better if each
+                         * requested a different key using a better key
+                         * selection mechanism.
+                         */
+                        String requestedGroup = overloaded
+                                .getConnectedTransmitters().get(0);
+                        state.setRequestedTransmitter(requestedGroup);
+                    }
                     sendStateToAll();
                 }
             } else if (pendingRequest && requestFailed) {

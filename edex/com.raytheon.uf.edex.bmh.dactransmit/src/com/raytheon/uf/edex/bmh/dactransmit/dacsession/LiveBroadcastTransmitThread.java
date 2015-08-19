@@ -83,6 +83,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jul 15, 2015 4636       bkowal      Eliminate packet-level audio alterations.
  * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
+ * Aug 19, 2015 4764       bkowal      Default the {@link #live} flag to true. No longer
+ *                                     alter the {@link #live} flag mid-broadcast.
  * </pre>
  * 
  * @author bkowal
@@ -103,7 +105,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     private final long requestTime;
 
-    private volatile boolean streaming;
+    private volatile boolean live = true;
 
     private boolean bytesReceived = false;
 
@@ -173,8 +175,6 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         status.addTransmitterGroup(this.config.getTransmitterGroup());
         this.commsManager.sendDacLiveBroadcastMsg(status);
 
-        this.streaming = true;
-
         waitForAudio();
 
         AudioPacketLogger packetLog = new AudioPacketLogger(
@@ -182,7 +182,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         /*
          * end the broadcast only after all buffered audio has been streamed.
          */
-        while (streaming || this.audioBuffer.isEmpty() == false) {
+        while (live || this.audioBuffer.isEmpty() == false) {
             try {
                 // check for data every 5ms, we only have a 20ms window.
                 // 0 - 5 ms delay between end of audio and end of the broadcast.
@@ -273,7 +273,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 "Live Broadcast Buffering", getClass(), 10);
         byte[] silence = new byte[DacSessionConstants.SINGLE_PAYLOAD_SIZE];
         Arrays.fill(silence, DacSessionConstants.SILENCE);
-        while (streaming && this.audioBuffer.isEmpty()) {
+        while (live && this.audioBuffer.isEmpty()) {
             try {
                 this.streamAudio(silence);
                 packetLog.packetProcessed();
@@ -307,7 +307,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
     }
 
     public void shutdown() {
-        this.streaming = false;
+        this.live = false;
     }
 
     /**

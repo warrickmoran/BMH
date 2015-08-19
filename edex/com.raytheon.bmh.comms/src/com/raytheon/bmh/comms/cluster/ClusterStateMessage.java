@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 11, 2014  3762     bsteffen    Add load balancing of dac transmits.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Aug 17, 2015  4424     bkowal      Added {@link #setConnectedTransmitters(List)}.
+ * Aug 19, 2015  4764     bkowal      Added a copy constructor.
  * 
  * </pre>
  * 
@@ -53,6 +54,15 @@ public class ClusterStateMessage {
 
     @DynamicSerializeElement
     private String requestedTransmitter = null;
+
+    public ClusterStateMessage() {
+    }
+
+    public ClusterStateMessage(ClusterStateMessage state) {
+        this.connectedTransmitters = new ArrayList<>(
+                state.getConnectedTransmitters());
+        this.requestedTransmitter = state.getRequestedTransmitter();
+    }
 
     public void add(String transmitterGroup) {
         this.connectedTransmitters.add(transmitterGroup);

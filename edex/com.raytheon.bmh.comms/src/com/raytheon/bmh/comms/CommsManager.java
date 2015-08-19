@@ -133,6 +133,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    has been updated.
  * Aug 11, 2015  4372     bkowal      Lock/unlock transmitters associated with a live broadcast.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
+ * Aug 19, 2015  4764     bkowal      Ensure comms manager will not attempt to keep restarting
+ *                                    dacs that fail to sync that have been started on another member.
  * </pre>
  * 
  * @author bsteffen
@@ -415,11 +417,30 @@ public class CommsManager {
                                         "Dac Transmit for {} does not currently have sync with the dac (duration: {} ms).",
                                         channel.getTransmitterGroup(), duration);
                                 /*
-                                 * Determine if it is time to restart the
-                                 * process based on how long the process has not
-                                 * been connected to the dac.
+                                 * Verify that the process is not running on
+                                 * another cluster member.
                                  */
-                                if (duration >= MAX_DAC_DISCONNECT_TIME) {
+                                if (clusterServer.isConnected(transmitterGroup)) {
+                                    /*
+                                     * Remove the local connection and destroy
+                                     * the local process.
+                                     */
+                                    this.transmitServer
+                                            .dacTransmitDisconnected(transmitterGroup);
+                                    Process p = this.startedProcesses
+                                            .remove(transmitterGroup);
+                                    if (p != null) {
+                                        p.destroy();
+                                    }
+                                    logger.info(
+                                            "Killing Dac Transmit for {}. Proccess is on another cluster member.",
+                                            channel.getTransmitterGroup());
+                                } else if (duration >= MAX_DAC_DISCONNECT_TIME) {
+                                    /*
+                                     * Determine if it is time to restart the
+                                     * process based on how long the process has
+                                     * not been connected to the dac.
+                                     */
                                     this.disconnectedDacProcesses
                                             .remove(transmitterGroup);
                                     launchDacTransmit(dac, channel, true);
