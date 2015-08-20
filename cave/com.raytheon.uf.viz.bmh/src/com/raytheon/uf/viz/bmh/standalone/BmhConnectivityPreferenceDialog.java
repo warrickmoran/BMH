@@ -61,6 +61,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Feb 05, 2015  3743      bsteffen    Initial creation
  * Feb 16, 2015  4119      bsteffen    Do not validate when BMH is not available.
  * Feb 16, 2015  4168      bsteffen    Do not allow broadcast live in practice mode.
+ * Aug 20, 2015  4768      bkowal      Ensure information entered into the dialog is included
+ *                                     with the available servers.
  * 
  * </pre>
  * 
@@ -94,7 +96,6 @@ public class BmhConnectivityPreferenceDialog extends
         broadcastServer = BMHServers.getSavedBroadcastServer();
 
     }
-
 
     @Override
     protected void createTextBoxes(Composite textBoxComp) {
@@ -253,27 +254,25 @@ public class BmhConnectivityPreferenceDialog extends
 
             return everythingGood;
         } else if (super.validate()) {
-                ConnectivityResult results = null;
-                try {
-                    GetServersResponse servers = ConnectivityManager
-                        .checkLocalizationServer(getLocalization(),
-                                    false);
-                    results = validateBmhServer(servers.getServerLocations()
-                            .get(BMHServers.BMH_SERVER));
-                } catch (VizException e) {
-                    results = new ConnectivityResult(false, bmhServer);
-                    results.exception = e;
-                }
-                appendDetails(buildDetails(results));
-                if (!results.hasConnectivity) {
-                    status = buildErrorMessage(results);
-                }
-                if (localizationSrv != null
-                        && !localizationSrv.widget.isDisposed()) {
-                    localizationSrv.widget
-                            .setBackground(getTextColor(results.hasConnectivity));
-                }
-                updateStatus(results.hasConnectivity, status, details);
+            ConnectivityResult results = null;
+            try {
+                GetServersResponse servers = ConnectivityManager
+                        .checkLocalizationServer(getLocalization(), false);
+                results = validateBmhServer(servers.getServerLocations().get(
+                        BMHServers.BMH_SERVER));
+            } catch (VizException e) {
+                results = new ConnectivityResult(false, bmhServer);
+                results.exception = e;
+            }
+            appendDetails(buildDetails(results));
+            if (!results.hasConnectivity) {
+                status = buildErrorMessage(results);
+            }
+            if (localizationSrv != null && !localizationSrv.widget.isDisposed()) {
+                localizationSrv.widget
+                        .setBackground(getTextColor(results.hasConnectivity));
+            }
+            updateStatus(results.hasConnectivity, status, details);
             return results.hasConnectivity;
 
         } else {
@@ -316,6 +315,20 @@ public class BmhConnectivityPreferenceDialog extends
     }
 
     public GetServersResponse getServers() {
+        if (this.useBmhServer) {
+            /*
+             * Verify that the entered bmh server is included with the validated
+             * servers.
+             */
+            Map<String, String> serverLocations = validatedServers
+                    .getServerLocations();
+            if (serverLocations == null) {
+                serverLocations = new HashMap<>(1, 1.0f);
+            }
+            serverLocations.put(BMHServers.BMH_SERVER, this.bmhServer);
+            this.validatedServers.setServerLocations(serverLocations);
+        }
+
         return validatedServers;
     }
 
