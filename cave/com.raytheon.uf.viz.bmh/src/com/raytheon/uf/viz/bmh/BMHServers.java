@@ -43,6 +43,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Oct 09, 2014 3656       bkowal      Initial creation
  * Oct 17, 2014 3687       bsteffen    Support practice servers.
  * Feb 05, 2015 3743       bsteffen    Add methods needed for running standalone.
+ * Aug 20, 2015 4768       bkowal      Add methods for line tap servers when running
+ *                                     in standalone.
  * 
  * </pre>
  * 
@@ -59,8 +61,10 @@ public final class BMHServers {
     private static final String BMH_SERVER_OPTIONS = "bmh.server.options";
 
     private static final String LINETAP_SERVER = "bmh.comms.manager.linetap";
-    
-    private static final String BROADCAST_SERVER = "bmh.comms.manager.broadcast";
+
+    private static final String LINETAP_SERVER_OPTIONS = "bmh.comms.manager.linetap.options";
+
+    public static final String BROADCAST_SERVER = "bmh.comms.manager.broadcast";
 
     private static final String BROADCAST_SERVER_OPTIONS = "bmh.comms.manager.broadcast.options";
 
@@ -75,16 +79,24 @@ public final class BMHServers {
     private static String DEFAULT_BMH_SERVER = "http://" + DEFAULT_SERVER
             + ":9583/services";
 
-    /* Only used to prompt user when request edex is down */
-    private static String DEFAULT_BROADCAST_SERVER = "tcp://"
-            + DEFAULT_SERVER + ":58269/";
+    private static String DEFAULT_LINETAP_SERVER = "tcp://" + DEFAULT_SERVER
+            + ":58260/";
 
-    public static String getLineTapServer() {
+    /* Only used to prompt user when request edex is down */
+    private static String DEFAULT_BROADCAST_SERVER = "tcp://" + DEFAULT_SERVER
+            + ":58269/";
+
+    public static String getLineTapServerKey() {
         String key = LINETAP_SERVER;
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
             key = PRACTICE_LINETAP_SERVER;
         }
-        return VizServers.getInstance().getServerLocation(key);
+        return key;
+    }
+
+    public static String getLineTapServer() {
+        return VizServers.getInstance()
+                .getServerLocation(getLineTapServerKey());
     }
 
     public static String getBroadcastServerKey() {
@@ -106,10 +118,14 @@ public final class BMHServers {
      * 
      */
     public static void saveServers() {
-        String bmhServer = VizServers.getInstance().getServerLocation(BMH_SERVER);
-        String broadcastServer = VizServers.getInstance()
-                .getServerLocation(BROADCAST_SERVER);
-        if (bmhServer == null && broadcastServer == null) {
+        String bmhServer = VizServers.getInstance().getServerLocation(
+                BMH_SERVER);
+        String broadcastServer = VizServers.getInstance().getServerLocation(
+                BROADCAST_SERVER);
+        String lineTapServer = VizServers.getInstance().getServerLocation(
+                LINETAP_SERVER);
+        if (bmhServer == null && broadcastServer == null
+                && lineTapServer == null) {
             return;
         }
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
@@ -124,6 +140,12 @@ public final class BMHServers {
             String serverOptions = ServerRemembrance.formatServerOptions(
                     broadcastServer, prefs, BROADCAST_SERVER_OPTIONS);
             prefs.setValue(BROADCAST_SERVER_OPTIONS, serverOptions);
+        }
+        if (lineTapServer != null) {
+            prefs.setValue(LINETAP_SERVER, lineTapServer);
+            String serverOptions = ServerRemembrance.formatServerOptions(
+                    lineTapServer, prefs, LINETAP_SERVER_OPTIONS);
+            prefs.setValue(LINETAP_SERVER_OPTIONS, serverOptions);
         }
         if (prefs instanceof IPersistentPreferenceStore) {
             try {
@@ -154,6 +176,21 @@ public final class BMHServers {
     public static String[] getSavedBmhServerOptions() {
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
         return ServerRemembrance.getServerOptions(prefs, BMH_SERVER_OPTIONS);
+    }
+
+    public static String getSavedLineTapServer() {
+        IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
+        String bmhEdex = prefs.getString(getLineTapServerKey());
+        if (bmhEdex == null || bmhEdex.isEmpty()) {
+            return DEFAULT_LINETAP_SERVER;
+        }
+        return bmhEdex;
+    }
+
+    public static String[] getSavedBmhLineTapServerOptions() {
+        IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
+        return ServerRemembrance
+                .getServerOptions(prefs, LINETAP_SERVER_OPTIONS);
     }
 
     /**

@@ -53,6 +53,7 @@ import com.raytheon.uf.common.status.UFStatus;
  * Dec 1, 2014  3863       bkowal      Average audio over one second.
  * Aug 12, 2015 4424       bkowal      Increase range of decibel level meter.
  * Aug 17, 2015 4424       bkowal      Calculate audio decibel range every 0.25 seconds.
+ * Aug 20, 2015 4768       bkowal      Adjusted meter range.
  * 
  * </pre>
  * 
@@ -66,18 +67,18 @@ public class DecibelPlotsComp extends Composite implements
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(DecibelPlotsComp.class);
 
-    private final double DECIBEL_MIN_VALUE = -50.0;
+    private final double DECIBEL_MIN_VALUE = -70.0;
 
-    private final double DECIBEL_MAX_VALUE = 10.0;
+    private final double DECIBEL_MAX_VALUE = -20.0;
 
     /* All must be specified for the level color bar to show up correctly. */
-    private final double METER_LOLO_LEVEL = -35.0;
+    private final double METER_LOLO_LEVEL = -60.0;
 
-    private final double METER_LO_LEVEL = -30.0;
+    private final double METER_LO_LEVEL = -55.0;
 
-    private final double METER_HI_LEVEL = -5.0;
+    private final double METER_HI_LEVEL = -25.0;
 
-    private final double METER_HIHI_LEVEL = 2.0;
+    private final double METER_HIHI_LEVEL = -20.0;
 
     private final String TREND_X_TITLE = "Segment";
 
