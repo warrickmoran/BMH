@@ -70,8 +70,8 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Aug 20, 2015  4768      bkowal      Ensure information entered into the dialog is included
  *                                     with the available servers.
  * Aug 20, 2015  4768      bkowal      Line Tap Server is now required when connecting directly
- *                                     to BMH.                                    
- * 
+ *                                     to BMH.
+ * Aug 21, 2015  4768      rjpeter     Direct connect also needs broadcast server.
  * </pre>
  * 
  * @author bsteffen
@@ -222,6 +222,7 @@ public class BmhConnectivityPreferenceDialog extends
             details = null;
             bmhServer = bmhServerEntry.getText();
             lineTapServer = lineTapServerEntry.getText();
+            broadcastServer = broadcastServerEntry.getText();
             validatedServers = null;
 
             if (siteText != null && !siteText.isDisposed()) {
@@ -262,28 +263,30 @@ public class BmhConnectivityPreferenceDialog extends
             everythingGood = results.hasConnectivity;
             updateStatus(everythingGood, status, details);
 
+            if (everythingGood == false) {
+                return false;
+            }
+
+            results = validateBroadcastServer(broadcastServer);
+            appendDetails(buildDetails(results));
+            if (!results.hasConnectivity && status == null) {
+                status = buildErrorMessage(results);
+            }
+            if (broadcastServerEntry != null
+                    && !broadcastServerEntry.widget.isDisposed()) {
+                broadcastServerEntry.widget
+                        .setBackground(getTextColor(results.hasConnectivity));
+            }
+            everythingGood = results.hasConnectivity;
+            updateStatus(everythingGood, status, details);
+
             return everythingGood;
         } else if (onlyBroadcastLive) {
             status = null;
             details = null;
             broadcastServer = broadcastServerEntry.getText();
             validatedServers = null;
-            ConnectivityResult results = new ConnectivityResult(false,
-                    bmhServer);
-            try {
-                Map<String, String> serverLocations = new HashMap<>();
-                serverLocations.put(BMHServers.BROADCAST_SERVER,
-                        broadcastServer);
-                VizServers.getInstance().setServerLocations(serverLocations);
-                StandaloneBroadcastLiveDlg.getGroups();
-                validatedServers = new GetServersResponse();
-
-                validatedServers.setServerLocations(serverLocations);
-                results.hasConnectivity = true;
-            } catch (Exception e) {
-                results.exception = e;
-            }
-
+            ConnectivityResult results = validateBroadcastServer(broadcastServer);
             appendDetails(buildDetails(results));
             if (!results.hasConnectivity && status == null) {
                 status = buildErrorMessage(results);
@@ -368,7 +371,42 @@ public class BmhConnectivityPreferenceDialog extends
             results.hasConnectivity = true;
         } catch (Exception e) {
             results.exception = e;
+        }
+
+        return results;
+    }
+
+    private ConnectivityResult validateBroadcastServer(String broadcastServer) {
+        ConnectivityResult results = new ConnectivityResult(false,
+                broadcastServer);
+        if (broadcastServer == null) {
+            results.exception = new NullPointerException(
+                    "No Broadcast Server Avaialble");
             return results;
+        }
+        try {
+            Map<String, String> serverLocations = null;
+
+            if (validatedServers != null) {
+                serverLocations = validatedServers.getServerLocations();
+            }
+
+            if (serverLocations == null) {
+                serverLocations = new HashMap<>();
+            }
+
+            serverLocations.put(BMHServers.BROADCAST_SERVER, broadcastServer);
+            VizServers.getInstance().setServerLocations(serverLocations);
+            StandaloneBroadcastLiveDlg.getGroups();
+
+            if (validatedServers == null) {
+                validatedServers = new GetServersResponse();
+            }
+
+            validatedServers.setServerLocations(serverLocations);
+            results.hasConnectivity = true;
+        } catch (Exception e) {
+            results.exception = e;
         }
 
         return results;
@@ -377,7 +415,8 @@ public class BmhConnectivityPreferenceDialog extends
     protected void updateCheckboxes() {
         bmhServerEntry.widget.setEnabled(useBmhServer);
         lineTapServerEntry.widget.setEnabled(useBmhServer);
-        broadcastServerEntry.widget.setEnabled(onlyBroadcastLive);
+        broadcastServerEntry.widget.setEnabled(useBmhServer
+                || onlyBroadcastLive);
         super.setLocalizationEnabled(!(useBmhServer || onlyBroadcastLive));
         super.siteText.setEnabled(!onlyBroadcastLive);
         validate();
@@ -405,6 +444,8 @@ public class BmhConnectivityPreferenceDialog extends
             serverLocations.put(BMHServers.BMH_SERVER, this.bmhServer);
             serverLocations.put(BMHServers.getLineTapServerKey(),
                     this.lineTapServer);
+            serverLocations.put(BMHServers.BROADCAST_SERVER,
+                    this.broadcastServer);
             this.validatedServers.setServerLocations(serverLocations);
         }
 
