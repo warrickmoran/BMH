@@ -85,6 +85,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * Aug 19, 2015 4764       bkowal      Default the {@link #live} flag to true. No longer
  *                                     alter the {@link #live} flag mid-broadcast.
+ * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
  * </pre>
  * 
  * @author bkowal
@@ -142,7 +143,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         this.previousPacket = this.dataThread.pausePlayback();
         // Build playlist switch notification
         this.notifyBroadcastSwitch(STATE.STARTED);
-        if (this.type == BROADCASTTYPE.EO) {
+        if (this.type == BROADCASTTYPE.EO && this.config.getToneAudio() != null) {
             // play the Alert / SAME tones.
             AudioPacketLogger packetLog = new AudioPacketLogger("SAME Tones",
                     getClass(), 30);
@@ -202,7 +203,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
         packetLog = new AudioPacketLogger("End of Message Tones", getClass(),
                 30);
-        if (this.type == BROADCASTTYPE.EO) {
+        if (this.type == BROADCASTTYPE.EO && this.config.getToneAudio() != null) {
             this.playTones(this.config.getEndToneAudio(), "End of Message",
                     this.sameDbTarget, packetLog);
         }
