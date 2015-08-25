@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 
+	Note: Comms Manager must be restarted before any changes to this file
+	will take effect.
+ -->
+<regulationConfiguration>
+	<dbSilenceLimit>-60.0</dbSilenceLimit>
+	<regulationAlgorithm>LINEAR_PCM</regulationAlgorithm>
+</regulationConfiguration>

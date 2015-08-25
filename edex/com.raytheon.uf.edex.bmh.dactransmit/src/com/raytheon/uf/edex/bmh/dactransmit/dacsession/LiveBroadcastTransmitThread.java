@@ -43,6 +43,8 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -86,6 +88,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 19, 2015 4764       bkowal      Default the {@link #live} flag to true. No longer
  *                                     alter the {@link #live} flag mid-broadcast.
  * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
+ * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * </pre>
  * 
  * @author bkowal
@@ -223,9 +226,10 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
          * Attenuate / amplify all received data before it is added to the
          * buffer. Here we know that the audio db target will be used.
          */
-        CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
-                data);
         try {
+            CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
+                    LoadedAudioRegulationConfiguration.getConfiguration()
+                            .getDbSilenceLimit(), data);
             data = regulator.regulateAudioCollection(this.dbTarget);
         } catch (Exception e) {
             logger.error("Failed to amplify/attenuate received audio.", e);
@@ -240,8 +244,10 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
          * Attenuate / amplify all received data before it is added to the
          * buffer. Here we know that the audio db target will be used.
          */
-        AudioRegulator regulator = new AudioRegulator();
         try {
+            AudioRegulator regulator = new AudioRegulator(
+                    LoadedAudioRegulationConfiguration.getConfiguration()
+                            .getDbSilenceLimit());
             toneAudio = regulator.regulateAudioVolume(toneAudio, dbTarget,
                     toneAudio.length);
         } catch (Exception e) {

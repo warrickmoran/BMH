@@ -87,7 +87,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 18, 2015  #4490     bkowal       Disseminate a {@link AudioPlaybackCompleteNotification} a
  *                                      after the playback of recorded audio concludes.
  * Aug 17, 2015  #4757     bkowal       Recorded audio retrieval can now trigger an unlikely Exception.
- * 
+ * Aug 24, 2015  #4770     bkowal       Handle {@link Exception} from the {@link AudioRecorderThread}.
  * 
  * </pre>
  * 
@@ -510,7 +510,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT,
                     this.decibelPlotsComp);
-        } catch (AudioException e) {
+        } catch (Exception e) {
             statusHandler.error("Audio recording has failed.", e);
             return;
         }

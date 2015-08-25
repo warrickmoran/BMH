@@ -40,7 +40,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2015 4636       bkowal      Initial creation
  * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
- * 
+ * Aug 24, 2015 4770       bkowal      The decibel silence limit is now configurable.
  * </pre>
  * 
  * @author bkowal
@@ -64,7 +64,9 @@ public class CollectibleAudioRegulator extends AudioRegulator {
     /**
      * 
      */
-    public CollectibleAudioRegulator(List<byte[]> audioCollectionToRegulate) {
+    public CollectibleAudioRegulator(final double dbSilenceLimit,
+            List<byte[]> audioCollectionToRegulate) {
+        super(dbSilenceLimit);
         if (audioCollectionToRegulate == null
                 || audioCollectionToRegulate.isEmpty()) {
             throw new IllegalArgumentException(
@@ -111,7 +113,7 @@ public class CollectibleAudioRegulator extends AudioRegulator {
          */
         if ((this.maxDbRange == Double.NEGATIVE_INFINITY && this.minDbRange == Double.NEGATIVE_INFINITY)
                 || this.maxDbRange == dbTarget
-                || this.maxDbRange <= DB_SILENCE_LIMIT) {
+                || this.maxDbRange <= dbSilenceLimit) {
             return this.audioCollectionToRegulate;
         }
 

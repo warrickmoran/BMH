@@ -28,6 +28,8 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulator;
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * Abstract representation of an audio retrieval job.
@@ -44,6 +46,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
  *                                     DISABLE_AUDIO_ATTENUATION.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
+ * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * 
  * </pre>
  * 
@@ -133,9 +136,18 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
             return originalAudio;
         }
 
+        double dbSilenceLimit;
+        try {
+            dbSilenceLimit = LoadedAudioRegulationConfiguration
+                    .getConfiguration().getDbSilenceLimit();
+        } catch (Exception e) {
+            throw new AudioRetrievalException(
+                    "Failed to load the audio regulation configuration.", e);
+        }
+
         byte[] regulatedAudio = new byte[0];
         try {
-            AudioRegulator audioRegulator = new AudioRegulator();
+            AudioRegulator audioRegulator = new AudioRegulator(dbSilenceLimit);
             regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
                     dbTarget, AUDIO_SAMPLE_SIZE);
             logger.info("Successfully finished audio attenuation/amplification in "

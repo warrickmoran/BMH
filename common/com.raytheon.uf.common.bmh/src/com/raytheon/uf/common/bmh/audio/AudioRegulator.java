@@ -51,6 +51,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Jul 14, 2015 4636       rjpeter     Check entire stream for max.
  * Jul 15, 2015 4636       bkowal      Increased visibility of a few methods for abstraction.
  * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
+ * Aug 24, 2015 4770       bkowal      The decibel silence limit is now configurable.
  * </pre>
  * 
  * @author bkowal
@@ -58,9 +59,13 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  */
 
 public class AudioRegulator {
-    protected static final double DB_SILENCE_LIMIT = -40.;
+    protected final double dbSilenceLimit;
 
     private long duration;
+
+    public AudioRegulator(final double dbSilenceLimit) {
+        this.dbSilenceLimit = dbSilenceLimit;
+    }
 
     /**
      * Adjusts the regulated audio data according to the specified volume
@@ -154,7 +159,7 @@ public class AudioRegulator {
                 length);
         if ((decibelRange.getMinimumDouble() == Double.NEGATIVE_INFINITY && decibelRange
                 .getMaximumDouble() == Double.NEGATIVE_INFINITY)
-                || decibelRange.getMaximumDouble() <= DB_SILENCE_LIMIT) {
+                || decibelRange.getMaximumDouble() <= this.dbSilenceLimit) {
             return;
         }
 

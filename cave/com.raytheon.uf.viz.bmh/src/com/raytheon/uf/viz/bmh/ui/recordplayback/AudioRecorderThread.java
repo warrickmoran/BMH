@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,7 +35,12 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.bmh.audio.CollectibleAudioRegulator;
+import com.raytheon.uf.common.bmh.broadcast.AudioRegulationSettingsCommand;
+import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 
 /**
  * Manages the recording and storage of audio. Provides access to all recorded
@@ -50,6 +58,7 @@ import com.raytheon.uf.common.bmh.audio.CollectibleAudioRegulator;
  * Nov 24, 2014 3862       bkowal      Added a plot listener.
  * Aug 17, 2015 4757       bkowal      Audio is now altered in 5 packet
  *                                     segments prior to saving.
+ * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * 
  * </pre>
  * 
@@ -72,6 +81,8 @@ public class AudioRecorderThread extends Thread {
 
     private final IAudioRecorderListener plotListener;
 
+    private AudioRegulationConfiguration regulationConfiguration;
+
     private List<byte[]> samples;
 
     private TargetDataLine line;
@@ -79,8 +90,14 @@ public class AudioRecorderThread extends Thread {
     private IAudioRecorderListener listener;
 
     public AudioRecorderThread(final int sampleCount,
-            final IAudioRecorderListener plotListener) throws AudioException {
+            final IAudioRecorderListener plotListener) throws Exception {
         super(AudioRecorderThread.class.getName());
+
+        /*
+         * Retrieve the {@link AudioRegulationConfiguration}.
+         */
+        this.retrieveRegulationConfiguration();
+
         this.samples = new LinkedList<>();
         this.sampleCount = sampleCount;
         this.plotListener = plotListener;
@@ -92,6 +109,40 @@ public class AudioRecorderThread extends Thread {
             this.closeLine();
             throw new AudioException(
                     "Failed to prepare an audio recording session!", e);
+        }
+    }
+
+    private void retrieveRegulationConfiguration() throws Exception {
+        String commsLoc = BMHServers.getBroadcastServer();
+        if (commsLoc == null) {
+            throw new CommsCommunicationException(
+                    "No address has been specified for comms manager "
+                            + BMHServers.getBroadcastServerKey() + ".");
+        }
+        URI commsURI = null;
+        try {
+            commsURI = new URI(commsLoc);
+        } catch (URISyntaxException e) {
+            throw new CommsCommunicationException(
+                    "Invalid Comms Manager Location.", e);
+        }
+        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
+            socket.setTcpNoDelay(true);
+            SerializationUtil.transformToThriftUsingStream(
+                    new AudioRegulationSettingsCommand(),
+                    socket.getOutputStream());
+            Object message = SerializationUtil.transformFromThrift(
+                    Object.class, socket.getInputStream());
+            if (message == null) {
+                throw new NullPointerException(
+                        "Unexpected null response from comms manager.");
+            } else if (message instanceof AudioRegulationConfiguration) {
+                this.regulationConfiguration = (AudioRegulationConfiguration) message;
+            } else {
+                throw new IllegalStateException(
+                        "Unexpected response from comms manager of type: "
+                                + message.getClass().getSimpleName());
+            }
         }
     }
 
@@ -178,6 +229,7 @@ public class AudioRecorderThread extends Thread {
     private void regulateAudioSamples(List<byte[]> regulatorySequence,
             ByteBuffer destination) throws Exception {
         final CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
+                this.regulationConfiguration.getDbSilenceLimit(),
                 regulatorySequence);
         regulatorySequence = regulator.regulateAudioCollection(0);
         for (byte[] regulatedSample : regulatorySequence) {

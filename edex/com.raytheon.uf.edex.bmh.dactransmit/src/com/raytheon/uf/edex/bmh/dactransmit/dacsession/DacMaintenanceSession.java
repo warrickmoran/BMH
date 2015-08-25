@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.tones.ToneGenerationException;
 import com.raytheon.uf.common.bmh.tones.TonesManager;
 import com.raytheon.uf.common.bmh.tones.TonesManager.TransferType;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
+import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
 import com.raytheon.uf.edex.bmh.dactransmit.events.DacStatusUpdateEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.LostSyncEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.RegainSyncEvent;
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEven
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * A Dac Session in maintenance mode will stream audio bytes read from an input
@@ -83,6 +85,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 15, 2015 4636       bkowal      Alter audio before it is packaged into packets.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
+ * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * </pre>
  * 
  * @author bkowal
@@ -241,7 +244,9 @@ public class DacMaintenanceSession implements IDacSession,
                 /*
                  * alter the audio based on transfer tones rules.
                  */
-                AudioRegulator regulator = new AudioRegulator();
+                AudioRegulator regulator = new AudioRegulator(
+                        LoadedAudioRegulationConfiguration.getConfiguration()
+                                .getDbSilenceLimit());
                 segment1 = regulator.regulateAudioVolume(segment1, seg1Db,
                         segment1.length);
                 segment2 = regulator.regulateAudioVolume(segment2, seg2Db,
@@ -256,7 +261,9 @@ public class DacMaintenanceSession implements IDacSession,
         }
 
         if (regulateAudio) {
-            AudioRegulator regulator = new AudioRegulator();
+            AudioRegulator regulator = new AudioRegulator(
+                    LoadedAudioRegulationConfiguration.getConfiguration()
+                            .getDbSilenceLimit());
             this.audio = regulator.regulateAudioVolume(this.audio,
                     this.config.getDbTarget(), this.audio.length);
         }

@@ -34,6 +34,7 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
+import com.raytheon.uf.common.bmh.broadcast.AudioRegulationSettingsCommand;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.IOnDemandBroadcastMsg;
@@ -45,6 +46,7 @@ import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
 /**
@@ -67,6 +69,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Dec 12, 2014 3603       bsteffen    Reuse alignment task for transfer tones.
  * Feb 05, 2015 3743       bsteffen    Ability to return groups.
  * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
+ * Aug 24, 2015 4770       bkowal      Handle {@link AudioRegulationSettingsCommand}.
  * 
  * </pre>
  * 
@@ -127,6 +130,13 @@ public class BroadcastStreamServer extends AbstractServerThread {
                                 .getOutputStream());
                 socket.close();
             }
+            return;
+        }
+        if (obj instanceof AudioRegulationSettingsCommand) {
+            SerializationUtil.transformToThriftUsingStream(
+                    LoadedAudioRegulationConfiguration.getConfiguration(),
+                    socket.getOutputStream());
+            socket.close();
             return;
         }
 

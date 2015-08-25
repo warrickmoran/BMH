@@ -42,7 +42,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Nov 05, 2014 3630       bkowal      Added AUDIO_DATA_DIRECTORY
  * Dec 12, 2014 3603       bsteffen    Added MAINTENANCE_DATA_DIRECTORY
  * Aug 10, 2015 4424       bkowal      Added {@link #PLAYLIST_DIRECTORY}.
- * 
+ * Aug 24, 2015 4770       bkowal      Added {@link #getBmhConfDirectory()}.
  * </pre>
  * 
  * @author bkowal
@@ -70,6 +70,8 @@ public final class BMHConstants {
 
     public static final String PLAYLIST_DIRECTORY = "playlist";
 
+    private static final String CONF_DIRECTORY = "conf";
+
     private static final String BMH_HOME_ENV_VAR = "BMH_HOME";
 
     private static final String BMH_DATA_ENV_VAR = "BMH_DATA";
@@ -77,6 +79,8 @@ public final class BMHConstants {
     private static String BMH_HOME_DIRECTORY;
 
     private static String BMH_DATA_DIRECTORY;
+
+    private static String BMH_CONF_DIRECTORY;
 
     public static final String MAINTENANCE_DATA_DIRECTORY = "maintenance";
 
@@ -92,6 +96,14 @@ public final class BMHConstants {
             BMH_DATA_DIRECTORY = getDataDirectory();
         }
         return BMH_DATA_DIRECTORY;
+    }
+
+    public static String getBmhConfDirectory() {
+        if (BMH_CONF_DIRECTORY == null) {
+            BMH_CONF_DIRECTORY = getBmhHomeDirectory() + File.separatorChar
+                    + CONF_DIRECTORY;
+        }
+        return BMH_CONF_DIRECTORY;
     }
 
     public static Path getBmhDataDirectory(boolean operational) {
