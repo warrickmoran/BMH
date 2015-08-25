@@ -22,7 +22,9 @@ package com.raytheon.bmh.comms.broadcast;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -70,16 +72,13 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Feb 05, 2015 3743       bsteffen    Ability to return groups.
  * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
  * Aug 24, 2015 4770       bkowal      Handle {@link AudioRegulationSettingsCommand}.
+ * Aug 25, 2015 4775       bkowal      Added {@link #remoteDacConnections} to track remote
+ *                                     dac transmit connections.
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
- */
-
-/*
- * TODO: still need to finalize clustering implementation. Need access to
- * additional hardware to validate, verify and optimize implementation.
  */
 
 public class BroadcastStreamServer extends AbstractServerThread {
@@ -95,6 +94,13 @@ public class BroadcastStreamServer extends AbstractServerThread {
     private final ConcurrentMap<String, AbstractBroadcastingTask> broadcastStreamingTasksMap = new ConcurrentHashMap<>();
 
     private final List<String> availableDacConnections = new ArrayList<>();
+
+    /*
+     * Keep track of Dac Transmits connected to other Comms Managers so that
+     * they can be included in the {@link List} of Dac Transmits that are
+     * returned to CAVE when they are requested directly from us.
+     */
+    private final Set<String> remoteDacConnections = new HashSet<>();
 
     /**
      * @param port
@@ -123,13 +129,18 @@ public class BroadcastStreamServer extends AbstractServerThread {
         logger.info("Handling {} request.", obj.getClass().getName());
 
         if (obj instanceof LiveBroadcastListGroupsCommand) {
+            List<String> availableDacs = new ArrayList<>();
             synchronized (this.availableDacConnections) {
-                SerializationUtil.transformToThriftUsingStream(
-                        new LiveBroadcastGroupsMessage(new ArrayList<>(
-                                this.availableDacConnections)), socket
-                                .getOutputStream());
-                socket.close();
+                availableDacs.addAll(this.availableDacConnections);
             }
+            synchronized (this.remoteDacConnections) {
+                availableDacs.addAll(this.remoteDacConnections);
+            }
+
+            SerializationUtil.transformToThriftUsingStream(
+                    new LiveBroadcastGroupsMessage(availableDacs),
+                    socket.getOutputStream());
+            socket.close();
             return;
         }
         if (obj instanceof AudioRegulationSettingsCommand) {
@@ -297,6 +308,18 @@ public class BroadcastStreamServer extends AbstractServerThread {
         }
     }
 
+    public void dacConnectedRemote(final String group) {
+        if (group == null) {
+            return;
+        }
+        synchronized (this.remoteDacConnections) {
+            if (this.remoteDacConnections.add(group)) {
+                logger.info("Adding remote dac connection to transmitter {}.",
+                        group);
+            }
+        }
+    }
+
     /**
      * {@link BroadcastStreamServer#dacConnected()} and
      * {@link BroadcastStreamServer#dacDisconnected()} are only interested in
@@ -317,6 +340,19 @@ public class BroadcastStreamServer extends AbstractServerThread {
         for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
             task.dacDisconnectedFromServer(group);
+        }
+    }
+
+    public void dacDisconnectedRemote(final String group) {
+        if (group == null) {
+            return;
+        }
+        synchronized (this.remoteDacConnections) {
+            if (this.remoteDacConnections.remove(group)) {
+                logger.info(
+                        "Removing remote dac connection to transmitter {}.",
+                        group);
+            }
         }
     }
 
