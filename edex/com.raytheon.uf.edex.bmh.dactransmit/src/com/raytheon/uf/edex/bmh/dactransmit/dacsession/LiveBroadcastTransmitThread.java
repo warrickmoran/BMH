@@ -89,6 +89,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  *                                     alter the {@link #live} flag mid-broadcast.
  * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
+ * Aug 25, 2015 4775       bkowal      Ensure that final broadcast live steps are always executed.
  * </pre>
  * 
  * @author bkowal
@@ -134,86 +135,96 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
     @Override
     public void run() {
-        if (config.getDelayMilliseconds() > 0) {
-            try {
-                Thread.sleep(config.getDelayMilliseconds());
-            } catch (InterruptedException e) {
-                logger.warn(
-                        "LiveBroadcastTransmitThread sleep was interrupted.", e);
-            }
-        }
-
-        this.previousPacket = this.dataThread.pausePlayback();
-        // Build playlist switch notification
-        this.notifyBroadcastSwitch(STATE.STARTED);
-        if (this.type == BROADCASTTYPE.EO && this.config.getToneAudio() != null) {
-            // play the Alert / SAME tones.
-            AudioPacketLogger packetLog = new AudioPacketLogger("SAME Tones",
-                    getClass(), 30);
-            if (this.config.getToneAudio().getSameTones() != null) {
-                this.playTones(this.config.getToneAudio().getSameTones(),
-                        "SAME", this.sameDbTarget, packetLog);
-            }
-            if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
-                this.playTones(this.config.getToneAudio()
-                        .getBeforeAlertTonePause(), "SAME", this.dbTarget,
-                        packetLog);
-            }
-            packetLog.close();
-            packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
-            if (this.config.getToneAudio().getAlertTones() != null) {
-                this.playTones(this.config.getToneAudio().getAlertTones(),
-                        "Alert", this.alertDbTarget, packetLog);
-            }
-            if (this.config.getToneAudio().getBeforeMessagePause() != null) {
-                this.playTones(this.config.getToneAudio()
-                        .getBeforeMessagePause(), "Alert", this.dbTarget,
-                        packetLog);
-            }
-            packetLog.close();
-        }
-        BroadcastStatus status = new BroadcastStatus();
-        status.setMsgSource(MSGSOURCE.DAC);
-        status.setStatus(true);
-        status.setBroadcastId(this.broadcastId);
-        status.addTransmitterGroup(this.config.getTransmitterGroup());
-        this.commsManager.sendDacLiveBroadcastMsg(status);
-
-        waitForAudio();
-
-        AudioPacketLogger packetLog = new AudioPacketLogger(
-                "Live Broadcast Audio", getClass(), 30);
-        /*
-         * end the broadcast only after all buffered audio has been streamed.
-         */
-        while (live || this.audioBuffer.isEmpty() == false) {
-            try {
-                // check for data every 5ms, we only have a 20ms window.
-                // 0 - 5 ms delay between end of audio and end of the broadcast.
-                byte[] audio = this.audioBuffer.poll(5, TimeUnit.MILLISECONDS);
-                if (audio == null) {
-                    continue;
+        try {
+            if (config.getDelayMilliseconds() > 0) {
+                try {
+                    Thread.sleep(config.getDelayMilliseconds());
+                } catch (InterruptedException e) {
+                    logger.warn(
+                            "LiveBroadcastTransmitThread sleep was interrupted.",
+                            e);
                 }
-                this.streamAudio(audio);
-                packetLog.packetProcessed();
-            } catch (AudioOverflowException | UnsupportedAudioFormatException
-                    | AudioConversionException | InterruptedException e) {
-                this.notifyDacError(
-                        "Failed to stream the buffered live audio.", e);
             }
-        }
-        packetLog.close();
 
-        packetLog = new AudioPacketLogger("End of Message Tones", getClass(),
-                30);
-        if (this.type == BROADCASTTYPE.EO && this.config.getToneAudio() != null) {
-            this.playTones(this.config.getEndToneAudio(), "End of Message",
-                    this.sameDbTarget, packetLog);
-        }
-        packetLog.close();
-        this.notifyBroadcastSwitch(STATE.FINISHED);
+            this.previousPacket = this.dataThread.pausePlayback();
+            // Build playlist switch notification
+            this.notifyBroadcastSwitch(STATE.STARTED);
+            if (this.type == BROADCASTTYPE.EO
+                    && this.config.getToneAudio() != null) {
+                // play the Alert / SAME tones.
+                AudioPacketLogger packetLog = new AudioPacketLogger(
+                        "SAME Tones", getClass(), 30);
+                if (this.config.getToneAudio().getSameTones() != null) {
+                    this.playTones(this.config.getToneAudio().getSameTones(),
+                            "SAME", this.sameDbTarget, packetLog);
+                }
+                if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
+                    this.playTones(this.config.getToneAudio()
+                            .getBeforeAlertTonePause(), "SAME", this.dbTarget,
+                            packetLog);
+                }
+                packetLog.close();
+                packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
+                if (this.config.getToneAudio().getAlertTones() != null) {
+                    this.playTones(this.config.getToneAudio().getAlertTones(),
+                            "Alert", this.alertDbTarget, packetLog);
+                }
+                if (this.config.getToneAudio().getBeforeMessagePause() != null) {
+                    this.playTones(this.config.getToneAudio()
+                            .getBeforeMessagePause(), "Alert", this.dbTarget,
+                            packetLog);
+                }
+                packetLog.close();
+            }
+            BroadcastStatus status = new BroadcastStatus();
+            status.setMsgSource(MSGSOURCE.DAC);
+            status.setStatus(true);
+            status.setBroadcastId(this.broadcastId);
+            status.addTransmitterGroup(this.config.getTransmitterGroup());
+            this.commsManager.sendDacLiveBroadcastMsg(status);
 
-        this.dataThread.resumePlayback(previousPacket);
+            waitForAudio();
+
+            AudioPacketLogger packetLog = new AudioPacketLogger(
+                    "Live Broadcast Audio", getClass(), 30);
+            /*
+             * end the broadcast only after all buffered audio has been
+             * streamed.
+             */
+            while (live || this.audioBuffer.isEmpty() == false) {
+                try {
+                    // check for data every 5ms, we only have a 20ms window.
+                    // 0 - 5 ms delay between end of audio and end of the
+                    // broadcast.
+                    byte[] audio = this.audioBuffer.poll(5,
+                            TimeUnit.MILLISECONDS);
+                    if (audio == null) {
+                        continue;
+                    }
+                    this.streamAudio(audio);
+                    packetLog.packetProcessed();
+                } catch (AudioOverflowException
+                        | UnsupportedAudioFormatException
+                        | AudioConversionException | InterruptedException e) {
+                    this.notifyDacError(
+                            "Failed to stream the buffered live audio.", e);
+                }
+            }
+            packetLog.close();
+
+            packetLog = new AudioPacketLogger("End of Message Tones",
+                    getClass(), 30);
+            if (this.type == BROADCASTTYPE.EO
+                    && this.config.getToneAudio() != null) {
+                this.playTones(this.config.getEndToneAudio(), "End of Message",
+                        this.sameDbTarget, packetLog);
+            }
+            packetLog.close();
+        } finally {
+            this.notifyBroadcastSwitch(STATE.FINISHED);
+
+            this.dataThread.resumePlayback(previousPacket);
+        }
     }
 
     @Override
