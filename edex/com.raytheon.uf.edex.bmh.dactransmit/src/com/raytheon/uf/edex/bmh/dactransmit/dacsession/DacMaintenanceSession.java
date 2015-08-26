@@ -39,7 +39,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
-import com.raytheon.uf.common.bmh.audio.AudioRegulator;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
+import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
@@ -86,6 +87,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Jul 15, 2015 4636       bkowal      Alter audio before it is packaged into packets.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
+ * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * </pre>
  * 
  * @author bkowal
@@ -244,9 +246,9 @@ public class DacMaintenanceSession implements IDacSession,
                 /*
                  * alter the audio based on transfer tones rules.
                  */
-                AudioRegulator regulator = new AudioRegulator(
-                        LoadedAudioRegulationConfiguration.getConfiguration()
-                                .getDbSilenceLimit());
+                final IAudioRegulator regulator = AudioRegulationFactory
+                        .getAudioRegulator(LoadedAudioRegulationConfiguration
+                                .getConfiguration());
                 segment1 = regulator.regulateAudioVolume(segment1, seg1Db,
                         segment1.length);
                 segment2 = regulator.regulateAudioVolume(segment2, seg2Db,
@@ -261,9 +263,9 @@ public class DacMaintenanceSession implements IDacSession,
         }
 
         if (regulateAudio) {
-            AudioRegulator regulator = new AudioRegulator(
-                    LoadedAudioRegulationConfiguration.getConfiguration()
-                            .getDbSilenceLimit());
+            final IAudioRegulator regulator = AudioRegulationFactory
+                    .getAudioRegulator(LoadedAudioRegulationConfiguration
+                            .getConfiguration());
             this.audio = regulator.regulateAudioVolume(this.audio,
                     this.config.getDbTarget(), this.audio.length);
         }

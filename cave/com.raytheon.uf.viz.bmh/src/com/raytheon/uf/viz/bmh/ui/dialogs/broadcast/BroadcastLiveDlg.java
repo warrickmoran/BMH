@@ -64,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Feb 05, 2015 3743       bsteffen    Allow subclasses to override loading of available groups.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
+ * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
  * </pre>
  * 
  * @author bkowal
@@ -198,10 +199,15 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
             return;
         }
 
-        LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
-                this.shell, RecordPlaybackDlg.INDETERMINATE_PROGRESS,
-                settingsBuilder);
-        dlg.open();
+        try {
+            LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
+                    this.shell, RecordPlaybackDlg.INDETERMINATE_PROGRESS,
+                    settingsBuilder);
+            dlg.open();
+        } catch (Exception e) {
+            statusHandler.error("Failed to start the audio recording session.",
+                    e);
+        }
     }
 
     private boolean validateSelections() {

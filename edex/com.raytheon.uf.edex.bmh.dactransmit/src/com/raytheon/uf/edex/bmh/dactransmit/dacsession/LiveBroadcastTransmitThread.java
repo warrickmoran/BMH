@@ -31,8 +31,8 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
-import com.raytheon.uf.common.bmh.audio.AudioRegulator;
-import com.raytheon.uf.common.bmh.audio.CollectibleAudioRegulator;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
+import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
@@ -90,6 +90,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4775       bkowal      Ensure that final broadcast live steps are always executed.
+ * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * </pre>
  * 
  * @author bkowal
@@ -238,9 +239,9 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
          * buffer. Here we know that the audio db target will be used.
          */
         try {
-            CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
-                    LoadedAudioRegulationConfiguration.getConfiguration()
-                            .getDbSilenceLimit(), data);
+            IAudioRegulator regulator = AudioRegulationFactory
+                    .getAudioRegulator(LoadedAudioRegulationConfiguration
+                            .getConfiguration(), data);
             data = regulator.regulateAudioCollection(this.dbTarget);
         } catch (Exception e) {
             logger.error("Failed to amplify/attenuate received audio.", e);
@@ -256,9 +257,9 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
          * buffer. Here we know that the audio db target will be used.
          */
         try {
-            AudioRegulator regulator = new AudioRegulator(
-                    LoadedAudioRegulationConfiguration.getConfiguration()
-                            .getDbSilenceLimit());
+            IAudioRegulator regulator = AudioRegulationFactory
+                    .getAudioRegulator(LoadedAudioRegulationConfiguration
+                            .getConfiguration());
             toneAudio = regulator.regulateAudioVolume(toneAudio, dbTarget,
                     toneAudio.length);
         } catch (Exception e) {

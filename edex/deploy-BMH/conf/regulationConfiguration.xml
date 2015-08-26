@@ -5,5 +5,15 @@
  -->
 <regulationConfiguration>
 	<dbSilenceLimit>-60.0</dbSilenceLimit>
+	<disableSilenceLimit>false</disableSilenceLimit>
+	<dbMaxLimit>0</dbMaxLimit>
+	<disableMaxLimit>true</disableMaxLimit>
+	<!-- 
+		OPTIONS:
+			* LINEAR_PCM
+			* DEVIATION_EXCLUSION 
+	 -->
 	<regulationAlgorithm>LINEAR_PCM</regulationAlgorithm>
+	<initialBufferDelay>250</initialBufferDelay>
+	<bufferDelay>150</bufferDelay>
 </regulationConfiguration>

@@ -60,6 +60,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastThread.BROADC
  *                                     due to broadcast initialization failure.
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Use AbstractBroadcastSettingsBuilder.
+ * Aug 25, 2015 4771       bkowal      Updated to use {@link AudioRegulationConfiguration}.
  * 
  * </pre>
  * 
@@ -88,7 +89,7 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
      */
     public LiveBroadcastRecordPlaybackDlg(Shell parentShell,
             int maxRecordingSeconds,
-            AbstractBroadcastSettingsBuilder settingsBuilder) {
+            AbstractBroadcastSettingsBuilder settingsBuilder) throws Exception {
         super(parentShell, maxRecordingSeconds);
         this.settingsBuilder = settingsBuilder;
     }
@@ -176,7 +177,8 @@ public class LiveBroadcastRecordPlaybackDlg extends RecordPlaybackDlg implements
     private void initializeBroadcastLive() throws Exception {
         ILiveBroadcastMessage command = this.configureBroadcastLive();
 
-        this.broadcastThread = new LiveBroadcastThread(command);
+        this.broadcastThread = new LiveBroadcastThread(command,
+                this.configuration);
         this.broadcastThread.setListener(this);
         this.broadcastThread.start();
     }

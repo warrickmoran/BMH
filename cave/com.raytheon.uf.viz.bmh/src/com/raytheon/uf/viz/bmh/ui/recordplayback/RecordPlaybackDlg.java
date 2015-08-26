@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
@@ -42,8 +45,13 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.broadcast.AudioRegulationSettingsCommand;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
@@ -88,6 +96,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      after the playback of recorded audio concludes.
  * Aug 17, 2015  #4757     bkowal       Recorded audio retrieval can now trigger an unlikely Exception.
  * Aug 24, 2015  #4770     bkowal       Handle {@link Exception} from the {@link AudioRecorderThread}.
+ * Aug 25, 2015  #4771     bkowal       Updated to retrieve and use {@link AudioRegulationConfiguration}.
  * 
  * </pre>
  * 
@@ -191,6 +200,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
     private DecibelPlotsComp decibelPlotsComp;
 
+    protected final AudioRegulationConfiguration configuration;
+
     /**
      * Constructor.
      * 
@@ -199,11 +210,47 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      * @param maxRecordingSeconds
      *            Maximum seconds to record.
      */
-    public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
+    public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds)
+            throws Exception {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
-
+        configuration = this.retrieveRegulationConfiguration();
         this.maxRecordingSeconds = maxRecordingSeconds;
+    }
+
+    private AudioRegulationConfiguration retrieveRegulationConfiguration()
+            throws Exception {
+        String commsLoc = BMHServers.getBroadcastServer();
+        if (commsLoc == null) {
+            throw new CommsCommunicationException(
+                    "No address has been specified for comms manager "
+                            + BMHServers.getBroadcastServerKey() + ".");
+        }
+        URI commsURI = null;
+        try {
+            commsURI = new URI(commsLoc);
+        } catch (URISyntaxException e) {
+            throw new CommsCommunicationException(
+                    "Invalid Comms Manager Location.", e);
+        }
+        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
+            socket.setTcpNoDelay(true);
+            SerializationUtil.transformToThriftUsingStream(
+                    new AudioRegulationSettingsCommand(),
+                    socket.getOutputStream());
+            Object message = SerializationUtil.transformFromThrift(
+                    Object.class, socket.getInputStream());
+            if (message == null) {
+                throw new NullPointerException(
+                        "Unexpected null response from comms manager.");
+            } else if (message instanceof AudioRegulationConfiguration) {
+                return (AudioRegulationConfiguration) message;
+            } else {
+                throw new IllegalStateException(
+                        "Unexpected response from comms manager of type: "
+                                + message.getClass().getSimpleName());
+            }
+        }
     }
 
     @Override
@@ -509,7 +556,7 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.decibelPlotsComp.resetPlots();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT,
-                    this.decibelPlotsComp);
+                    this.decibelPlotsComp, this.configuration);
         } catch (Exception e) {
             statusHandler.error("Audio recording has failed.", e);
             return;

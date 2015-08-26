@@ -27,6 +27,8 @@ import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.serialization.JAXBManager;
+import com.raytheon.uf.common.status.IUFStatusHandler;
+import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 
 /**
@@ -41,6 +43,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 24, 2015 4770       bkowal      Initial creation
+ * Aug 25, 2015 4771       bkowal      Added logging of the configuration that is loaded.
  * 
  * </pre>
  * 
@@ -49,6 +52,9 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  */
 
 public final class LoadedAudioRegulationConfiguration {
+
+    private static final IUFStatusHandler statusHandler = UFStatus
+            .getHandler(LoadedAudioRegulationConfiguration.class);
 
     private static AudioRegulationConfiguration configuration;
 
@@ -91,6 +97,9 @@ public final class LoadedAudioRegulationConfiguration {
                     "Failed to unmarshal the audio regulation configuration file: "
                             + audioRegulationConfigPath.toString() + ".", e);
         }
+
+        statusHandler.info("Successfully loaded configuation: "
+                + configuration.toString() + ".");
     }
 
     public static synchronized AudioRegulationConfiguration getConfiguration()
