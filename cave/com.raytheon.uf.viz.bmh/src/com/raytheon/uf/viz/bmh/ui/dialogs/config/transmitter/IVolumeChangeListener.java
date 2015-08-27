@@ -17,44 +17,27 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.stats;
-
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
 /**
- * Stat event used to track suite change processing time.
+ * Defines a listener that is capable of listening for volume changes.
  * 
  * <pre>
- * 
+ *
  * SOFTWARE HISTORY
- * 
+ *
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Apr 20, 2015 4397       bkowal      Initial creation
- * Jun 24, 2015 4397       bkowal      Added an empty constructor.
- * 
+ * Jul 16, 2015 4636       bkowal      Initial creation
+ *
  * </pre>
- * 
+ *
  * @author bkowal
- * @version 1.0
+ * @version 1.0	
  */
-@DynamicSerialize
-public class SuiteChangeProcessingEvent extends AbstractBMHProcessingTimeEvent {
 
-    private static final long serialVersionUID = -415299845757146279L;
+public interface IVolumeChangeListener {
 
-    /**
-     * Constructor.
-     * 
-     * Empty constructor for {@link DynamicSerialize}.
-     */
-    public SuiteChangeProcessingEvent() {
-    }
-
-    /**
-     * @param requestTime
-     */
-    public SuiteChangeProcessingEvent(long requestTime) {
-        super(requestTime);
-    }
+    public void volumeChanged();
+    
 }

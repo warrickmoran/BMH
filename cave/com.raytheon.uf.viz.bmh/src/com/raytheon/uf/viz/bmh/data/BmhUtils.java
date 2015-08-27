@@ -49,6 +49,7 @@ import com.raytheon.uf.common.auth.user.IUser;
 import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
@@ -111,6 +112,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 08, 2015   4403      bkowal      Added {@link #textToAudio(String, int, boolean)}.
  * Jun 11, 2015   4552      bkowal      Phonemes can now be generated for both the English and
  *                                      Spanish languages.
+ * Aug 05, 2015   4685      bkowal      Added {@link #containsGeneralSuite(ProgramSummary)}.
  * </pre>
  * 
  * @author mpduff
@@ -633,6 +635,22 @@ public class BmhUtils {
     }
 
     /**
+     * Determine if a program contains a suite of type GENERAL.
+     * 
+     * @param ps
+     * @return false if no program or program does not contain a GENERAL suite.
+     */
+    public static boolean containsGeneralSuite(ProgramSummary ps)
+            throws Exception {
+        if (ps == null) {
+            return false;
+        }
+        Program program = new Program();
+        program.setId(ps.getId());
+        return containsGeneralSuite(program);
+    }
+
+    /**
      * Determine if the program's suites contains a GENERAL type suite.
      * 
      * @param program
@@ -642,8 +660,7 @@ public class BmhUtils {
      */
     public static boolean containsGeneralSuite(Program program)
             throws Exception {
-        ProgramDataManager pdm = new ProgramDataManager();
-        return pdm.getProgramGeneralSuite(program) != null;
+        return getProgramGeneralSuite(program) != null;
     }
 
     /**
@@ -656,6 +673,9 @@ public class BmhUtils {
      */
     public static Suite getProgramGeneralSuite(Program program)
             throws Exception {
+        if (program == null) {
+            return null;
+        }
         ProgramDataManager pdm = new ProgramDataManager();
         return pdm.getProgramGeneralSuite(program);
     }

@@ -23,10 +23,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -38,9 +38,7 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
-import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.AbstractOnDemandBroadcastMessage;
@@ -51,16 +49,25 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.request.MaintenanceMessageRequest;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.ScaleSpinnerComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 
 /**
  * The transmitter alignment dialog.
@@ -95,13 +102,22 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 15, 2015 4649       rferrel     When saving Decible Levels update the Target Decible Level.
  *                                     Duration default is 10 seconds and only the user can change its value.
+ * Jul 16, 2015 4636       bkowal      Updated to use volume sliders.
+ * Jul 17, 2015 4636       bkowal      Automatically updates internal data structures in response to
+ *                                     Transmitter Group updates.
+ * Jul 22, 2015 4676       bkowal      Prevent widget-disposed errors.
+ * Aug 05, 2015 4685       bkowal      The maintenance -> enabled state transition will no
+ *                                     longer be the only option.
+ * Aug 12, 2015 4724       bkowal      Allow users to close the dialog even when {@link Transmitters}
+ *                                     are in maintenance mode.
  * </pre>
  * 
  * @author mpduff
  * @version 1.0
  */
 
-public class TransmitterAlignmentDlg extends AbstractBMHDialog {
+public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
+        IVolumeChangeListener, INotificationObserver {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(TransmitterAlignmentDlg.class);
 
@@ -123,32 +139,32 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     /** Selected TransmitterGroup object */
     protected TransmitterGroup selectedTransmitterGrp;
 
-    /** Decibel value label */
-    private Text dbValueTxt;
+    private TransmitterVolumeComp audioVolume;
 
-    private ToggleEditDisplayTextComp audioDbToggleText;
+    private TransmitterVolumeComp sameVolume;
 
-    private ToggleEditDisplayTextComp sameDbToggleText;
+    private TransmitterVolumeComp alertVolume;
 
-    private ToggleEditDisplayTextComp alertDbToggleText;
+    private TransmitterVolumeComp tfr1800Volume;
 
-    private ToggleEditDisplayTextComp transfer18DbToggleText;
-
-    private ToggleEditDisplayTextComp transfer24DbToggleText;
-
-    private Button editButton;
+    private TransmitterVolumeComp tfr2400Volume;
 
     private Button saveButton;
 
     /** Duration ScaleSpinner composite */
     private ScaleSpinnerComp durScaleComp;
 
-    /** Button to change toggle status between ENABLED and MAINT. */
-    private Button changeStatusBtn;
+    private Button maintButton;
+
+    private Button enableButton;
+
+    private Button disableButton;
 
     private final String maintStr = "Maintenance";
 
     private final String enableStr = "Enable";
+
+    private final String disableStr = "Disable";
 
     private Button sameRdo;
 
@@ -164,10 +180,11 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     private Button testBtn;
 
     /**
-     * Keep track of which {@link TransmitterGroup}s have been disabled via the
-     * dialog.
-     **/
-    java.util.List<TransmitterGroup> transmittersDisabledByDialog = new ArrayList<>();
+     * Used to lock knowledge of the known current state of all known
+     * {@link TransmitterGroup}s. Lock is applied both when using the knowledge
+     * and when updating the knowledge.
+     */
+    private final Object transmitterGrpLock = new Object();
 
     /**
      * Constructor.
@@ -226,7 +243,22 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         createBottomButtons(mainComp);
 
         populateTransmitters();
-        populate();
+        synchronized (transmitterGrpLock) {
+            populate();
+        }
+    }
+
+    @Override
+    protected void opened() {
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
+    }
+
+    @Override
+    protected void disposed() {
+        super.disposed();
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     private void createTransmitterList(Composite comp) {
@@ -245,105 +277,48 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         transmitterList.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                populate();
+                synchronized (transmitterGrpLock) {
+                    populate();
+                }
             }
         });
     }
 
     private void createDbLevelGroup(Composite comp) {
-        GridLayout gl = new GridLayout(3, false);
+        GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Group dbGroup = new Group(comp, SWT.BORDER);
-        dbGroup.setText(" Decibel Levels ");
+        dbGroup.setText(" Transmitter Volume ");
         dbGroup.setLayout(gl);
         dbGroup.setLayoutData(gd);
 
-        /*
-         * Audio Decibel Level
-         */
-        Label audioDbLbl = new Label(dbGroup, SWT.NONE);
-        audioDbLbl.setText("Audio Decibel Level: ");
+        this.audioVolume = new TransmitterVolumeComp(dbGroup, "Audio Volume");
+        this.audioVolume.setListener(this);
+        this.sameVolume = new TransmitterVolumeComp(dbGroup, "SAME Volume");
+        this.sameVolume.setListener(this);
+        this.alertVolume = new TransmitterVolumeComp(dbGroup, "Alert Volume");
+        this.alertVolume.setListener(this);
+        this.tfr1800Volume = new TransmitterVolumeComp(dbGroup,
+                "1800 Hz Volume");
+        this.tfr1800Volume.setListener(this);
+        this.tfr2400Volume = new TransmitterVolumeComp(dbGroup,
+                "2400 Hz Volume");
+        this.tfr2400Volume.setListener(this);
 
-        audioDbToggleText = new ToggleEditDisplayTextComp(dbGroup, 50,
-                StringUtils.EMPTY);
-
-        /*
-         * Save Decibel Changes button.
-         */
-        gl = new GridLayout(1, false);
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-        gd.verticalSpan = 5;
-
-        Composite buttonComp = new Composite(dbGroup, SWT.NONE);
-        buttonComp.setLayoutData(gd);
-        buttonComp.setLayout(gl);
-
-        gd = new GridData(60, SWT.DEFAULT);
-        editButton = new Button(buttonComp, SWT.PUSH);
-        editButton.setText("Edit");
-        editButton.setLayoutData(gd);
-        editButton.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                handleEditAction();
-            }
-        });
-
-        gd = new GridData(60, SWT.DEFAULT);
-        saveButton = new Button(buttonComp, SWT.PUSH);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
+        gd.widthHint = 80;
+        saveButton = new Button(dbGroup, SWT.PUSH);
         saveButton.setText("Save");
         saveButton.setLayoutData(gd);
         saveButton.setEnabled(false);
         saveButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleSaveAction();
+                synchronized (transmitterGrpLock) {
+                    handleSaveAction();
+                }
             }
         });
-
-        /*
-         * SAME Decibel Level
-         */
-        Label sameDbLbl = new Label(dbGroup, SWT.NONE);
-        sameDbLbl.setText("SAME Decibel Level: ");
-
-        this.sameDbToggleText = new ToggleEditDisplayTextComp(dbGroup, 50,
-                StringUtils.EMPTY);
-
-        /*
-         * Alert Decibel Level
-         */
-        Label alertDbLbl = new Label(dbGroup, SWT.NONE);
-        alertDbLbl.setText("Alert Decibel Level: ");
-
-        this.alertDbToggleText = new ToggleEditDisplayTextComp(dbGroup, 50,
-                StringUtils.EMPTY);
-
-        /*
-         * Transfer Tone Decibel Level
-         */
-        Label transfer18DbLbl = new Label(dbGroup, SWT.NONE);
-        transfer18DbLbl.setText("Transfer Decibel 1800 Hz: ");
-
-        this.transfer18DbToggleText = new ToggleEditDisplayTextComp(dbGroup,
-                50, StringUtils.EMPTY);
-
-        Label transfer24DbLbl = new Label(dbGroup, SWT.NONE);
-        transfer24DbLbl.setText("Transfer Decibel 2400 Hz: ");
-
-        this.transfer24DbToggleText = new ToggleEditDisplayTextComp(dbGroup,
-                50, StringUtils.EMPTY);
-
-    }
-
-    private void handleEditAction() {
-        this.audioDbToggleText.toggleMode();
-        this.sameDbToggleText.toggleMode();
-        this.alertDbToggleText.toggleMode();
-        this.transfer18DbToggleText.toggleMode();
-        this.transfer24DbToggleText.toggleMode();
-        this.editButton.setEnabled(false);
-        this.saveButton.setEnabled(true);
     }
 
     private void handleSaveAction() {
@@ -352,49 +327,23 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
          */
         if (this.dataIsCurrent()) {
             this.saveButton.setEnabled(false);
-            this.editButton.setEnabled(true);
             DialogUtility.showMessageBox(shell, SWT.ICON_INFORMATION | SWT.OK,
                     "Save Transmitter Alignment",
                     "No changes have been made. There is nothing to Save.");
             return;
         }
 
-        /*
-         * Validate the entered values.
-         */
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.audioDbToggleText.getCurrentValue(), "Audio Decibel") == false) {
-            return;
-        }
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.sameDbToggleText.getCurrentValue(), "SAME Decibel") == false) {
-            return;
-        }
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.alertDbToggleText.getCurrentValue(), "Alert Decibel") == false) {
-            return;
-        }
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.transfer18DbToggleText.getCurrentValue(),
-                "Transfer Decibel 1800 Hz") == false) {
-            return;
-        }
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.transfer24DbToggleText.getCurrentValue(),
-                "Transfer Decibel 2400 Hz") == false) {
-            return;
-        }
+        this.selectedTransmitterGrp.setAudioDBTarget(this.audioVolume
+                .getCurrentDecibelValue());
+        this.selectedTransmitterGrp.setSameDBTarget(this.sameVolume
+                .getCurrentDecibelValue());
+        this.selectedTransmitterGrp.setAlertDBTarget(this.alertVolume
+                .getCurrentDecibelValue());
+        this.selectedTransmitterGrp.setTransferLowDBTarget(this.tfr1800Volume
+                .getCurrentDecibelValue());
+        this.selectedTransmitterGrp.setTransferHighDBTarget(this.tfr2400Volume
+                .getCurrentDecibelValue());
 
-        this.selectedTransmitterGrp.setAudioDBTarget(Double
-                .parseDouble(this.audioDbToggleText.getCurrentValue()));
-        this.selectedTransmitterGrp.setSameDBTarget(Double
-                .parseDouble(this.sameDbToggleText.getCurrentValue()));
-        this.selectedTransmitterGrp.setAlertDBTarget(Double
-                .parseDouble(this.alertDbToggleText.getCurrentValue()));
-        this.selectedTransmitterGrp.setTransferLowDBTarget((Double
-                .parseDouble(this.transfer18DbToggleText.getCurrentValue())));
-        this.selectedTransmitterGrp.setTransferHighDBTarget((Double
-                .parseDouble(this.transfer24DbToggleText.getCurrentValue())));
         try {
             this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
         } catch (Exception e) {
@@ -405,41 +354,17 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
 
         this.saveButton.setEnabled(false);
-        this.editButton.setEnabled(true);
-        /*
-         * Using set value here to ensure it is formatted with the single
-         * decimal point when displayed.
-         */
-        this.audioDbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getAudioDBTarget()));
-        this.sameDbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getSameDBTarget()));
-        this.alertDbToggleText.setValue(Double
-                .toString(this.selectedTransmitterGrp.getAlertDBTarget()));
-        this.transfer18DbToggleText
-                .setValue(Double.toString(this.selectedTransmitterGrp
-                        .getTransferLowDBTarget()));
-        this.transfer24DbToggleText
-                .setValue(Double.toString(this.selectedTransmitterGrp
-                        .getTransferHighDBTarget()));
 
-        updateTestTarget();
-    }
-
-    protected void changeDecibelLevelFields(Group group) {
-        GridLayout gl = new GridLayout(2, false);
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalSpan = 2;
-        Composite adjustLvlComp = new Composite(group, SWT.NONE);
-        adjustLvlComp.setLayoutData(gd);
-        adjustLvlComp.setLayout(gl);
-
-        Label dbLbl = new Label(adjustLvlComp, SWT.NONE);
-        dbLbl.setText("Target Decibel Level: ");
-
-        gd = new GridData(50, SWT.DEFAULT);
-        this.dbValueTxt = new Text(adjustLvlComp, SWT.BORDER);
-        this.dbValueTxt.setLayoutData(gd);
+        this.audioVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
+                .getAudioDBTarget());
+        this.sameVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
+                .getSameDBTarget());
+        this.alertVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
+                .getAlertDBTarget());
+        this.tfr1800Volume.setCurrentDecibelVolume(this.selectedTransmitterGrp
+                .getTransferLowDBTarget());
+        this.tfr2400Volume.setCurrentDecibelVolume(this.selectedTransmitterGrp
+                .getTransferHighDBTarget());
     }
 
     private void createTransmitterStatusGroup(Composite comp) {
@@ -457,7 +382,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         statusLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        gl = new GridLayout(1, false);
+        gl = new GridLayout(3, true);
         Composite btnComp = new Composite(statusGrp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
@@ -465,43 +390,42 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         int btnWidth = 130;
         gd = new GridData(btnWidth, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
+        this.maintButton = new Button(btnComp, SWT.PUSH);
+        this.maintButton.setText(maintStr);
+        this.maintButton.setLayoutData(gd);
+        this.maintButton.addSelectionListener(new SelectionAdapter() {
 
-        changeStatusBtn = new Button(btnComp, SWT.PUSH);
-        changeStatusBtn.setText(maintStr);
-        changeStatusBtn.setLayoutData(gd);
-        changeStatusBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                changeStatusAction();
+                transmitterGroupMaintenanceMode();
             }
         });
-    }
 
-    private void changeStatusAction() {
-        if (changeStatusBtn.getText().equals(maintStr)) {
-            int answer = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_INFORMATION | SWT.YES | SWT.NO, "Disable Group",
-                    "Are you sure you want to do maintenance on Transmitter Group "
-                            + selectedTransmitterGrp.getName() + "?");
-            if (answer != SWT.YES) {
-                return;
+        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd.horizontalAlignment = SWT.CENTER;
+        this.enableButton = new Button(btnComp, SWT.PUSH);
+        this.enableButton.setText(enableStr);
+        this.enableButton.setLayoutData(gd);
+        this.enableButton.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                enableTransmitterGroup();
             }
+        });
 
-            transmitterGroupMaintenanceMode();
-            changeStatusBtn.setText(enableStr);
-        } else {
-            int answer = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                    "Enable Transmitter",
-                    "Are you sure you want to enable Transmitter Group "
-                            + selectedTransmitterGrp.getName() + "?");
-            if (answer != SWT.YES) {
-                return;
+        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd.horizontalAlignment = SWT.CENTER;
+        this.disableButton = new Button(btnComp, SWT.PUSH);
+        this.disableButton.setText(disableStr);
+        this.disableButton.setLayoutData(gd);
+        this.disableButton.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                disableTransmitterGroup();
             }
-
-            enableTransmitterGroup();
-            changeStatusBtn.setText(maintStr);
-        }
+        });
     }
 
     private void createComp(Composite comp) {
@@ -514,10 +438,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         group.setText(" Level Test ");
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.horizontalSpan = 2;
-        this.changeDecibelLevelFields(group);
-
-        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gl = new GridLayout(1, false);
         Composite rdoComp = new Composite(group, SWT.NONE);
         rdoComp.setLayout(gl);
@@ -525,49 +445,19 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
 
         textRdo = new Button(rdoComp, SWT.RADIO);
         textRdo.setText("Audio");
-        textRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                updateTestTarget();
-            }
-        });
+        textRdo.setSelection(true);
 
         sameRdo = new Button(rdoComp, SWT.RADIO);
         sameRdo.setText("SAME");
-        sameRdo.setSelection(true);
-        sameRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                updateTestTarget();
-            }
-        });
 
         alertRdo = new Button(rdoComp, SWT.RADIO);
         alertRdo.setText("Alert");
-        alertRdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                updateTestTarget();
-            }
-        });
 
         transfer18Rdo = new Button(rdoComp, SWT.RADIO);
         transfer18Rdo.setText("Transfer 1800 Hz");
-        transfer18Rdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                updateTestTarget();
-            }
-        });
 
         transfer24Rdo = new Button(rdoComp, SWT.RADIO);
         transfer24Rdo.setText("Transfer 2400 Hz");
-        transfer24Rdo.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                updateTestTarget();
-            }
-        });
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.verticalAlignment = SWT.CENTER;
@@ -591,7 +481,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         testBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                handleRunTest();
+                synchronized (transmitterGrpLock) {
+                    handleRunTest();
+                }
             }
         });
     }
@@ -623,6 +515,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
      * Populate the dialog for the selected transmitter
      */
     private void populate() {
+        if (this.isDisposed()) {
+            return;
+        }
         if (this.selectedTransmitterGrp != null) {
             /*
              * Determine if any changes have been made.
@@ -653,78 +548,84 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
             String grpName = transmitterList.getSelection()[0];
             selectedTransmitterGrp = transmitterGroupNameMap.get(grpName);
 
-            /*
-             * Display the decibel label values for the selected {@link
-             * TransmitterGroup}.
-             */
-            this.audioDbToggleText.setValue(Double
-                    .toString(this.selectedTransmitterGrp.getAudioDBTarget()));
-            this.sameDbToggleText.setValue(Double
-                    .toString(this.selectedTransmitterGrp.getSameDBTarget()));
-            this.alertDbToggleText.setValue(Double
-                    .toString(this.selectedTransmitterGrp.getAlertDBTarget()));
-            this.transfer18DbToggleText.setValue(Double
-                    .toString(this.selectedTransmitterGrp
-                            .getTransferLowDBTarget()));
-            this.transfer24DbToggleText.setValue(Double
-                    .toString(this.selectedTransmitterGrp
-                            .getTransferHighDBTarget()));
-            this.saveButton.setEnabled(false);
-            this.editButton.setEnabled(true);
-            this.updateTestTarget();
+            this.audioVolume.enable();
+            this.sameVolume.enable();
+            this.alertVolume.enable();
+            this.tfr1800Volume.enable();
+            this.tfr2400Volume.enable();
+            this.audioVolume.setCurrentDecibelVolume(selectedTransmitterGrp
+                    .getAudioDBTarget());
+            this.sameVolume.setCurrentDecibelVolume(selectedTransmitterGrp
+                    .getSameDBTarget());
+            this.alertVolume.setCurrentDecibelVolume(selectedTransmitterGrp
+                    .getAlertDBTarget());
+            this.tfr1800Volume.setCurrentDecibelVolume(selectedTransmitterGrp
+                    .getTransferLowDBTarget());
+            this.tfr2400Volume.setCurrentDecibelVolume(selectedTransmitterGrp
+                    .getTransferHighDBTarget());
 
             if (selectedTransmitterGrp.isEnabled()) {
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.ENABLED.toString());
                 this.updateLevelTestState(false);
-                this.changeStatusBtn.setText(maintStr);
-                this.changeStatusBtn.setEnabled(true);
+                this.enableButton.setEnabled(false);
+                this.disableButton.setEnabled(false);
+                this.maintButton.setEnabled(true);
             } else if (selectedTransmitterGrp.isMaint()) {
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.MAINT);
                 this.updateLevelTestState(this
                         .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
-                this.changeStatusBtn.setText(enableStr);
-                this.changeStatusBtn.setEnabled(true);
+                this.enableButton.setEnabled(this.allowTransmitterEnable());
+                this.disableButton.setEnabled(true);
+                this.maintButton.setEnabled(false);
             } else {
                 // Assume group DISABLED and disable the changeStatusBtn.
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.DISABLED.toString());
                 this.updateLevelTestState(false);
-                this.changeStatusBtn.setText(maintStr);
-                this.changeStatusBtn
+                this.enableButton.setEnabled(false);
+                this.disableButton.setEnabled(false);
+                this.maintButton
                         .setEnabled(this
                                 .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             }
+        } else {
+            this.statusLbl.setText("<No Transmitter Selected>");
+            this.audioVolume.disable();
+            this.sameVolume.disable();
+            this.alertVolume.disable();
+            this.tfr1800Volume.disable();
+            this.tfr2400Volume.disable();
+            this.updateLevelTestState(false);
+            this.enableButton.setEnabled(false);
+            this.disableButton.setEnabled(false);
+            this.maintButton.setEnabled(false);
         }
     }
 
-    private void updateTestTarget() {
-        String currentDbTarget = null;
-        if (this.sameRdo.getSelection()) {
-            currentDbTarget = this.sameDbToggleText.getCurrentValue();
-        } else if (this.alertRdo.getSelection()) {
-            currentDbTarget = this.alertDbToggleText.getCurrentValue();
-        } else if (this.textRdo.getSelection()) {
-            currentDbTarget = this.audioDbToggleText.getCurrentValue();
-        } else if (this.transfer18Rdo.getSelection()) {
-            currentDbTarget = this.transfer18DbToggleText.getCurrentValue();
-        } else if (this.transfer24Rdo.getSelection()) {
-            currentDbTarget = this.transfer24DbToggleText.getCurrentValue();
+    private boolean allowTransmitterEnable() {
+        try {
+            return BmhUtils.containsGeneralSuite(this.selectedTransmitterGrp
+                    .getProgramSummary());
+        } catch (Exception e) {
+            statusHandler.error("Failed to determine if Program "
+                    + this.selectedTransmitterGrp.getProgramSummary().getName()
+                    + " contains a General Suite.", e);
         }
 
-        this.dbValueTxt.setText(currentDbTarget);
+        return false;
     }
 
     private boolean dataIsCurrent() {
-        return this.audioDbToggleText.hasChanged() == false
-                && this.sameDbToggleText.hasChanged() == false
-                && this.alertDbToggleText.hasChanged() == false
-                && this.transfer18DbToggleText.hasChanged() == false
-                && this.transfer24DbToggleText.hasChanged() == false;
+        return this.audioVolume.dataChanged() == false
+                && this.sameVolume.dataChanged() == false
+                && this.alertVolume.dataChanged() == false
+                && this.tfr1800Volume.dataChanged() == false
+                && this.tfr2400Volume.dataChanged() == false;
     }
 
     /**
@@ -757,64 +658,76 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
     }
 
     /**
-     * In selected group change transmitter's with maintenance status to
-     * enabled.
-     */
-    private void enableTransmitterGroup() {
-        try {
-            updateTransmitterGroup(TxStatus.ENABLED, selectedTransmitterGrp);
-            this.updateLevelTestState(false);
-
-            statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
-                    + " " + TxStatus.ENABLED.toString());
-            this.transmittersDisabledByDialog
-                    .remove(this.selectedTransmitterGrp);
-        } catch (Exception e) {
-            statusHandler.error("Error enabling Transmitter Group", e);
-        }
-    }
-
-    /**
-     * Update group's transmitters with given status.
-     * 
-     * 
-     * @param status
-     *            - update transmitters with this status
-     * @param tg
-     * @throws Exception
-     */
-    private void updateTransmitterGroup(TxStatus status, TransmitterGroup tg)
-            throws Exception {
-        for (Transmitter transmitter : tg.getTransmitterList()) {
-            if (transmitter.getTxStatus() != status) {
-                transmitter.setTxStatus(status);
-                dataManager.saveTransmitter(transmitter);
-            }
-        }
-    }
-
-    /**
      * In the selected group change status of enabled transmitters to
      * maintenance.
      */
     private void transmitterGroupMaintenanceMode() {
+        int answer = DialogUtility.showMessageBox(getShell(),
+                SWT.ICON_INFORMATION | SWT.YES | SWT.NO, "Disable Group",
+                "Are you sure you want to do maintenance on Transmitter Group "
+                        + selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
         try {
-            // Update status of transmitters changed to maintenance.
-            updateTransmitterGroup(TxStatus.MAINT, selectedTransmitterGrp);
-            dataManager.saveTransmitterGroup(selectedTransmitterGrp);
+            for (Transmitter transmitter : selectedTransmitterGrp
+                    .getTransmitters()) {
+                transmitter.setTxStatus(TxStatus.MAINT);
+            }
+            this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
             this.updateLevelTestState(this
                     .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.MAINT.toString());
-            this.transmittersDisabledByDialog.add(this.selectedTransmitterGrp);
         } catch (Exception e) {
-            statusHandler.error("Error enabling Transmitter Group", e);
+            statusHandler.error(
+                    "Error transitioning Transmitter Group to maintenance.", e);
+        }
+    }
+
+    private void enableTransmitterGroup() {
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Enable",
+                "Are you sure you want to enable Transmitter Group "
+                        + this.selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
+        try {
+            this.dataManager
+                    .enableTransmitterGroup(this.selectedTransmitterGrp);
+        } catch (Exception e) {
+            statusHandler.error("Failed to enable Transmitter Group: "
+                    + this.selectedTransmitterGrp.getName() + ".", e);
+        }
+    }
+
+    private void disableTransmitterGroup() {
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Disable",
+                "Are you sure you want to disable Transmitter Group "
+                        + this.selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
+        for (Transmitter transmitter : this.selectedTransmitterGrp
+                .getTransmitters()) {
+            transmitter.setTxStatus(TxStatus.DISABLED);
+        }
+
+        try {
+            this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
+        } catch (Exception e) {
+            statusHandler.error("Failed to disable Transmitter Group "
+                    + this.selectedTransmitterGrp.getName() + ".", e);
         }
     }
 
     private void updateLevelTestState(boolean enabled) {
         this.testBtn.setEnabled(enabled);
-        this.dbValueTxt.setEnabled(enabled);
         this.sameRdo.setEnabled(enabled);
         this.alertRdo.setEnabled(enabled);
         this.textRdo.setEnabled(enabled);
@@ -838,16 +751,11 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         return (transmitterGroup != null)
                 && (transmitterGroup.getDac() != null)
                 && (transmitterGroup.getTransmitterList() != null)
-                && (transmitterGroup.getTransmitterList().isEmpty() == false)
-                && (transmitterGroup.getTransmitterList().get(0).getDacPort() != null);
+                && (transmitterGroup.getOrderedConfiguredTransmittersList()
+                        .isEmpty() == false);
     }
 
     private void handleRunTest() {
-        if (DecibelLevelValidator.validateInputText(this.shell,
-                this.dbValueTxt.getText(), "Target Decibel") == false) {
-            return;
-        }
-
         TransmitterMaintenanceCommand command = null;
         try {
             command = this.buildCommand();
@@ -938,12 +846,28 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
         command.setDataPort(dac.getDataPorts().get(radios[0] - 1));
         command.setRadios(radios);
-        command.setDecibelTarget(Double.parseDouble(this.dbValueTxt.getText()));
+        command.setDecibelTarget(this.getSelectedDecibelTarget());
         command.setInputAudioFile(audioLocation);
         command.setBroadcastDuration(this.durScaleComp.getSelectedValue());
         command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
 
         return command;
+    }
+
+    public double getSelectedDecibelTarget() {
+        if (this.textRdo.getSelection()) {
+            return this.audioVolume.getCurrentDecibelValue();
+        } else if (this.sameRdo.getSelection()) {
+            return this.sameVolume.getCurrentDecibelValue();
+        } else if (this.alertRdo.getSelection()) {
+            return this.alertVolume.getCurrentDecibelValue();
+        } else if (this.transfer18Rdo.getSelection()) {
+            return this.tfr1800Volume.getCurrentDecibelValue();
+        } else if (this.transfer24Rdo.getSelection()) {
+            return this.tfr2400Volume.getCurrentDecibelValue();
+        }
+
+        return 0.;
     }
 
     /**
@@ -999,33 +923,143 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog {
         }
         if (!maintGroups.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("The following transmitter group(s) are in maintenance:\n");
+            sb.append("The following transmitter group(s) are still in maintenance:\n");
             for (String groupName : maintGroups) {
                 sb.append(groupName).append(", ");
             }
             sb.replace(sb.length() - 2, sb.length(),
-                    ".\n\nSelect OK to enable and close dialog.");
+                    ".\n\nAre you sure you want to close the dialog?");
 
-            MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.OK
-                    | SWT.CANCEL);
-            mb.setText("Enable Transmitter(s)");
-            mb.setMessage(sb.toString());
-            int answer = mb.open();
-
-            if (answer != SWT.OK) {
+            int option = DialogUtility.showMessageBox(this.shell,
+                    SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                    "Transmitter Maintenance", sb.toString());
+            if (option != SWT.YES) {
                 return false;
-            }
-
-            for (String groupName : maintGroups) {
-                TransmitterGroup tg = transmitterGroupNameMap.get(groupName);
-                try {
-                    updateTransmitterGroup(TxStatus.ENABLED, tg);
-                } catch (Exception e) {
-                    statusHandler.error("Error enabling Transmitter Group", e);
-                }
             }
         }
 
         return true;
+    }
+
+    private void syncTransmitterUpdates(
+            TransmitterGroupConfigNotification notification) {
+        /*
+         * Have the transmitters been updated (added) or removed?
+         */
+        if (notification.getType() == ConfigChangeType.Delete) {
+            boolean selectedDeleted = false;
+            final java.util.List<String> transmittersToRemove = new ArrayList<>(
+                    notification.getIdentifiers().size());
+            for (TransmitterGroupIdentifier identifier : notification
+                    .getIdentifiers()) {
+                if (selectedTransmitterGrp != null
+                        && selectedTransmitterGrp.getName().equals(
+                                identifier.getName())) {
+                    selectedDeleted = true;
+                }
+                if (this.transmitterGroupNameMap.remove(identifier.getName()) != null) {
+                    transmittersToRemove.add(identifier.getName());
+                }
+            }
+
+            final boolean reloadSelection = selectedDeleted;
+            VizApp.runAsync(new Runnable() {
+
+                @Override
+                public void run() {
+                    synchronized (transmitterGrpLock) {
+                        for (String transmitterGrp : transmittersToRemove) {
+                            transmitterList.remove(transmitterGrp);
+                        }
+                        if (reloadSelection) {
+                            selectedTransmitterGrp = null;
+                            populate();
+                        }
+                    }
+                }
+            });
+        } else {
+            boolean selectedUpdated = false;
+            final Set<Integer> groupIds = new HashSet<>(notification
+                    .getIdentifiers().size(), 1.0f);
+            for (TransmitterGroupIdentifier identifier : notification
+                    .getIdentifiers()) {
+                if (selectedTransmitterGrp != null
+                        && selectedTransmitterGrp.getName().equals(
+                                identifier.getName())) {
+                    selectedUpdated = true;
+                }
+                groupIds.add(identifier.getId());
+            }
+
+            /*
+             * Attempt to retrieve all {@link TransmitterGroup}s that have been
+             * added or updated.
+             */
+            java.util.List<TransmitterGroup> updatedTransmitterGroups;
+            try {
+                updatedTransmitterGroups = this.dataManager
+                        .getTransmitterGroupsWithIds(groupIds);
+            } catch (Exception e) {
+                statusHandler
+                        .error("Failed to retrieve the updated Transmitter Groups associated with notification: "
+                                + notification.toString() + ".", e);
+                return;
+            }
+
+            final java.util.List<String> newGroupNames = new ArrayList<>(
+                    updatedTransmitterGroups.size());
+            for (TransmitterGroup tg : updatedTransmitterGroups) {
+                if (transmitterGroupNameMap.containsKey(tg.getName()) == false) {
+                    newGroupNames.add(tg.getName());
+                }
+                transmitterGroupNameMap.put(tg.getName(), tg);
+            }
+
+            if (selectedUpdated || newGroupNames.isEmpty() == false) {
+                final boolean reloadSelection = selectedUpdated;
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        synchronized (transmitterGrpLock) {
+                            for (String groupName : newGroupNames) {
+                                transmitterList.add(groupName);
+                            }
+
+                            if (reloadSelection) {
+                                populate();
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    @Override
+    public void volumeChanged() {
+        this.saveButton.setEnabled(this.dataIsCurrent() == false);
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        if (isDisposed()) {
+            return;
+        }
+
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof TransmitterGroupConfigNotification) {
+                    TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
+                    synchronized (this.transmitterGrpLock) {
+                        this.syncTransmitterUpdates(notification);
+                    }
+                }
+            } catch (NotificationException e) {
+                statusHandler.error("Error processing update notification", e);
+            }
+        }
     }
 }

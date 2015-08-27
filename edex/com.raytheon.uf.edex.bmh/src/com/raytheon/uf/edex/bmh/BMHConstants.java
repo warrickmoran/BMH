@@ -41,6 +41,7 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Oct 07, 2014 3687       bsteffen    Add method to get practice data directory.
  * Nov 05, 2014 3630       bkowal      Added AUDIO_DATA_DIRECTORY
  * Dec 12, 2014 3603       bsteffen    Added MAINTENANCE_DATA_DIRECTORY
+ * Aug 10, 2015 4424       bkowal      Added {@link #PLAYLIST_DIRECTORY}.
  * 
  * </pre>
  * 
@@ -64,8 +65,10 @@ public final class BMHConstants {
      */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BMHConstants.class);
-    
+
     public static final String AUDIO_DATA_DIRECTORY = "audio";
+
+    public static final String PLAYLIST_DIRECTORY = "playlist";
 
     private static final String BMH_HOME_ENV_VAR = "BMH_HOME";
 

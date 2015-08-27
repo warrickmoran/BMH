@@ -20,6 +20,8 @@
 package com.raytheon.uf.viz.bmh.ui.recordplayback;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -30,6 +32,7 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.TargetDataLine;
 
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
+import com.raytheon.uf.common.bmh.audio.CollectibleAudioRegulator;
 
 /**
  * Manages the recording and storage of audio. Provides access to all recorded
@@ -45,6 +48,8 @@ import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
  * Oct 7, 2014  3657       bkowal      Initial creation
  * Oct 29, 2014 3774       bsteffen    Log Packets
  * Nov 24, 2014 3862       bkowal      Added a plot listener.
+ * Aug 17, 2015 4757       bkowal      Audio is now altered in 5 packet
+ *                                     segments prior to saving.
  * 
  * </pre>
  * 
@@ -57,6 +62,11 @@ public class AudioRecorderThread extends Thread {
     // TODO: need a common location for this format throughout BMH.
     private static final AudioFormat ULAW_AUDIO_FMT = new AudioFormat(
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
+
+    /*
+     * 4 -5 audio packets are sent to Comms Manager at a time.
+     */
+    private final int REGULATORY_SIZE = 5;
 
     private final int sampleCount;
 
@@ -103,6 +113,9 @@ public class AudioRecorderThread extends Thread {
             if (bytesRead == 0) {
                 break;
             }
+            if (bytesRead != audioData.length) {
+                audioData = Arrays.copyOf(audioData, bytesRead);
+            }
             this.notifyListener(audioData);
             this.samples.add(audioData);
         }
@@ -134,17 +147,41 @@ public class AudioRecorderThread extends Thread {
         this.closeLine();
     }
 
-    public ByteBuffer getAudioSamples() {
+    public ByteBuffer getAudioSamples() throws Exception {
         int totalSampleBytes = 0;
         for (byte[] sample : this.samples) {
             totalSampleBytes += sample.length;
         }
         ByteBuffer buffer = ByteBuffer.allocate(totalSampleBytes);
 
-        for (byte[] sample : this.samples) {
-            buffer.put(sample);
+        /*
+         * Adjust the audio.
+         */
+        List<byte[]> regulatorySequence = new ArrayList<>(REGULATORY_SIZE);
+        for (int i = 0; i < this.samples.size(); i++) {
+            byte[] sample = this.samples.get(i);
+            regulatorySequence.add(sample);
+
+            if (regulatorySequence.size() == REGULATORY_SIZE
+                    && (this.samples.size() - i) > REGULATORY_SIZE) {
+                this.regulateAudioSamples(regulatorySequence, buffer);
+                regulatorySequence.clear();
+            }
+        }
+        if (regulatorySequence.isEmpty() == false) {
+            this.regulateAudioSamples(regulatorySequence, buffer);
         }
 
         return buffer;
+    }
+
+    private void regulateAudioSamples(List<byte[]> regulatorySequence,
+            ByteBuffer destination) throws Exception {
+        final CollectibleAudioRegulator regulator = new CollectibleAudioRegulator(
+                regulatorySequence);
+        regulatorySequence = regulator.regulateAudioCollection(0);
+        for (byte[] regulatedSample : regulatorySequence) {
+            destination.put(regulatedSample);
+        }
     }
 }

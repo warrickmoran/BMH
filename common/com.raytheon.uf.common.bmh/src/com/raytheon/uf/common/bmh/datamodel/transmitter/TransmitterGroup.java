@@ -103,6 +103,9 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jul 08, 2015 4636       bkowal      Support multiple decibel target levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Jul 17, 2015 4636       bkowal      Added {@link #GET_TRANSMITTER_GROUPS_FOR_IDS}.
+ * Aug 05, 2015 4685       bkowal      Removed unused and incorrectly implemented status changing
+ *                                     methods.
  * </pre>
  * 
  * @author rjpeter
@@ -113,7 +116,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
         @NamedQuery(name = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_ENABLED_TRANSMITTER_GROUPS_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER, query = TransmitterGroup.GET_TRANSMITTER_GROUP_CONTAINS_TRANSMITTER_QUERY),
         @NamedQuery(name = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS, query = TransmitterGroup.GET_CONFIGURED_TRANSMITTER_GROUPS_QUERY),
-        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY) })
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION, query = TransmitterGroup.GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY),
+        @NamedQuery(name = TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS, query = TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS_QUERY) })
 @Entity
 @Table(name = "transmitter_group", uniqueConstraints = { @UniqueConstraint(name = "uk_tx_group_name", columnNames = { "name" }) })
 @SequenceGenerator(initialValue = 1, allocationSize = 1, name = TransmitterGroup.GEN, sequenceName = "transmitter_group_seq")
@@ -142,6 +146,10 @@ public class TransmitterGroup implements PositionOrdered {
     public static final String GET_TRANSMITTER_GROUP_MAX_POSITION = "getTransmitterGroupMaxPosition";
 
     protected static final String GET_TRANSMITTER_GROUP_MAX_POSITION_QUERY = "SELECT MAX(position) FROM TransmitterGroup";
+
+    public static final String GET_TRANSMITTER_GROUPS_FOR_IDS = "getTransmitterGroupsForIds";
+
+    protected static final String GET_TRANSMITTER_GROUPS_FOR_IDS_QUERY = "FROM TransmitterGroup tg WHERE tg.id IN :tgids";
 
     public static final int NAME_LENGTH = 40;
 
@@ -478,33 +486,6 @@ public class TransmitterGroup implements PositionOrdered {
         }
 
         return false;
-    }
-
-    /**
-     * Group's enabled transmitters change to maintenance.
-     */
-    public void maintenanceGroup() {
-        if (!transmitters.isEmpty()) {
-            for (Transmitter t : transmitters) {
-                if (t.getTxStatus() == TxStatus.ENABLED) {
-                    t.setTxStatus(TxStatus.MAINT);
-                }
-            }
-        }
-    }
-
-    /**
-     * Group's maintenance transmitters change to enabled.
-     * 
-     */
-    public void enableGroup() {
-        if (!transmitters.isEmpty()) {
-            for (Transmitter t : transmitters) {
-                if (t.getTxStatus() == TxStatus.MAINT) {
-                    t.setTxStatus(TxStatus.ENABLED);
-                }
-            }
-        }
     }
 
     /**

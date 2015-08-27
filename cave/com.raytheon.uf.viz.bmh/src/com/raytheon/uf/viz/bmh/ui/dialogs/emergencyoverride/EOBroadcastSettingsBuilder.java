@@ -75,6 +75,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                     {@link MessageType}.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jul 08, 2015 4636       bkowal      Updated to use {@link GeneratedTonesBuffer}.
+ * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
  * </pre>
  * 
  * @author bkowal
@@ -240,9 +241,11 @@ public class EOBroadcastSettingsBuilder extends
                 tones = this.constructSAMEAlertTones(areas);
                 sameGroups.add(tg);
             }
-            long tonesDuration = tones.length() / 160L * 20L;
-            if (tonesDuration > this.longestDuration) {
-                this.longestDuration = tonesDuration;
+            if (tones != null) {
+                long tonesDuration = tones.length() / 160L * 20L;
+                if (tonesDuration > this.longestDuration) {
+                    this.longestDuration = tonesDuration;
+                }
             }
             this.transmitterGroupToneMap.put(tg, tones);
         }
@@ -311,7 +314,8 @@ public class EOBroadcastSettingsBuilder extends
         /*
          * calculate audio duration. calculate delay based on audio duration.
          */
-        long tonesDuration = config.getToneAudio().length() / 160L * 20L;
+        long tonesDuration = (config.getToneAudio() == null) ? 0 : config
+                .getToneAudio().length() / 160L * 20L;
         config.setDelayMilliseconds(this.longestDuration - tonesDuration);
         if (sameGroups.contains(tg)) {
             config.setEndToneAudio(this.endTonesAudio);

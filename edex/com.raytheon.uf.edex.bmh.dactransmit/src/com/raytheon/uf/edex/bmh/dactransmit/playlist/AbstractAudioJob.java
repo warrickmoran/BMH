@@ -23,11 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
+import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.common.bmh.audio.AudioRegulator;
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
-import com.raytheon.uf.edex.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
 
 /**
  * Abstract representation of an audio retrieval job.
@@ -43,6 +43,7 @@ import com.raytheon.uf.edex.bmh.audio.AudioRegulator;
  * Mar 04, 2014 4224       bkowal      Optionally skip audio adjustments based on
  *                                     DISABLE_AUDIO_ATTENUATION.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
+ * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * 
  * </pre>
  * 

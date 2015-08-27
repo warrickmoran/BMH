@@ -21,6 +21,8 @@ package com.raytheon.bmh.comms.broadcast;
 
 import java.io.IOException;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -29,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -65,6 +66,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * Dec 12, 2014 3603       bsteffen    Reuse alignment task for transfer tones.
  * Feb 05, 2015 3743       bsteffen    Ability to return groups.
+ * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
  * 
  * </pre>
  * 
@@ -87,14 +89,9 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
     private final CommsManager commsManager;
 
-    private ConcurrentMap<String, AbstractBroadcastingTask> broadcastStreamingTasksMap;
+    private final ConcurrentMap<String, AbstractBroadcastingTask> broadcastStreamingTasksMap = new ConcurrentHashMap<>();
 
-    /*
-     * TODO: will need to update the implementation if the message directory is
-     * ever updated to be keyed by id.
-     */
-
-    private ConcurrentMap<String, DacTransmitKey> availableDacConnectionsMap;
+    private final List<String> availableDacConnections = new ArrayList<>();
 
     /**
      * @param port
@@ -107,8 +104,6 @@ public class BroadcastStreamServer extends AbstractServerThread {
         this.clusterServer = clusterServer;
         this.transmitServer = transmitServer;
         this.commsManager = commsManager;
-        this.broadcastStreamingTasksMap = new ConcurrentHashMap<>();
-        this.availableDacConnectionsMap = new ConcurrentHashMap<>();
     }
 
     /*
@@ -125,10 +120,13 @@ public class BroadcastStreamServer extends AbstractServerThread {
         logger.info("Handling {} request.", obj.getClass().getName());
 
         if (obj instanceof LiveBroadcastListGroupsCommand) {
-            SerializationUtil.transformToThriftUsingStream(
-                    new LiveBroadcastGroupsMessage(availableDacConnectionsMap
-                            .keySet()), socket.getOutputStream());
-            socket.close();
+            synchronized (this.availableDacConnections) {
+                SerializationUtil.transformToThriftUsingStream(
+                        new LiveBroadcastGroupsMessage(new ArrayList<>(
+                                this.availableDacConnections)), socket
+                                .getOutputStream());
+                socket.close();
+            }
             return;
         }
 
@@ -275,16 +273,13 @@ public class BroadcastStreamServer extends AbstractServerThread {
      * local activity because the {@link DacTransmitCommunicator} currently only
      * allows for local connections.
      */
-    public void dacConnected(final DacTransmitKey key, final String group) {
-        if (this.availableDacConnectionsMap.containsKey(group)) {
-            logger.info(
-                    "Dac connection to transmitter {} has been replaced with connection: {}.",
-                    group, key.toString());
-            this.availableDacConnectionsMap.replace(group, key);
-        } else {
-            logger.info("Adding transmitter {} connection: {}.", group,
-                    key.toString());
-            this.availableDacConnectionsMap.put(group, key);
+    public void dacConnected(final String group) {
+        synchronized (this.availableDacConnections) {
+            if (this.availableDacConnections.contains(group)) {
+                return;
+            }
+            logger.info("Adding dac connection to transmitter {}.", group);
+            this.availableDacConnections.add(group);
         }
         for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
@@ -298,7 +293,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
      * local activity because the {@link DacTransmitCommunicator} currently only
      * allows for local connections.
      */
-    public void dacDisconnected(final DacTransmitKey key, final String group) {
+    public void dacDisconnected(final String group) {
         if (group == null) {
             /*
              * Can occur if the config is changed while comms manager is
@@ -306,15 +301,19 @@ public class BroadcastStreamServer extends AbstractServerThread {
              */
             return;
         }
-        this.availableDacConnectionsMap.remove(group, key);
+        synchronized (this.availableDacConnections) {
+            this.availableDacConnections.remove(group);
+        }
         for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
             task.dacDisconnectedFromServer(group);
         }
     }
 
-    public DacTransmitKey getLocalDacCommunicationKey(final String group) {
-        return this.availableDacConnectionsMap.get(group);
+    public boolean isDacConnected(final String group) {
+        synchronized (this.availableDacConnections) {
+            return this.availableDacConnections.contains(group);
+        }
     }
 
     public void broadcastTaskFinished(final String broadcastId) {

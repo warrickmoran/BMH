@@ -19,9 +19,19 @@
  **/
 package com.raytheon.uf.common.bmh.audio.impl;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.LinkedList;
+
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.AudioFileFormat.Type;
+import javax.sound.sampled.AudioFormat.Encoding;
 
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.ConversionNotSupportedException;
@@ -39,6 +49,7 @@ import com.raytheon.uf.common.bmh.audio.ConversionNotSupportedException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 3, 2014  3880       bkowal      Initial creation
+ * Aug 7, 2015  4424       bkowal      Simplified command-line for wav to mp3.
  * 
  * </pre>
  * 
@@ -50,29 +61,33 @@ public class Mp3AudioConverter extends FFMpegAudioConverter {
 
     private static final BMHAudioFormat CONVERSION_FORMAT = BMHAudioFormat.MP3;
 
-    private static final BMHAudioFormat[] SUPPORTED_FORMATS = new BMHAudioFormat[] { BMHAudioFormat.ULAW };
+    private static final BMHAudioFormat[] SUPPORTED_FORMATS = new BMHAudioFormat[] { BMHAudioFormat.WAV };
 
-    private static final String BMH_FFMPEG_MP3_BITRATE_PROPERTY = "bmh.ffmpeg.mp3.bitrate";
-
-    private static final String DEFAULT_MP3_BITRATE = "64k";
-
-    private static final String ffmpegInputFormatIdentifier = "mulaw";
+    private static final String ffmpegInputFormatIdentifier = "wav";
 
     private static final String ffmpegOutputFormatIdentifier = "mp3";
-
-    private static final String ulaw_sample_freq = "8000";
-
-    private static final String mp3_sample_freq = "44100";
-
-    private final String mp3_bitrate;
 
     /**
      * Constructor
      */
     public Mp3AudioConverter() {
         super(CONVERSION_FORMAT, SUPPORTED_FORMATS);
-        this.mp3_bitrate = System.getProperty(BMH_FFMPEG_MP3_BITRATE_PROPERTY,
-                DEFAULT_MP3_BITRATE);
+    }
+
+    protected Path prepareInput(final byte[] src, BMHAudioFormat srcFormat)
+            throws IOException {
+        final Path inputPath = Files.createTempFile(null,
+                srcFormat.getExtension());
+
+        try (OutputStream os = Files.newOutputStream(inputPath)) {
+            final AudioFormat audioFormat = new AudioFormat(Encoding.ULAW,
+                    8000, 8, 1, 1, 8000, true);
+            final AudioInputStream audioInputStream = new AudioInputStream(
+                    new ByteArrayInputStream(src), audioFormat, src.length);
+            AudioSystem.write(audioInputStream, Type.WAVE, os);
+        }
+
+        return inputPath;
     }
 
     /*
@@ -90,16 +105,10 @@ public class Mp3AudioConverter extends FFMpegAudioConverter {
     @Override
     protected List<String> getFFMpegArgs(Path inputFile, Path outputFile) {
         List<String> args = new LinkedList<>();
-        args.add(FFMPG_SAMPLE_FREQ);
-        args.add(ulaw_sample_freq);
         args.add(FFMPG_FORCE_FORMAT);
         args.add(ffmpegInputFormatIdentifier);
         args.add(FFMPG_INPUT_NAME);
         args.add(inputFile.toString());
-        args.add(FFMPG_SAMPLE_FREQ);
-        args.add(mp3_sample_freq);
-        args.add(FFMPG_BITRATE);
-        args.add(mp3_bitrate);
         args.add(FFMPG_OVERWRITE_OUT);
         args.add(outputFile.toString());
 

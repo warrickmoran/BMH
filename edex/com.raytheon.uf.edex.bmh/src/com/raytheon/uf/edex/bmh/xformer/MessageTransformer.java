@@ -53,7 +53,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.LdadStatus;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -151,6 +150,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * May 21, 2015 4429       rjpeter     Added additional logging.
  * May 26, 2015 4481       bkowal      {@link TimeTextFragment} is now in common.
  * Jun 08, 2015 4403       bkowal      Updated to make dictionary substitution reusable.
+ * Aug 10, 2015 4723       bkowal      Separated the ldad processing route from the main processing route.
  * </pre>
  * 
  * @author bkowal
@@ -226,10 +226,10 @@ public class MessageTransformer implements IContextStateProcessor {
      * @throws Exception
      *             when the transformation fails
      */
-    public List<Object> process(ValidatedMessage message) throws Exception {
+    public BroadcastMsgGroup process(ValidatedMessage message) throws Exception {
         final String completionError = "Receieved an uninitialized or incomplete Validated Message to process!";
-        String traceId = TraceableUtil.getTraceId(message);
-        String msgHeader = TraceableUtil.createTraceMsgHeader(message);
+        final String traceId = TraceableUtil.getTraceId(message);
+        final String msgHeader = TraceableUtil.createTraceMsgHeader(message);
 
         if (message == null) {
             /* Do not send a NULL downstream. */
@@ -347,43 +347,56 @@ public class MessageTransformer implements IContextStateProcessor {
                             + message.getId() + "!");
         }
 
-        List<Object> result = new ArrayList<Object>();
-        result.add(new BroadcastMsgGroup(traceId, generatedMessages));
-
         /* Transformation complete. */
         statusHandler.info(msgHeader + "Transformation of message: "
                 + message.getId() + " was successful. Generated "
                 + generatedMessages.size() + " Broadcast Message(s).");
         this.messageLogger.logMessageActivity(message,
                 MESSAGE_ACTIVITY.TRANSFORM_END, message.getInputMessage());
-        if (message.getLdadStatus() == LdadStatus.ACCEPTED) {
-            statusHandler.info(msgHeader
-                    + "Building ldad message(s) for message: "
-                    + message.getId() + "...");
-            try {
-                result.addAll(this.processLdad(traceId, msgHeader, messageType,
-                        formattedText));
-            } catch (SSMLConversionException e) {
-                StringBuilder errorString = new StringBuilder();
-                errorString.append(msgHeader);
-                errorString
-                        .append("Failed to generate ldad message(s) for message: ");
-                errorString.append(message.getId());
-                errorString.append(".");
 
-                /*
-                 * Currently the generated broadcast message(s) will still be
-                 * sent through the processing routes.
-                 */
-                statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
-                        errorString.toString(), e);
-                this.messageLogger.logError(message,
-                        BMH_COMPONENT.MESSAGE_TRANSFORMER,
-                        BMH_ACTIVITY.SSML_GENERATION, message, e);
-            }
+        return new BroadcastMsgGroup(traceId, generatedMessages);
+    }
+
+    public List<LdadMsg> processLdad(ValidatedMessage message) throws Exception {
+        final String traceId = TraceableUtil.getTraceId(message);
+        final String msgHeader = TraceableUtil.createTraceMsgHeader(message);
+
+        statusHandler.info(msgHeader + "Building ldad message(s) for message: "
+                + message.getId() + "...");
+
+        /* Retrieve the message type based on afos id. */
+        MessageType messageType = this.getMessageType(message);
+
+        /*
+         * Format the text. Remove extra newlines and standardize
+         * capitalization.
+         */
+        final String formattedText = this.formatText(message.getInputMessage()
+                .getContent().trim());
+
+        try {
+            return this.processLdad(traceId, msgHeader, messageType,
+                    formattedText);
+        } catch (SSMLConversionException e) {
+            StringBuilder errorString = new StringBuilder();
+            errorString.append(msgHeader);
+            errorString
+                    .append("Failed to generate ldad message(s) for message: ");
+            errorString.append(message.getId());
+            errorString.append(".");
+
+            /*
+             * Currently the generated broadcast message(s) will still be sent
+             * through the processing routes.
+             */
+            statusHandler.error(BMH_CATEGORY.XFORM_SSML_GENERATION_FAILED,
+                    errorString.toString(), e);
+            this.messageLogger.logError(message,
+                    BMH_COMPONENT.MESSAGE_TRANSFORMER,
+                    BMH_ACTIVITY.SSML_GENERATION, message, e);
+
+            throw new Exception(errorString.toString());
         }
-
-        return result;
     }
 
     private List<LdadMsg> processLdad(final String traceId,

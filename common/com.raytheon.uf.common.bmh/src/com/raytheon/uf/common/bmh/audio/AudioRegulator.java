@@ -17,14 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.common.bmh.audio;
 
 import org.apache.commons.lang.math.DoubleRange;
 import org.apache.commons.lang.math.Range;
 
-import com.raytheon.uf.common.bmh.audio.AudioConversionException;
-import com.raytheon.uf.common.bmh.audio.BMHAudioConstants;
-import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.PCMToUlawAlgorithm;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
 
@@ -53,6 +50,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Jul 13, 2015 4636       bkowal      Do not alter extremely quiet audio.
  * Jul 14, 2015 4636       rjpeter     Check entire stream for max.
  * Jul 15, 2015 4636       bkowal      Increased visibility of a few methods for abstraction.
+ * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
  * </pre>
  * 
  * @author bkowal

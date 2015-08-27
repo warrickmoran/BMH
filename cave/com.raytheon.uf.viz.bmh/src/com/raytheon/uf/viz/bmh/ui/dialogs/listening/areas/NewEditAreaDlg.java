@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
  * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
  * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
  * Apr 20, 2015    4413    rferrel     Order dual lists.
+ * Jul 22, 2015    4676    bkowal      Updated invalid area format text.
  * 
  * </pre>
  * 
@@ -313,7 +314,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
         String state = areaCode.substring(0, 2);
 
         String msg = "Invalid area code format\n\nArea code needs to be entered in this format:\n\n"
-                + "SSXNNN - 6 digit UGC area code\nSS - State\nX - C for county code, and a numeral "
+                + "SSXNNN - 6 digit UGC area code\nSS - State\nX - C for county code or a numeral "
                 + "(i.e., 1 through 9) for a partial area code\nNNN - county code number";
 
         // First check state

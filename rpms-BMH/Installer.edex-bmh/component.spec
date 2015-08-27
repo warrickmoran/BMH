@@ -27,6 +27,7 @@ requires: awips2-edex
 requires: awips2-python
 requires: awips2-java
 requires: awips2-psql
+requires: awips2-common-bmh
 
 %description
 AWIPS II Edex BMH - Installs AWIPS II BMH Edex Plugins and Configuration.

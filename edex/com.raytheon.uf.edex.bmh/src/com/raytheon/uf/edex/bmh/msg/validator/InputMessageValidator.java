@@ -31,8 +31,12 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.edex.bmh.BMHRejectionDataManager;
+import com.raytheon.uf.edex.bmh.BMHRejectionException;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
+import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
@@ -58,6 +62,7 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                    watch/warning fails validation because it expired.
  * May 13, 2015  4429     rferrel     Set traceId.
  * May 21, 2015  4429     rjpeter     Added additional logging.
+ * Jul 29, 2015  4690     rjpeter     Added reject/checkReject methods.
  * </pre>
  * 
  * @author bsteffen
@@ -72,6 +77,10 @@ public class InputMessageValidator {
 
     private final MessageTypeDao messageTypeDao = new MessageTypeDao(true);
 
+    private final InputMessageDao inputMessageDao;
+
+    private final ValidatedMessageDao validatedMessageDao;
+
     /**
      * Currently {@link InputMessageValidator} is only used in operational mode.
      */
@@ -79,10 +88,16 @@ public class InputMessageValidator {
 
     private final IMessageLogger messageLogger;
 
-    public InputMessageValidator(final IMessageLogger messageLogger) {
+    private final BMHRejectionDataManager rejectionManager;
+
+    public InputMessageValidator(final IMessageLogger messageLogger,
+            final BMHRejectionDataManager rejectionManager) {
         this.messageLogger = messageLogger;
         this.ldadCheck = new LdadValidator(true, messageLogger);
         this.transmissionCheck = new TransmissionValidator(messageLogger);
+        this.inputMessageDao = new InputMessageDao(true, messageLogger);
+        this.validatedMessageDao = new ValidatedMessageDao(true, messageLogger);
+        this.rejectionManager = rejectionManager;
     }
 
     /**
@@ -167,6 +182,46 @@ public class InputMessageValidator {
                     BMH_ACTIVITY.MESSAGE_VALIDATION, valid);
         }
         this.messageLogger.logValidationActivity(valid);
+
         return valid;
+    }
+
+    /**
+     * Saves original message to reject folder depending on TransmissionStatus.
+     * Also deletes the InputMessage in this case.
+     * 
+     * @param message
+     */
+    public void checkReject(ValidatedMessage message) {
+        InputMessage im = message.getInputMessage();
+
+        switch (message.getTransmissionStatus()) {
+        case UNPLAYABLE: // fall through
+        case UNDEFINED: // fall through
+        case UNACCEPTABLE:
+            reject(im);
+            // fall through
+        case DUPLICATE:
+            inputMessageDao.delete(im);
+            break;
+        default:
+            validatedMessageDao.persist(message);
+            break;
+        }
+    }
+
+    /**
+     * Saves the original message to the reject directory.
+     * 
+     * @param message
+     */
+    public void reject(InputMessage message) {
+        try {
+            rejectionManager.rejectFile(message.getOriginalFile().toPath(),
+                    BMH_CATEGORY.MESSAGE_VALIDATION_ERROR);
+        } catch (BMHRejectionException e) {
+            statusHandler.error(BMH_CATEGORY.MESSAGE_VALIDATION_ERROR,
+                    "Unable to write reject message", e);
+        }
     }
 }

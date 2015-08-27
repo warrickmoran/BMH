@@ -17,10 +17,12 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.common.bmh.stats;
+
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
 /**
- * Defines an Audio Regulatory Listener.
+ * Stat used to track message expiration processing time.
  * 
  * <pre>
  * 
@@ -28,25 +30,33 @@ package com.raytheon.uf.edex.bmh.audio;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 31, 2014 3424       bkowal      Initial creation
- * Sep 4, 2014  3532       bkowal      Multiple threads will never use the same
- *                                     audio regulator.
+ * Apr 20, 2015 4397       bkowal      Initial creation
+ * Jun 24, 2015 4397       bkowal      Added an empty constructor.
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
+@DynamicSerialize
+public class MessageExpirationProcessingEvent extends
+        AbstractBMHProcessingTimeEvent {
 
-public interface IAudioRegulatoryListener {
+    private static final long serialVersionUID = -8814178589937754712L;
+
     /**
-     * Notifies the listener that an audio adjustment has been completed.
+     * Constructor.
      * 
-     * @param id
-     *            the generic identifier associated with the adjustment rules
-     *            that were applied.
-     * @param audioData
-     *            the adjusted audio data.
+     * Empty constructor for {@link DynamicSerialize}.
      */
-    public void notifyAudioAdjusted(final byte[] audioData);
+    public MessageExpirationProcessingEvent() {
+    }
+
+    /**
+     * @param requestTime
+     */
+    public MessageExpirationProcessingEvent(long requestTime) {
+        super(requestTime);
+    }
 }

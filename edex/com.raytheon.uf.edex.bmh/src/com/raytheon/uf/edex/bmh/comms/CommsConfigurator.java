@@ -33,6 +33,7 @@ import java.util.Set;
 
 import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
+import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.CommsConfigNotification;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
+import com.raytheon.uf.common.serialization.JAXBManager;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
@@ -85,6 +87,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    practice configuration.
  * Jul 01, 2015  4602     rjpeter     Specific dac port now bound to transmitter.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Jul 23, 2015  4676     bkowal      Use {@link JAXBManager}.
  * </pre>
  * 
  * @author bsteffen
@@ -103,6 +106,8 @@ public class CommsConfigurator implements IContextStateProcessor {
 
     private final ClusterLocker locker;
 
+    private final JAXBManager jaxbManager;
+
     public CommsConfigurator() {
         this(true);
     }
@@ -110,6 +115,12 @@ public class CommsConfigurator implements IContextStateProcessor {
     public CommsConfigurator(boolean operational) {
         this.operational = operational;
         locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
+        try {
+            this.jaxbManager = new JAXBManager(CommsConfig.class);
+        } catch (JAXBException e) {
+            throw new RuntimeException(
+                    "Failed to instantiate the JAXB Manager.", e);
+        }
     }
 
     public CommsConfig configure(ITraceable traceable) {
@@ -184,7 +195,8 @@ public class CommsConfigurator implements IContextStateProcessor {
                         + prevConfig + "], new [" + config + "]");
 
                 try {
-                    JAXB.marshal(config, configFilePath.toFile());
+                    this.jaxbManager.marshalToXmlFile(config,
+                            configFilePath.toString());
 
                     BmhMessageProducer
                             .sendConfigMessage(new CommsConfigNotification(

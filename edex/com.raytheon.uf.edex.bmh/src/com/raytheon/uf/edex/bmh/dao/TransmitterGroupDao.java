@@ -19,18 +19,29 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
+import org.apache.commons.io.FileUtils;
 import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionUtil;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.database.cluster.ClusterLocker;
+import com.raytheon.uf.edex.database.cluster.ClusterTask;
+import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
 
 /**
  * BMH DAO for {@link TransmitterGroup}.
@@ -50,6 +61,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
  * Feb 09, 2015  4082     bkowal      Added {@link #createGroupAndLanguages(TransmitterGroup, Collection)}.
  * Apr 14, 2015  4390     rferrel     Added {@link #reorderTransmitterGroup(List)}.
  * Apr 14, 2015  4394     bkowal      Added {@link #getConfiguredTransmitterGroups()}.
+ * Jul 17, 2015  4636     bkowal      Added {@link #getTransmitterGroupsWithIds(Set)}.
+ * Aug 10, 2015  4424     bkowal      Added {@link #saveRenamedTransmitterGroup(TransmitterGroup, String)}.
  * </pre>
  * 
  * @author bkowal
@@ -58,12 +71,20 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 
 public class TransmitterGroupDao extends
         AbstractBMHDao<TransmitterGroup, Integer> {
+
+    private final Path playlistDir;
+
+    private final ClusterLocker locker;
+
     public TransmitterGroupDao() {
-        super(TransmitterGroup.class);
+        this(true);
     }
 
     public TransmitterGroupDao(boolean operational) {
         super(operational, TransmitterGroup.class);
+        playlistDir = BMHConstants.getBmhDataDirectory(operational).resolve(
+                BMHConstants.PLAYLIST_DIRECTORY);
+        locker = new ClusterLocker(AbstractBMHDao.getDatabaseName(operational));
     }
 
     /**
@@ -92,6 +113,23 @@ public class TransmitterGroupDao extends
         }
 
         return tGroup;
+    }
+
+    public List<TransmitterGroup> getTransmitterGroupsWithIds(
+            final Set<Integer> ids) {
+        List<?> returnObjects = this.findAllByNamedInQuery(
+                TransmitterGroup.GET_TRANSMITTER_GROUPS_FOR_IDS, "tgids", ids);
+        if (CollectionUtils.isEmpty(returnObjects)) {
+            return Collections.emptyList();
+        }
+
+        List<TransmitterGroup> transmitterGroups = new ArrayList<>(
+                returnObjects.size());
+        for (Object object : returnObjects) {
+            transmitterGroups.add((TransmitterGroup) object);
+        }
+
+        return transmitterGroups;
     }
 
     @SuppressWarnings("unchecked")
@@ -194,6 +232,95 @@ public class TransmitterGroupDao extends
                 PositionUtil.updatePositions(tgList);
                 for (TransmitterGroup tg : tgList) {
                     session.saveOrUpdate(tg);
+                }
+            }
+        });
+    }
+
+    /**
+     * Saves a {@link Transmitter} and the associated standalone
+     * {@link TransmitterGroup} with a new name. Completes all file i/o
+     * operations to ensure that both remain in sync.
+     * 
+     * @param tg
+     *            the {@link TransmitterGroup} that has been renamed.
+     * @param previousName
+     *            the previous name of the {@link Transmitter}. Used to lookup
+     *            filesystem assets that need to be relocated.
+     */
+    public void saveRenamedTransmitterGroup(final TransmitterGroup tg,
+            final String previousName) {
+        txTemplate.execute(new TransactionCallbackWithoutResult() {
+
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                /*
+                 * Persist {@link Transmitter} and {@link TransmitterGroup}.
+                 * Ensure that the records can be persisted before attempting to
+                 * relocate file system assets.
+                 */
+                persist(tg);
+
+                /*
+                 * Determine the {@link Path}s to the filesystem assets that we
+                 * may be interacting with.
+                 */
+                final String newName = tg.getName();
+                final Path oldPlaylistPath = playlistDir.resolve(previousName);
+                final Path newPlaylistPath = playlistDir.resolve(newName);
+
+                /*
+                 * First, determine if is any data needs to be purged. Nothing
+                 * should exist in the new {@link Path} yet.
+                 */
+                if (Files.exists(newPlaylistPath)) {
+                    ClusterTask ct = null;
+                    do {
+                        ct = locker.lock("playlist", newName, 30000, true);
+                    } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
+                    try {
+                        FileUtils.deleteDirectory(newPlaylistPath.toFile());
+                    } catch (IOException e) {
+                        throw new IllegalStateException(
+                                "Failed to purge old playlist files: "
+                                        + newPlaylistPath.toString()
+                                        + " during the transmitter rename. Cancelling rename to prevent resources from getting out of sync.",
+                                e);
+                    } finally {
+                        locker.deleteLock(ct.getId().getName(), ct.getId()
+                                .getDetails());
+                    }
+                }
+
+                /*
+                 * Are there files that need to be moved to the new {@link
+                 * Path}?
+                 */
+                if (Files.exists(oldPlaylistPath)) {
+                    ClusterTask ct_old = null;
+                    ClusterTask ct_new = null;
+                    do {
+                        ct_old = locker.lock("playlist", previousName, 30000,
+                                true);
+                    } while (!LockState.SUCCESSFUL.equals(ct_old.getLockState()));
+                    do {
+                        ct_new = locker.lock("playlist", newName, 30000, true);
+                    } while (!LockState.SUCCESSFUL.equals(ct_new.getLockState()));
+                    try {
+                        FileUtils.moveDirectory(oldPlaylistPath.toFile(),
+                                newPlaylistPath.toFile());
+                    } catch (IOException e) {
+                        throw new IllegalStateException(
+                                "Failed to move the original playlist files: "
+                                        + oldPlaylistPath.toString()
+                                        + " to the new location: "
+                                        + newPlaylistPath.toString() + ".", e);
+                    } finally {
+                        locker.deleteLock(ct_old.getId().getName(), ct_old
+                                .getId().getDetails());
+                        locker.deleteLock(ct_new.getId().getName(), ct_new
+                                .getId().getDetails());
+                    }
                 }
             }
         });

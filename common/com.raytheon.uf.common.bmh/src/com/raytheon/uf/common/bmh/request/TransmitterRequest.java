@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.request;
 
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -47,6 +48,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 14, 2015  4394     bkowal      Added {@link TransmitterRequestAction#GetConfiguredTransmitterGroups}.
  * May 06, 2015  4470     bkowal      Added {@link TransmitterRequestAction#DisableTransmitterGroup}.
  * May 08, 2015  4470     bkowal      Added {@link TransmitterRequestAction#EnableTransmitterGroup}.
+ * Jul 17, 2015  4636     bkowal      Added {@link TransmitterRequestAction#GetTransmitterGroupsWithIds} and
+ *                                    {@link #ids}.
+ * Jul 21, 2015  4424     bkowal      Added {@link TransmitterRequestAction#GetTransmitterGroupByName} and
+ *                                    {@link TransmitterRequestAction#GetTransmitterByMnemonic}.
  * 
  * </pre>
  * 
@@ -56,11 +61,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class TransmitterRequest extends AbstractBMHServerRequest {
     public enum TransmitterRequestAction {
-        GetTransmitterGroups, GetTransmitters, GetEnabledTransmitterGroups, GetConfiguredTransmitterGroups,
+        GetTransmitterGroups, GetTransmitterGroupsWithIds, GetTransmitterGroupByName, GetTransmitters, GetEnabledTransmitterGroups, GetConfiguredTransmitterGroups,
 
         GetTransmitterGroupWithTransmitter, SaveTransmitter, SaveTransmitterDeleteGroup,
 
-        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips, DisableTransmitterGroup, EnableTransmitterGroup;
+        SaveGroupList, SaveGroup, DeleteTransmitter, DeleteTransmitterGroup, GetTransmittersByFips, GetTransmitterByMnemonic, DisableTransmitterGroup, EnableTransmitterGroup;
     }
 
     /**
@@ -83,6 +88,9 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     @DynamicSerializeElement
     private String argument;
+
+    @DynamicSerializeElement
+    private Set<Integer> ids;
 
     @DynamicSerializeElement
     private boolean reorder = false;
@@ -169,6 +177,21 @@ public class TransmitterRequest extends AbstractBMHServerRequest {
 
     public void setArgument(String argument) {
         this.argument = argument;
+    }
+
+    /**
+     * @return the ids
+     */
+    public Set<Integer> getIds() {
+        return ids;
+    }
+
+    /**
+     * @param ids
+     *            the ids to set
+     */
+    public void setIds(Set<Integer> ids) {
+        this.ids = ids;
     }
 
     public boolean isReorder() {

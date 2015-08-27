@@ -18,6 +18,7 @@
 
 	<bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator">
 		<constructor-arg ref="edexMessageLogger" />
+        <constructor-arg ref="rejectionDataManager" />
 	</bean>
 
 	<camelContext id="clusteredBmhDirectoryScanner"
@@ -31,17 +32,19 @@
 		    <doTry>
 				<pipeline>
 				    <bean ref="inputMessageParser" method="parse" />
-				    <bean ref="inputMessageDao" method="persist" />
 				    <filter>
   						<simple>${body.validHeader} == false</simple>
+                        <bean ref="inputMessageValidator" method="reject" />
   						<stop />
 					</filter> 
+                    <bean ref="inputMessageDao" method="persist" />
 				    <bean ref="inputMessageValidator" method="validate" />
-  					<bean ref="validatedMessageDao" method="persist" />
   					<filter>
   						<simple>${body.isAccepted} == false</simple>
+                        <bean ref="inputMessageValidator" method="checkReject" />
   						<stop />
 					</filter>
+                    <bean ref="validatedMessageDao" method="persist" />
   					<setBody>
   						<simple>${body.getTraceableId}</simple>
 					</setBody>

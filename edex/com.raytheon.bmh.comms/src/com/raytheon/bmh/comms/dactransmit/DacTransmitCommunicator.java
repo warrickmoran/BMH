@@ -27,7 +27,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.bmh.comms.broadcast.SAMEDurationTruncatedAlarm;
 import com.raytheon.bmh.comms.broadcast.WtchOrWrnNotBroadcastAlarm;
@@ -43,6 +42,8 @@ import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
+import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
+import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
@@ -51,8 +52,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
-import com.raytheon.uf.edex.bmh.stats.DeliveryTimeEvent;
-import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
 
 /**
  * 
@@ -98,6 +97,8 @@ import com.raytheon.uf.edex.bmh.stats.LiveBroadcastLatencyEvent;
  *                                    {@link #wtchOrWrnNotBroadcastAlarm}.
  * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Jul 28, 2015  4686     bkowal      Moved statistics to common.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * 
  * </pre>
  * 
@@ -111,8 +112,6 @@ public class DacTransmitCommunicator extends Thread {
     private final Object sendLock = new Object();
 
     private final CommsManager manager;
-
-    private final DacTransmitKey key;
 
     private final String groupName;
 
@@ -138,12 +137,11 @@ public class DacTransmitCommunicator extends Thread {
 
     private final WtchOrWrnNotBroadcastAlarm wtchOrWrnNotBroadcastAlarm = new WtchOrWrnNotBroadcastAlarm();
 
-    public DacTransmitCommunicator(CommsManager manager, DacTransmitKey key,
-            String groupName, int[] radios, Socket socket,
-            double audioDbTarget, double sameDbTarget, double alertDbTarget) {
+    public DacTransmitCommunicator(CommsManager manager, String groupName,
+            int[] radios, Socket socket, double audioDbTarget,
+            double sameDbTarget, double alertDbTarget) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
-        this.key = key;
         this.groupName = groupName;
         Arrays.sort(radios);
         this.radios = radios;
@@ -159,7 +157,7 @@ public class DacTransmitCommunicator extends Thread {
 
     @Override
     public void run() {
-        manager.dacTransmitConnected(key, groupName);
+        manager.dacTransmitConnected(groupName);
         try {
             while (!socket.isClosed()) {
                 try {
@@ -173,7 +171,7 @@ public class DacTransmitCommunicator extends Thread {
                 }
             }
         } finally {
-            manager.dacTransmitDisconnected(key, groupName);
+            manager.dacTransmitDisconnected(groupName);
         }
     }
 
@@ -183,9 +181,9 @@ public class DacTransmitCommunicator extends Thread {
             if (lastStatus == null || !newStatus.equals(lastStatus)) {
                 lastStatus = newStatus;
                 if (newStatus.isConnectedToDac()) {
-                    manager.dacConnectedLocal(key, groupName);
+                    manager.dacConnectedLocal(groupName);
                 } else {
-                    manager.dacDisconnectedLocal(key, groupName);
+                    manager.dacDisconnectedLocal(groupName);
                 }
             }
         } else if (message instanceof MessagePlaybackStatusNotification) {
@@ -349,9 +347,9 @@ public class DacTransmitCommunicator extends Thread {
             logger.error("Error disconnecting from comms manager", e);
         }
         if (wasConnectedToDac) {
-            manager.dacDisconnectedLocal(key, groupName);
+            manager.dacDisconnectedLocal(groupName);
         }
         this.manager.transmitDacShutdown(new DacTransmitShutdownNotification(
-                this.groupName), this.key);
+                this.groupName), this.groupName);
     }
 }

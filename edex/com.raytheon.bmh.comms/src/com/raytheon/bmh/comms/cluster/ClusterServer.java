@@ -23,8 +23,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,8 +37,6 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
-import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
@@ -59,6 +59,14 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Feb 10, 2015  4071     bsteffen    Synchronize State.
  * Apr 07, 2015  4370     rjpeter     Added sendConfigCheck.
  * Apr 08, 2015  4368     rjpeter     Fix ClusterCommunicator race condition.
+ * Aug 04, 2015  4424     bkowal      Added {@link #reconfigure(Set)}.
+ * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
+ * Aug 11, 2015  4372     bkowal      Added locking/unlocking of dacs participating in a
+ *                                    live broadcast to delay load balancing.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
+ * Aug 19, 2015  4764     bkowal      Handle the case when there are not any transmitters
+ *                                    that can be load balanced due to restrictions.
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -73,19 +81,29 @@ public class ClusterServer extends AbstractServerThread {
      */
     private static final int REQUEST_TIMEOUT_INTERVAL = 10 * 1000;
 
+    /**
+     * When connected to another comms manager. This is the maximum amount of
+     * time allowed between messages.
+     */
+    private static final int CLUSTER_TIMEOUT_INTERVAL = 60 * 1000;
+
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final CommsManager manager;
 
-    private final Map<InetAddress, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
+    private final Map<String, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
 
     private final Object communicatorLock = new Object();
 
-    private final Set<InetAddress> configuredAddresses = new CopyOnWriteArraySet<>();
+    private final Set<String> configuredAddresses = new CopyOnWriteArraySet<>();
 
     private final ClusterStateMessage state = new ClusterStateMessage();
 
     private long requestTimeout = Long.MAX_VALUE;
+
+    private String localIp;
+
+    private final List<String> unavailableLoadBalanceCandidates = new ArrayList<>();
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -112,8 +130,7 @@ public class ClusterServer extends AbstractServerThread {
             communicators.clear();
             return;
         }
-        Set<InetAddress> configuredAddresses = new HashSet<>();
-        String localIp = null;
+        Set<String> configuredAddresses = new HashSet<>();
         for (CommsHostConfig host : config.getClusterHosts()) {
             try {
                 if (host.isLocalHost()) {
@@ -133,39 +150,52 @@ public class ClusterServer extends AbstractServerThread {
             return;
         }
 
+        long timeoutThreshold = System.currentTimeMillis()
+                - CLUSTER_TIMEOUT_INTERVAL;
         for (CommsHostConfig host : config.getClusterHosts()) {
             if (localIp.equals(host.getIpAddress())) {
                 continue;
             }
 
+            String remoteAddress = host.getIpAddress();
             InetAddress address = null;
             try {
-                address = InetAddress.getByName(host.getIpAddress());
+                address = InetAddress.getByName(remoteAddress);
             } catch (UnknownHostException e) {
                 logger.error("Unable to resolve host of cluster member: {}",
                         host.getIpAddress(), e);
                 continue;
             }
 
-            configuredAddresses.add(address);
+            configuredAddresses.add(remoteAddress);
 
-            if (communicators.containsKey(address)) {
-                continue;
+            ClusterCommunicator communicator = communicators.get(remoteAddress);
+
+            if (communicator != null) {
+                if (communicator.getTimeLastMessageReceived() < timeoutThreshold) {
+                    logger.error(
+                            "Cluster time out for cluster member: {}.  Have not received heartbeat message within threshold",
+                            remoteAddress);
+                    communicator.disconnect();
+                } else {
+                    communicator.send(new ClusterHeartbeatMessage(localIp));
+                    continue;
+                }
             }
 
-            ClusterCommunicator communicator = null;
             try {
                 logger.info("Initiating cluster communication with {}",
-                        host.getIpAddress());
+                        remoteAddress);
                 Socket socket = new Socket(address, config.getClusterPort());
                 socket.setTcpNoDelay(true);
-                communicator = new ClusterCommunicator(manager, socket, localIp);
+                communicator = new ClusterCommunicator(manager, socket,
+                        host.getIpAddress());
                 if (communicator.send(localIp)) {
-                    addCommunicator(communicator, address);
+                    addCommunicator(communicator);
                 }
             } catch (Exception e) {
                 logger.warn("Unable to connect to cluster member: {}",
-                        host.getIpAddress());
+                        remoteAddress);
                 if (communicator != null) {
                     communicator.disconnect();
                 }
@@ -175,9 +205,9 @@ public class ClusterServer extends AbstractServerThread {
         this.configuredAddresses.addAll(configuredAddresses);
         this.configuredAddresses.retainAll(configuredAddresses);
 
-        Set<InetAddress> disconnectSet = new HashSet<>(communicators.keySet());
+        Set<String> disconnectSet = new HashSet<>(communicators.keySet());
         disconnectSet.removeAll(configuredAddresses);
-        for (InetAddress address : disconnectSet) {
+        for (String address : disconnectSet) {
             ClusterCommunicator communicator = communicators.remove(address);
             if (communicator != null) {
                 communicator.shutdown();
@@ -185,18 +215,18 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    public boolean isConnected(DacTransmitKey key) {
+    public boolean isConnected(final String transmitterGroup) {
         for (ClusterCommunicator communicator : this.communicators.values()) {
-            if (communicator.isConnected(key)) {
+            if (communicator.isConnected(transmitterGroup)) {
                 return true;
             }
         }
         return false;
     }
 
-    public boolean isRequested(DacTransmitKey key) {
+    public boolean isRequested(final String transmitterGroup) {
         for (ClusterCommunicator communicator : this.communicators.values()) {
-            if (communicator.isRequested(key)) {
+            if (communicator.isRequested(transmitterGroup)) {
                 return true;
             }
         }
@@ -220,13 +250,13 @@ public class ClusterServer extends AbstractServerThread {
     protected void handleConnection(Socket socket)
             throws SerializationException, IOException {
         InetAddress address = socket.getInetAddress();
-        if (configuredAddresses.contains(address)) {
-            String id = getRemoteServerUniqueId(socket);
+        String id = getRemoteServerHost(socket);
+        if (configuredAddresses.contains(id)) {
             if (id != null) {
                 logger.info("Received new cluster request from {}", id);
                 ClusterCommunicator communicator = new ClusterCommunicator(
                         manager, socket, id);
-                addCommunicator(communicator, address);
+                addCommunicator(communicator);
             } else {
                 logger.warn(
                         "Cluster request did not send server id as first message, rejecting request from {}",
@@ -242,9 +272,9 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    protected String getRemoteServerUniqueId(Socket socket) {
+    protected String getRemoteServerHost(Socket socket) {
         try {
-            // first message from socket is to be its id
+            // first message from socket is to be its ip from comms.xml
             return SerializationUtil.transformFromThrift(String.class,
                     socket.getInputStream());
         } catch (Throwable e) {
@@ -255,16 +285,15 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    protected void addCommunicator(ClusterCommunicator communicator,
-            InetAddress address) {
+    protected void addCommunicator(ClusterCommunicator communicator) {
+        String remoteAddress = communicator.getClusterId();
         synchronized (communicatorLock) {
-            ClusterCommunicator prev = communicators.get(address);
+            ClusterCommunicator prev = communicators.get(remoteAddress);
 
             if (prev != null) {
                 // reject new communicator
                 if (prev.remoteAccepted()
-                        || prev.getUniqueId().compareTo(
-                                communicator.getUniqueId()) < 0) {
+                        || localIp.compareTo(remoteAddress) < 0) {
                     communicator.disconnect();
                     return;
                 }
@@ -273,7 +302,7 @@ public class ClusterServer extends AbstractServerThread {
                 prev.disconnect();
             }
 
-            communicators.put(address, communicator);
+            communicators.put(remoteAddress, communicator);
             communicator.start();
             synchronized (state) {
                 communicator.sendState(state);
@@ -281,30 +310,33 @@ public class ClusterServer extends AbstractServerThread {
         }
     }
 
-    public void dacConnectedLocal(DacTransmitKey key) {
+    public void dacConnectedLocal(final String transmitterGroup) {
         synchronized (state) {
-            state.add(key);
-            if (state.isRequestedKey(key)) {
-                state.setRequestedKey(null);
+            state.add(transmitterGroup);
+            if (state.isRequestedTransmitter(transmitterGroup)) {
+                state.setRequestedTransmitter(null);
                 requestTimeout = Long.MAX_VALUE;
             }
             sendStateToAll();
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
-    public void dacDisconnectedLocal(DacTransmitKey key) {
+    public void dacDisconnectedLocal(final String transmitterGroup) {
         synchronized (state) {
-            state.remove(key);
+            state.remove(transmitterGroup);
             sendStateToAll();
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
-    public void dacDisconnectedRemote(DacTransmitKey key) {
+    public void dacDisconnectedRemote(final String transmitterGroup) {
         synchronized (state) {
-            if (state.isRequestedKey(key)) {
+            if (state.isRequestedTransmitter(transmitterGroup)) {
                 requestTimeout = System.currentTimeMillis()
                         + REQUEST_TIMEOUT_INTERVAL;
             }
+            this.unlockLoadBalanceDac(transmitterGroup);
         }
     }
 
@@ -351,41 +383,63 @@ public class ClusterServer extends AbstractServerThread {
 
     public void balanceDacTransmits(boolean allDacsRunning) {
         synchronized (state) {
-            boolean pendingRequest = state.hasRequestedKey();
+            boolean pendingRequest = state.hasRequestedTransmitter();
             boolean requestFailed = System.currentTimeMillis() > requestTimeout;
             if (allDacsRunning && (pendingRequest == false)
                     && (requestFailed == false)) {
                 String overloadId = null;
-                ClusterStateMessage overloaded = state;
+                ClusterStateMessage overloaded = new ClusterStateMessage(state);
                 for (ClusterCommunicator communicator : communicators.values()) {
-                    ClusterStateMessage other = communicator.getClusterState();
-                    if ((other == null) || other.hasRequestedKey()) {
+                    ClusterStateMessage other = new ClusterStateMessage(
+                            communicator.getClusterState());
+                    if ((other == null) || other.hasRequestedTransmitter()) {
                         return;
                     }
-                    if (other.getKeys().size() > overloaded.getKeys().size()) {
+                    if (other.getConnectedTransmitters().size() > overloaded
+                            .getConnectedTransmitters().size()) {
                         overloaded = other;
                         overloadId = communicator.getClusterId();
                     }
                 }
-                if ((overloaded.getKeys().size() - 1) > state.getKeys().size()) {
-                    logger.info(
-                            "To balance the load 1 dac transmit has been requested from {}",
-                            overloadId);
+                if ((overloaded.getConnectedTransmitters().size() - 1) > state
+                        .getConnectedTransmitters().size()) {
                     /*
-                     * TODO its entirely possible for 2 cluster members to be
-                     * here at the same time and both request the same key, to
-                     * minimize conflict it would be better if each requested a
-                     * different key using a better key selection mechanism.
+                     * Remove any transmitters that cannot be load balanced from
+                     * the overloaded keys list.
                      */
-                    ClusterDacTransmitKey request = overloaded.getKeys().get(0);
-                    state.setRequestedKey(request);
+                    synchronized (this.unavailableLoadBalanceCandidates) {
+                        Iterator<String> iterator = overloaded
+                                .getConnectedTransmitters().iterator();
+                        while (iterator.hasNext()) {
+                            if (this.unavailableLoadBalanceCandidates
+                                    .contains(iterator.next())) {
+                                iterator.remove();
+                            }
+                        }
+                    }
+
+                    if (overloaded.getConnectedTransmitters().isEmpty() == false) {
+                        logger.info(
+                                "To balance the load 1 dac transmit has been requested from {}",
+                                overloadId);
+                        /*
+                         * TODO its entirely possible for 2 cluster members to
+                         * be here at the same time and both request the same
+                         * key, to minimize conflict it would be better if each
+                         * requested a different key using a better key
+                         * selection mechanism.
+                         */
+                        String requestedGroup = overloaded
+                                .getConnectedTransmitters().get(0);
+                        state.setRequestedTransmitter(requestedGroup);
+                    }
                     sendStateToAll();
                 }
             } else if (pendingRequest && requestFailed) {
                 logger.error(
                         "Load balancing has been disabled due to failure to start a requested dac: {}.",
-                        state.getRequestedKey());
-                state.setRequestedKey(null);
+                        state.getRequestedTransmitter());
+                state.setRequestedTransmitter(null);
                 sendStateToAll();
             }
         }
@@ -396,5 +450,60 @@ public class ClusterServer extends AbstractServerThread {
      */
     public void sendConfigCheck() {
         sendDataToAll(new ClusterConfigMessage());
+    }
+
+    /**
+     * Reconfiguration method that verifies that the dac transmit that the
+     * cluster server may have requested is still defined in the configuration.
+     * If not defined, the requested key is removed.
+     * 
+     * @param activeDacTransmits
+     *            a {@link Set} of the {@link DacTransmitKey}s associated with
+     *            dac transmits defined in the latest version of the
+     *            configuration.
+     */
+    public void reconfigure(Set<String> activeDacTransmits) {
+        synchronized (state) {
+            if (state.hasRequestedTransmitter()) {
+                final String requestedTransmitter = state
+                        .getRequestedTransmitter();
+                if (activeDacTransmits.contains(requestedTransmitter) == false) {
+                    /*
+                     * No longer wait for the process to start locally because
+                     * it is no longer even enabled.
+                     */
+                    state.setRequestedTransmitter(null);
+                    requestTimeout = Long.MAX_VALUE;
+                }
+            }
+        }
+
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            Iterator<String> iterator = this.unavailableLoadBalanceCandidates
+                    .iterator();
+            while (iterator.hasNext()) {
+                if (activeDacTransmits.contains(iterator.next()) == false) {
+                    iterator.remove();
+                }
+            }
+        }
+    }
+
+    public void lockLoadBalanceDac(final String transmitterGroup) {
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            logger.info(
+                    "Preventing load balancing from occuring for transmitter: {}.",
+                    transmitterGroup);
+            this.unavailableLoadBalanceCandidates.add(transmitterGroup);
+        }
+    }
+
+    public void unlockLoadBalanceDac(final String transmitterGroup) {
+        synchronized (this.unavailableLoadBalanceCandidates) {
+            if (this.unavailableLoadBalanceCandidates.remove(transmitterGroup)) {
+                logger.info("Allowing the load balancing of transmitter: {}.",
+                        transmitterGroup);
+            }
+        }
     }
 }

@@ -17,10 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.edex.bmh.stats;
 
 /**
- * Indicates that an invalid audio sample has been generated.
+ * Generic POJO to store information retrieved by the message delivery
+ * procedure.
  * 
  * <pre>
  * 
@@ -28,7 +29,7 @@ package com.raytheon.uf.edex.bmh.audio;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 23, 2014 3424       bkowal      Initial creation
+ * Jul 30, 2015 4686       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -36,24 +37,42 @@ package com.raytheon.uf.edex.bmh.audio;
  * @version 1.0
  */
 
-public class AudioOverflowException extends Exception {
+public class DeliveryStats {
 
-    private static final long serialVersionUID = 1693306060211544977L;
+    private final double expectedCount;
 
-    public AudioOverflowException(double requestedVolumeIncrease,
-            int invalidAmplitude) {
-        super(generateExceptionText(requestedVolumeIncrease, invalidAmplitude));
+    private final double actualCount;
+
+    private final double percentage;
+
+    /**
+     * 
+     */
+    public DeliveryStats(double expectedCount, double actualCount,
+            double percentage) {
+        this.expectedCount = expectedCount;
+        this.actualCount = actualCount * 100;
+        this.percentage = percentage;
     }
 
-    private static String generateExceptionText(double requestedVolumeIncrease,
-            int invalidAmplitude) {
-        StringBuilder stringBuilder = new StringBuilder(
-                "The desired volume increase: ");
-        stringBuilder.append(requestedVolumeIncrease);
-        stringBuilder.append(" generates an audio sample with amplitude: ");
-        stringBuilder.append(invalidAmplitude);
-        stringBuilder.append(" that exceeds the maximum allowable amplitude.");
+    /**
+     * @return the expectedCount
+     */
+    public double getExpectedCount() {
+        return expectedCount;
+    }
 
-        return stringBuilder.toString();
+    /**
+     * @return the actualCount
+     */
+    public double getActualCount() {
+        return actualCount;
+    }
+
+    /**
+     * @return the percentage
+     */
+    public double getPercentage() {
+        return percentage;
     }
 }

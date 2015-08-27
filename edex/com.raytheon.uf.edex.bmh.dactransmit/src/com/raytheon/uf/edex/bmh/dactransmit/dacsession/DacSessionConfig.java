@@ -47,6 +47,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Apr 29, 2015  #4394     bkowal       The manager port is now required for all
  *                                      dac modes.
  * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
+ * Aug 12, 2015  #4424     bkowal       Eliminate Dac Transmit Key.
  * </pre>
  * 
  * @author dgilling
@@ -63,6 +64,8 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     private final double alertDbTarget;
 
+    private final String transmitterGroup;
+
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
             TimeZone timezone, double sameDbTarget, double alertDbTarget) {
         super(DAC_MODE.OPERATIONAL, commonConfig);
@@ -70,6 +73,12 @@ public final class DacSessionConfig extends AbstractDacConfig {
         this.timezone = timezone;
         this.sameDbTarget = sameDbTarget;
         this.alertDbTarget = alertDbTarget;
+        /*
+         * The name of directory that contains the playlists should always be
+         * the same as the name of the {@link TransmitterGroup} the playlist was
+         * created for.
+         */
+        this.transmitterGroup = this.inputDirectory.getFileName().toString();
     }
 
     /*
@@ -110,6 +119,13 @@ public final class DacSessionConfig extends AbstractDacConfig {
      */
     public double getAlertDbTarget() {
         return alertDbTarget;
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public String getTransmitterGroup() {
+        return transmitterGroup;
     }
 
     @Override
