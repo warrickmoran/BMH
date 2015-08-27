@@ -93,6 +93,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Mar 31, 2015 4248       rjpeter     Use set view of program suites and suite messages.
  * May 05, 2015 4463       bkowal      Use the {@link SAMEOriginatorMapper} to set the initial originator
  *                                     for {@link MessageType}s that are created.
+ * Aug 27, 2015 4811       bkowal      Do not assign more than one GENERAL {@link Suite} to a 
+ *                                     {@link Program}.
  * </pre>
  * 
  * @author rjpeter
@@ -1222,6 +1224,17 @@ public class AsciiFileTranslator {
             return;
         }
 
+        if (suite.getType() == SuiteType.GENERAL
+                && this.doesGeneralSuiteExists(program)) {
+            StringBuilder sb = new StringBuilder("Program: ").append(program
+                    .getName());
+            sb.append(" already contains a GENERAL category suite. Suite ");
+            sb.append(suite.getName()).append(
+                    " will not be associated with a Program.");
+            this.validationMessages.add(sb.toString());
+            return;
+        }
+
         Set<SuiteMessage> messages = suite.getSuiteMessages();
         ProgramSuite programSuite = new ProgramSuite();
         programSuite.setSuite(suite);
@@ -1241,6 +1254,20 @@ public class AsciiFileTranslator {
                 }
             }
         }
+    }
+
+    private boolean doesGeneralSuiteExists(final Program program) {
+        if (program.getSuites() == null || program.getSuites().isEmpty()) {
+            return false;
+        }
+
+        for (Suite suite : program.getSuites()) {
+            if (suite.getType() == SuiteType.GENERAL) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
