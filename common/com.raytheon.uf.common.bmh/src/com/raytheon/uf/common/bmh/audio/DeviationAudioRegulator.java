@@ -36,6 +36,8 @@ import org.apache.commons.lang.math.Range;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 25, 2015 4771       bkowal      Initial creation
+ * Aug 27, 2015 4771       bkowal      Handle edge cases with no to little variance in
+ *                                     which there is no standard deviation.
  * 
  * </pre>
  * 
@@ -72,7 +74,7 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
         /*
          * First, determine the decibel levels of every segment of audio.
          */
-        List<Double> audioDecibels = new ArrayList<>();
+        List<Double> audioDecibels = new ArrayList<>(audio.length / 2);
         double decibelSampleCount = 0;
         double decibelSum = 0.0;
         for (int i = offset; i < (offset + length); i += 2) {
@@ -112,20 +114,34 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
         final double minimumDb = mean - (stdDeviation * DEVIATION_RANGE);
         final double maximumDb = mean + (stdDeviation * DEVIATION_RANGE);
 
+        if (stdDeviation == 0) {
+            /*
+             * All values are exactly the same; so there is no variance.
+             */
+            return new DoubleRange(minimumDb, maximumDb);
+        }
+
         /*
          * Finally, determine the minimum and maximum decibel ranges while
-         * excluding all decibel levels that are 2 standard deviations or more
-         * away.
+         * including all decibel levels that are within a standard deviation of
+         * the mean.
          */
         double rangeMinDb = Double.MAX_VALUE;
         double rangeMaxDb = -Double.MAX_VALUE;
+        boolean rangeCalculated = false;
         for (double dbLevel : audioDecibels) {
-            if (dbLevel <= minimumDb || dbLevel >= maximumDb) {
-                continue;
+            if (dbLevel >= minimumDb && dbLevel <= maximumDb) {
+                rangeCalculated = true;
+                rangeMinDb = Math.min(rangeMinDb, dbLevel);
+                rangeMaxDb = Math.max(rangeMaxDb, dbLevel);
             }
+        }
 
-            rangeMinDb = Math.min(rangeMinDb, dbLevel);
-            rangeMaxDb = Math.max(rangeMaxDb, dbLevel);
+        if (rangeCalculated == false) {
+            /*
+             * There was a slight variance; but, it was extremely small.
+             */
+            return new DoubleRange(minimumDb, maximumDb);
         }
 
         if (rangeMaxDb == Double.NaN) {
