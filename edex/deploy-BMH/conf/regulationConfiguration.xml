@@ -4,16 +4,18 @@
 	will take effect.
  -->
 <regulationConfiguration>
-	<dbSilenceLimit>-60.0</dbSilenceLimit>
+	<dbSilenceLimit>-40.0</dbSilenceLimit>
 	<disableSilenceLimit>false</disableSilenceLimit>
-	<dbMaxLimit>0</dbMaxLimit>
-	<disableMaxLimit>true</disableMaxLimit>
+	<dbMaxLimit>-15.0</dbMaxLimit>
+	<disableMaxLimit>false</disableMaxLimit>
 	<!-- 
 		OPTIONS:
 			* LINEAR_PCM
 			* DEVIATION_EXCLUSION 
 	 -->
-	<regulationAlgorithm>LINEAR_PCM</regulationAlgorithm>
+	<regulationAlgorithm>DEVIATION_EXCLUSION</regulationAlgorithm>
+	<audioPlaybackVolume>-10.0</audioPlaybackVolume>
+	<disableRecordedPreAmplication>true</disableRecordedPreAmplication>
 	<initialBufferDelay>250</initialBufferDelay>
 	<bufferDelay>150</bufferDelay>
 </regulationConfiguration>

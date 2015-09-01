@@ -35,6 +35,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 24, 2015 4770       bkowal      Initial creation
  * Aug 25, 2015 4771       bkowal      Added additional configurable options.
+ * Sep 01, 2015 4771       bkowal      Added additional configurable options that
+ *                                     are used for audio playback via weather messages.
  * 
  * </pre>
  * 
@@ -83,6 +85,12 @@ public class AudioRegulationConfiguration {
 
     @DynamicSerializeElement
     private ALGORITHM regulationAlgorithm;
+
+    @DynamicSerializeElement
+    private double audioPlaybackVolume;
+
+    @DynamicSerializeElement
+    private boolean disableRecordedPreAmplication;
 
     /*
      * Specifies the amount of time (in milliseconds) to buffer audio before
@@ -177,6 +185,37 @@ public class AudioRegulationConfiguration {
     }
 
     /**
+     * @return the audioPlaybackVolume
+     */
+    public double getAudioPlaybackVolume() {
+        return audioPlaybackVolume;
+    }
+
+    /**
+     * @param audioPlaybackVolume
+     *            the audioPlaybackVolume to set
+     */
+    public void setAudioPlaybackVolume(double audioPlaybackVolume) {
+        this.audioPlaybackVolume = audioPlaybackVolume;
+    }
+
+    /**
+     * @return the disableRecordedPreAmplication
+     */
+    public boolean isDisableRecordedPreAmplication() {
+        return disableRecordedPreAmplication;
+    }
+
+    /**
+     * @param disableRecordedPreAmplication
+     *            the disableRecordedPreAmplication to set
+     */
+    public void setDisableRecordedPreAmplication(
+            boolean disableRecordedPreAmplication) {
+        this.disableRecordedPreAmplication = disableRecordedPreAmplication;
+    }
+
+    /**
      * @return the initialBufferDelay
      */
     public int getInitialBufferDelay() {
@@ -215,6 +254,10 @@ public class AudioRegulationConfiguration {
         sb.append(this.dbMaxLimit).append(", disableMaxLimit=");
         sb.append(this.disableMaxLimit).append(", regulationAlgorithm=");
         sb.append(this.regulationAlgorithm.name()).append(
+                ", audioPlaybackVolume=");
+        sb.append(this.audioPlaybackVolume).append(
+                ", disableRecordedPreAmplication=");
+        sb.append(this.disableRecordedPreAmplication).append(
                 ", initialBufferDelay=");
         sb.append(this.initialBufferDelay).append(", bufferDelay=");
         sb.append(this.bufferDelay).append("]");

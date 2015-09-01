@@ -55,6 +55,8 @@ import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4771       bkowal      {@link AudioRegulationConfiguration} is now passed to
  *                                     the constructor.
+ * Sep 01, 2015 4771       bkowal      Audio pre-amplification can now be enabled/disabled based
+ *                                     on the {@link AudioRegulationConfiguration}.
  * 
  * </pre>
  * 
@@ -169,22 +171,28 @@ public class AudioRecorderThread extends Thread {
         }
         ByteBuffer buffer = ByteBuffer.allocate(totalSampleBytes);
 
-        /*
-         * Adjust the audio.
-         */
-        List<byte[]> regulatorySequence = new ArrayList<>(REGULATORY_SIZE);
-        for (int i = 0; i < this.samples.size(); i++) {
-            byte[] sample = this.samples.get(i);
-            regulatorySequence.add(sample);
-
-            if (regulatorySequence.size() == REGULATORY_SIZE
-                    && (this.samples.size() - i) > REGULATORY_SIZE) {
-                this.regulateAudioSamples(regulatorySequence, buffer);
-                regulatorySequence.clear();
+        if (this.regulationConfiguration.isDisableRecordedPreAmplication()) {
+            for (int i = 0; i < this.samples.size(); i++) {
+                buffer.put(this.samples.get(i));
             }
-        }
-        if (regulatorySequence.isEmpty() == false) {
-            this.regulateAudioSamples(regulatorySequence, buffer);
+        } else {
+            /*
+             * Adjust the audio.
+             */
+            List<byte[]> regulatorySequence = new ArrayList<>(REGULATORY_SIZE);
+            for (int i = 0; i < this.samples.size(); i++) {
+                byte[] sample = this.samples.get(i);
+                regulatorySequence.add(sample);
+
+                if (regulatorySequence.size() == REGULATORY_SIZE
+                        && (this.samples.size() - i) > REGULATORY_SIZE) {
+                    this.regulateAudioSamples(regulatorySequence, buffer);
+                    regulatorySequence.clear();
+                }
+            }
+            if (regulatorySequence.isEmpty() == false) {
+                this.regulateAudioSamples(regulatorySequence, buffer);
+            }
         }
 
         return buffer;
@@ -194,7 +202,9 @@ public class AudioRecorderThread extends Thread {
             ByteBuffer destination) throws Exception {
         final IAudioRegulator regulator = AudioRegulationFactory
                 .getAudioRegulator(regulationConfiguration, regulatorySequence);
-        regulatorySequence = regulator.regulateAudioCollection(0);
+        regulatorySequence = regulator
+                .regulateAudioCollection(this.regulationConfiguration
+                        .getAudioPlaybackVolume());
         for (byte[] regulatedSample : regulatorySequence) {
             destination.put(regulatedSample);
         }
