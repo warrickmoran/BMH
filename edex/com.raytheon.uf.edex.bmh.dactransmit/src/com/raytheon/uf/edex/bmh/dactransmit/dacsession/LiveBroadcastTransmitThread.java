@@ -44,6 +44,8 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
+import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
+import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
 import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
@@ -91,6 +93,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4775       bkowal      Ensure that final broadcast live steps are always executed.
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
+ * Sep 01, 2015 4825       bkowal      Log Broadcast Live activity to the Message Activity log.
  * </pre>
  * 
  * @author bkowal
@@ -158,6 +161,10 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 if (this.config.getToneAudio().getSameTones() != null) {
                     this.playTones(this.config.getToneAudio().getSameTones(),
                             "SAME", this.sameDbTarget, packetLog);
+                    DefaultMessageLogger.getInstance()
+                            .logLiveBroadcastTonesActivity(
+                                    this.config.getMessage(), TONE_TYPE.SAME,
+                                    this.config.getMessage());
                 }
                 if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
                     this.playTones(this.config.getToneAudio()
@@ -165,10 +172,15 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                             packetLog);
                 }
                 packetLog.close();
+
                 packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
                 if (this.config.getToneAudio().getAlertTones() != null) {
                     this.playTones(this.config.getToneAudio().getAlertTones(),
                             "Alert", this.alertDbTarget, packetLog);
+                    DefaultMessageLogger.getInstance()
+                            .logLiveBroadcastTonesActivity(
+                                    this.config.getMessage(), TONE_TYPE.ALERT,
+                                    this.config.getMessage());
                 }
                 if (this.config.getToneAudio().getBeforeMessagePause() != null) {
                     this.playTones(this.config.getToneAudio()
@@ -212,16 +224,23 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 }
             }
             packetLog.close();
+        } finally {
+            DefaultMessageLogger.getInstance().logLiveBroadcastActivity(
+                    this.config.getMessage(), this.config.getMessage());
 
-            packetLog = new AudioPacketLogger("End of Message Tones",
-                    getClass(), 30);
             if (this.type == BROADCASTTYPE.EO
                     && this.config.getToneAudio() != null) {
+                AudioPacketLogger packetLog = new AudioPacketLogger(
+                        "End of Message Tones", getClass(), 30);
                 this.playTones(this.config.getEndToneAudio(), "End of Message",
                         this.sameDbTarget, packetLog);
+                packetLog.close();
+                DefaultMessageLogger.getInstance()
+                        .logLiveBroadcastTonesActivity(
+                                this.config.getMessage(), TONE_TYPE.END,
+                                this.config.getMessage());
             }
-            packetLog.close();
-        } finally {
+
             this.notifyBroadcastSwitch(STATE.FINISHED);
 
             this.dataThread.resumePlayback(previousPacket);
