@@ -313,8 +313,9 @@ public class EOBroadcastSettingsBuilder extends
         config.setAlert((this.playAlertTones) ? INonStandardBroadcast.TONE_SENT
                 : INonStandardBroadcast.TONE_NONE);
         config.setSame(INonStandardBroadcast.TONE_SENT);
-        config.setToneAudio(this.transmitterGroupToneMap.get(tg)
-                .getTonesBuffer());
+        GeneratedTonesBuffer tonesAudio = (this.transmitterGroupToneMap.get(tg) != null) ? this.transmitterGroupToneMap
+                .get(tg).getTonesBuffer() : null;
+        config.setToneAudio(tonesAudio);
         /*
          * calculate audio duration. calculate delay based on audio duration.
          */
@@ -330,7 +331,10 @@ public class EOBroadcastSettingsBuilder extends
         LiveBroadcastMessage message = new LiveBroadcastMessage();
         message.setUser(this.user);
         message.setMessageType(this.messageType.getAfosid());
-        message.setSAMEtone(this.transmitterGroupToneMap.get(tg).getSameText());
+        if (this.transmitterGroupToneMap.get(tg) != null) {
+            message.setSAMEtone(this.transmitterGroupToneMap.get(tg)
+                    .getSameText());
+        }
         message.setTraceId(BROADCASTTYPE.EO.name() + "_"
                 + this.messageType.getAfosid() + "_" + this.user + "_"
                 + Long.toString(System.currentTimeMillis()));
