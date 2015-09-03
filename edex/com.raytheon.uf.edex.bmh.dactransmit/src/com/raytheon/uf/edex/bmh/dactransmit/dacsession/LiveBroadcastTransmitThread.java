@@ -94,6 +94,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 25, 2015 4775       bkowal      Ensure that final broadcast live steps are always executed.
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * Sep 01, 2015 4825       bkowal      Log Broadcast Live activity to the Message Activity log.
+ * Sep 03, 2015 4825       bkowal      Only attempt to broadcast end tones when there are same tones.
  * </pre>
  * 
  * @author bkowal
@@ -229,7 +230,8 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                     this.config.getMessage(), this.config.getMessage());
 
             if (this.type == BROADCASTTYPE.EO
-                    && this.config.getToneAudio() != null) {
+                    && this.config.getToneAudio() != null
+                    && this.config.getToneAudio().getSameTones() != null) {
                 AudioPacketLogger packetLog = new AudioPacketLogger(
                         "End of Message Tones", getClass(), 30);
                 this.playTones(this.config.getEndToneAudio(), "End of Message",
