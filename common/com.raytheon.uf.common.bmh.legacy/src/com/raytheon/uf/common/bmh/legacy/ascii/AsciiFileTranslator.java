@@ -95,6 +95,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
  *                                     for {@link MessageType}s that are created.
  * Aug 27, 2015 4811       bkowal      Do not assign more than one GENERAL {@link Suite} to a 
  *                                     {@link Program}.
+ * Sep 03, 2015 4836       bkowal      Only evaluate the {@link TimeZone} during ascii file import
+ *                                     if the transmitter is configured.
  * </pre>
  * 
  * @author rjpeter
@@ -492,9 +494,11 @@ public class AsciiFileTranslator {
             reader.nextField(); // skip long pause setting
 
             boolean observesDST = !parseBool(reader);
-            TimeZone transmitterTZ = BMHTimeZone.getTimeZone(baseTZ,
-                    observesDST);
-            group.setTimeZone(transmitterTZ.getID());
+            if (isTransmitter) {
+                TimeZone transmitterTZ = BMHTimeZone.getTimeZone(baseTZ,
+                        observesDST);
+                group.setTimeZone(transmitterTZ.getID());
+            }
 
             Dictionary engDict = parseTransmitterDictionary(Language.ENGLISH,
                     reader);
