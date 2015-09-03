@@ -53,6 +53,8 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Nov 18, 2014  3746      rjpeter     Refactored MessageTypeReplacement.
  * Mar 13, 2015 4213       bkowal      Store {@link TransmitterLanguage}s mapped to
  *                                     a {@link TransmitterGroup} and {@link Language}.
+ * Sep 03, 2015 4386       bkowal      {@link #getReplaceMap()}, {@link #getDictionaries()},
+ *                                     and {@link #getZones()} will no longer return {@code null}.
  * </pre>
  * 
  * @author rjpeter
@@ -82,6 +84,9 @@ public class BmhData {
     private Map<MessageType, Set<MessageTypeSummary>> replaceMap;
 
     public Map<String, Dictionary> getDictionaries() {
+        if (this.dictionaries == null) {
+            return Collections.emptyMap();
+        }
         return dictionaries;
     }
 
@@ -164,6 +169,9 @@ public class BmhData {
     }
 
     public Map<String, Zone> getZones() {
+        if (this.zones == null) {
+            return Collections.emptyMap();
+        }
         return zones;
     }
 
@@ -199,6 +207,9 @@ public class BmhData {
      * @return the replaceMap
      */
     public Map<MessageType, Set<MessageTypeSummary>> getReplaceMap() {
+        if (this.replaceMap == null) {
+            return Collections.emptyMap();
+        }
         return replaceMap;
     }
 
