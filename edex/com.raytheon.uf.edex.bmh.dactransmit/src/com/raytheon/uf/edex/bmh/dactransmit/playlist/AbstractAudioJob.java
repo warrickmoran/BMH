@@ -24,10 +24,13 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
-import com.raytheon.uf.common.bmh.audio.AudioRegulator;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
+import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * Abstract representation of an audio retrieval job.
@@ -44,6 +47,8 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
  *                                     DISABLE_AUDIO_ATTENUATION.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
+ * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
+ * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * 
  * </pre>
  * 
@@ -133,9 +138,19 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
             return originalAudio;
         }
 
+        AudioRegulationConfiguration configuration;
+        try {
+            configuration = LoadedAudioRegulationConfiguration
+                    .getConfiguration();
+        } catch (Exception e) {
+            throw new AudioRetrievalException(
+                    "Failed to load the audio regulation configuration.", e);
+        }
+
         byte[] regulatedAudio = new byte[0];
         try {
-            AudioRegulator audioRegulator = new AudioRegulator();
+            final IAudioRegulator audioRegulator = AudioRegulationFactory
+                    .getAudioRegulator(configuration);
             regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
                     dbTarget, AUDIO_SAMPLE_SIZE);
             logger.info("Successfully finished audio attenuation/amplification in "

@@ -135,6 +135,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Aug 19, 2015  4764     bkowal      Ensure comms manager will not attempt to keep restarting
  *                                    dacs that fail to sync that have been started on another member.
+ * Aug 25, 2015  4775     bkowal      Notify the {@link BroadcastStreamServer} when remote dac
+ *                                    transmits connect or disconnect.
  * </pre>
  * 
  * @author bsteffen
@@ -768,6 +770,7 @@ public class CommsManager {
      */
     public void dacConnectedRemote(String transmitterGroup) {
         transmitServer.dacConnected(transmitterGroup);
+        broadcastStreamServer.dacConnectedRemote(transmitterGroup);
     }
 
     /**
@@ -832,6 +835,7 @@ public class CommsManager {
      */
     public void dacDisconnectedRemote(String transmitterGroup) {
         clusterServer.dacDisconnectedRemote(transmitterGroup);
+        broadcastStreamServer.dacDisconnectedRemote(transmitterGroup);
         attemptLaunchDacTransmits();
     }
 

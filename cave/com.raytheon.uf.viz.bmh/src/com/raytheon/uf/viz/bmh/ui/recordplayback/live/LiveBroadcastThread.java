@@ -26,6 +26,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastCommand;
@@ -59,7 +60,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  *                                     initialization failure.
  * Nov 17, 2014 3808       bkowal      Support broadcast live.
  * Nov 21, 2014 3845       bkowal      Use Transmitter Groups
- * Jul 15, 2015 4636       bkowal      Slighly increase the amount of audio that is accumulated.
+ * Jul 15, 2015 4636       bkowal      Slightly increase the amount of audio that is accumulated.
+ * Aug 25, 2015 4771       bkowal      Buffer delays are now configurable.
  * 
  * </pre>
  * 
@@ -88,25 +90,21 @@ public class LiveBroadcastThread extends
     /** Audio streaming timer. */
     private ScheduledExecutorService timer;
 
-    /*
-     * Save 0.25 seconds of audio before initial broadcast stream.
-     */
-    private static final int INITIAL_BUFFER_DELAY = 250;
+    private final int initialBufferDelay;
 
-    /*
-     * Accumulate audio for every 150ms afterwards until the end of the
-     * broadcast.
-     */
-    private static final int BUFFER_DELAY = 150;
+    private final int bufferDelay;
 
     /**
      * 
      */
-    public LiveBroadcastThread(final ILiveBroadcastMessage command) {
+    public LiveBroadcastThread(final ILiveBroadcastMessage command,
+            AudioRegulationConfiguration configuration) {
         super(LiveBroadcastThread.class.getName());
         this.command = command;
         this.state = BROADCAST_STATE.INITIALIZING;
         this.bufferedAudio = new LinkedList<>();
+        this.initialBufferDelay = configuration.getInitialBufferDelay();
+        this.bufferDelay = configuration.getBufferDelay();
     }
 
     @Override
@@ -230,8 +228,7 @@ public class LiveBroadcastThread extends
                 this.broadcastId = status.getBroadcastId();
                 this.timer = Executors.newSingleThreadScheduledExecutor();
                 this.timer.scheduleWithFixedDelay(new ElapsedTimerTask(),
-                        INITIAL_BUFFER_DELAY, BUFFER_DELAY,
-                        TimeUnit.MILLISECONDS);
+                        initialBufferDelay, bufferDelay, TimeUnit.MILLISECONDS);
             } else if (status.getStatus() == false) {
                 this.state = BROADCAST_STATE.INIT_ERROR;
                 this.notifyListener();
