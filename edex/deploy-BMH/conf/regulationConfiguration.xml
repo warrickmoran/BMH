@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- 
+	Note: Comms Manager must be restarted before any changes to this file
+	will take effect.
+ -->
+<regulationConfiguration>
+	<dbSilenceLimit>-40.0</dbSilenceLimit>
+	<disableSilenceLimit>false</disableSilenceLimit>
+	<dbMaxLimit>-15.0</dbMaxLimit>
+	<disableMaxLimit>false</disableMaxLimit>
+	<!-- 
+		OPTIONS:
+			* LINEAR_PCM
+			* DEVIATION_EXCLUSION 
+	 -->
+	<regulationAlgorithm>DEVIATION_EXCLUSION</regulationAlgorithm>
+	<audioPlaybackVolume>-10.0</audioPlaybackVolume>
+	<disableRecordedPreAmplication>true</disableRecordedPreAmplication>
+	<initialBufferDelay>250</initialBufferDelay>
+	<bufferDelay>150</bufferDelay>
+</regulationConfiguration>

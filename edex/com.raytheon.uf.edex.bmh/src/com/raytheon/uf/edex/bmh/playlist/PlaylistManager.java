@@ -205,6 +205,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * Aug 10, 2015  4723     bkowal      Added {@link #checkStatusExpired()}.
  * Aug 10, 2015  4424     bkowal      Updated to use the new playlist directory constant.
+ * Aug 27, 2015  4811     bkowal      Create a server-side record of the unlikely scenario.
  * </pre>
  * 
  * @author bsteffen
@@ -508,8 +509,21 @@ public class PlaylistManager implements IContextStateProcessor {
             Collection<ProgramSuite> programSuites = program.getProgramSuites();
             if (!CollectionUtil.isNullOrEmpty(programSuites)) {
                 if (forcedSuite != null) {
-                    ProgramSuite forcedProgramSuite = program
-                            .getProgramSuite(forcedSuite);
+                    ProgramSuite forcedProgramSuite = null;
+                    try {
+                        forcedProgramSuite = program
+                                .getProgramSuite(forcedSuite);
+                    } catch (IllegalStateException e) {
+                        /*
+                         * Log a server-side record of the unlikely scenario.
+                         */
+                        statusHandler
+                                .error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                                        "The refresh of playlists for Program: "
+                                                + program.getName()
+                                                + " has failed.", e);
+                        throw e;
+                    }
                     if (forcedProgramSuite != null) {
                         if (!refreshPlaylist(group, forcedProgramSuite, true,
                                 event, traceable)) {

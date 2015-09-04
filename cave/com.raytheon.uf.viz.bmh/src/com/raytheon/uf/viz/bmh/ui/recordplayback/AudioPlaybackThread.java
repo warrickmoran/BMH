@@ -33,6 +33,11 @@ import javax.sound.sampled.LineEvent.Type;
 import javax.sound.sampled.LineListener;
 import javax.sound.sampled.LineUnavailableException;
 
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
+import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
+
 /**
  * Manages the playback of recorded audio.
  * 
@@ -46,6 +51,8 @@ import javax.sound.sampled.LineUnavailableException;
  * Oct 26, 2014 3748       bkowal      Implemented new/resume.
  * Dec 10, 2014 3883       bkowal      Added {@link #isPaused()}.
  * Feb 27, 2015 4149       rferrel     Add check for null audio clip in halt().
+ * Sep 01, 2015 4771       bkowal      Utilize the {@link AudioRegulationConfiguration} to
+ *                                     adjust the audio prior to playback.
  * 
  * </pre>
  * 
@@ -58,6 +65,8 @@ public class AudioPlaybackThread extends Thread implements LineListener {
     // TODO: need a common location for this format throughout BMH.
     private static final AudioFormat ULAW_AUDIO_FMT = new AudioFormat(
             Encoding.ULAW, 8000, 8, 1, 1, 8000, true);
+
+    private final AudioRegulationConfiguration regulationConfiguration;
 
     private IPlaybackCompleteListener listener;
 
@@ -72,8 +81,36 @@ public class AudioPlaybackThread extends Thread implements LineListener {
     public AudioPlaybackThread(byte[] audio) throws AudioException {
         super(AudioPlaybackThread.class.getName());
 
+        /*
+         * Retrieve the audio regulation configuration.
+         */
+        try {
+            this.regulationConfiguration = BmhUtils
+                    .retrieveRegulationConfiguration();
+        } catch (Exception e) {
+            throw new AudioException(
+                    "Failed to retrieve the audio regulation configuration from Comms Manager.",
+                    e);
+        }
+
+        /*
+         * Alter the original audio stream based on the regulation
+         * configuration.
+         */
+        final IAudioRegulator regulator = AudioRegulationFactory
+                .getAudioRegulator(regulationConfiguration);
+        byte[] regulatedAudio;
+        try {
+            regulatedAudio = regulator.regulateAudioVolume(audio,
+                    regulationConfiguration.getAudioPlaybackVolume(), 1000);
+        } catch (Exception e) {
+            throw new AudioException(
+                    "Failed to adjust the audio for playback.", e);
+        }
+
         AudioInputStream audioInputStream = new AudioInputStream(
-                new ByteArrayInputStream(audio), ULAW_AUDIO_FMT, audio.length);
+                new ByteArrayInputStream(regulatedAudio), ULAW_AUDIO_FMT,
+                regulatedAudio.length);
 
         try {
             this.audioClip = AudioSystem.getClip();

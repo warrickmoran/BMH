@@ -95,6 +95,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Apr 21, 2015 4248      rjpeter     Updated setProgramSuites to fix hash issue.
  * Apr 28, 2015 4428      rferrel     Added {@link #getTriggerMsgType(Suite)} and {@link #setTriggerMsgType(Suite, List)}.
  * May 12, 2015 4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Aug 27, 2015 4811      bkowal      Provide current state information for the unlikely scenario.
  * </pre>
  * 
  * @author rjpeter
@@ -258,10 +259,29 @@ public class Program {
              * Now the lookup map should contain the specified suite.
              */
             if (this.suiteToProgramSuiteMap.containsKey(suite) == false) {
-                throw new IllegalStateException(
-                        "Unable to find any references to suite: "
-                                + suite.getId()
-                                + "! Too many changes have been made to the internal data structures by reference.");
+                /*
+                 * An extremely unlikely scenario. But, log current state
+                 * information if it does occur.
+                 */
+                StringBuilder sb = new StringBuilder(
+                        "Failed to find a mapping to suite: ");
+                sb.append(suite.getName()).append(" for Program: ")
+                        .append(this.name).append(" (id=");
+                sb.append(this.id).append("). Currently mapped suites: {");
+                boolean first = true;
+                for (ProgramSuite pg : this.programSuites) {
+                    if (first) {
+                        first = false;
+                    } else {
+                        sb.append(", ");
+                    }
+                    final Suite pgSuite = pg.getSuite();
+                    sb.append(pgSuite.getName()).append(" (id=")
+                            .append(pg.getId().getSuiteId()).append(")");
+                }
+                sb.append("}");
+
+                throw new IllegalStateException(sb.toString());
             }
         }
     }
