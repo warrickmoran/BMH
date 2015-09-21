@@ -206,6 +206,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Aug 10, 2015  4723     bkowal      Added {@link #checkStatusExpired()}.
  * Aug 10, 2015  4424     bkowal      Updated to use the new playlist directory constant.
  * Aug 27, 2015  4811     bkowal      Create a server-side record of the unlikely scenario.
+ * Sep 21, 2015  4901     bkowal      Verify the {@link Area} associated with a ugc actually
+ *                                    exists before adding it to the dac playlist message.
  * </pre>
  * 
  * @author bsteffen
@@ -1147,10 +1149,12 @@ public class PlaylistManager implements IContextStateProcessor {
                                     }
                                 } else {
                                     Area area = areaDao.getByAreaCode(ugc);
-                                    if (!Collections.disjoint(
-                                            area.getTransmitters(),
-                                            sameTransmitters)) {
-                                        ugcs.add(area.getAreaCode());
+                                    if (area != null) {
+                                        if (!Collections.disjoint(
+                                                area.getTransmitters(),
+                                                sameTransmitters)) {
+                                            ugcs.add(area.getAreaCode());
+                                        }
                                     }
                                 }
                             }
