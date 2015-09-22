@@ -208,6 +208,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Aug 27, 2015  4811     bkowal      Create a server-side record of the unlikely scenario.
  * Sep 21, 2015  4901     bkowal      Verify the {@link Area} associated with a ugc actually
  *                                    exists before adding it to the dac playlist message.
+ * Sep 22, 2015  4904     bkowal      Propagate replaced messages to the playlist.                                   
  * </pre>
  * 
  * @author bsteffen
@@ -274,7 +275,8 @@ public class PlaylistManager implements IContextStateProcessor {
             if (programSuite == null) {
                 continue;
             }
-            refreshPlaylist(group, programSuite, false, null, notification);
+            refreshPlaylist(group, programSuite, false, null, notification,
+                    null);
         }
     }
 
@@ -439,7 +441,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 if (programSuite.getSuite().containsSuiteMessage(
                         message.getAfosid())) {
                     refreshPlaylist(group, programSuite, false, event,
-                            traceable);
+                            traceable, null);
                     if (activeMessage) {
                         /*
                          * if the message has been deactivated, we want to
@@ -528,7 +530,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     }
                     if (forcedProgramSuite != null) {
                         if (!refreshPlaylist(group, forcedProgramSuite, true,
-                                event, traceable)) {
+                                event, traceable, null)) {
                             return false;
                         }
                     }
@@ -541,7 +543,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     }
                     if (!programSuite.getSuite().equals(forcedSuite)) {
                         refreshPlaylist(group, programSuite, false, event,
-                                traceable);
+                                traceable, null);
                     }
                     Iterator<Playlist> listIterator = listsToDelete.iterator();
                     while (listIterator.hasNext()) {
@@ -581,7 +583,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 playlist.getMessages().clear();
-                persistPlaylist(playlist, programSuite, false, null, null);
+                persistPlaylist(playlist, programSuite, false, null, null, null);
             }
         } finally {
             locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
@@ -598,7 +600,8 @@ public class PlaylistManager implements IContextStateProcessor {
      */
     protected boolean refreshPlaylist(TransmitterGroup group,
             ProgramSuite programSuite, boolean forced,
-            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable,
+            BroadcastMsg replacedMessage) {
         ClusterTask ct = null;
         do {
             ct = locker.lock("playlist", group.getName() + "-"
@@ -620,7 +623,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setStartTime(null);
                 playlist.setEndTime(null);
                 DacPlaylist dacPlaylist = persistPlaylist(playlist,
-                        programSuite, forced, event, traceable);
+                        programSuite, forced, event, traceable, replacedMessage);
                 return !dacPlaylist.isEmpty();
             } else {
                 return false;
@@ -656,7 +659,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     if (programSuite.getSuite().containsSuiteMessage(
                             message.getAfosid())) {
                         refreshPlaylist(group, programSuite, false, null,
-                                traceable);
+                                traceable, message);
                         break;
                     }
                 }
@@ -718,7 +721,7 @@ public class PlaylistManager implements IContextStateProcessor {
             playlist.setStartTime(msg.getInputMessage().getEffectiveTime());
             playlist.setEndTime(msg.getInputMessage().getExpirationTime());
             writePlaylistFile(playlist, playlist.getStartTime(), null,
-                    traceable);
+                    traceable, null);
         }
 
         for (ProgramSuite programSuite : program.getProgramSuites()) {
@@ -768,7 +771,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 playlist.setTriggerBroadcastId(msg.getId());
             }
             DacPlaylist dacPlaylist = persistPlaylist(playlist, programSuite,
-                    false, null, traceable);
+                    false, null, traceable, null);
             if ((dacPlaylist != null) && isTrigger) {
                 this.messageLogger.logTriggerActivity(traceable, msg,
                         dacPlaylist);
@@ -806,7 +809,8 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private DacPlaylist persistPlaylist(Playlist playlist,
             ProgramSuite programSuite, boolean forced,
-            AbstractBMHProcessingTimeEvent event, ITraceable traceable) {
+            AbstractBMHProcessingTimeEvent event, ITraceable traceable,
+            BroadcastMsg replacedMessage) {
         List<Calendar> triggerTimes = playlist.setTimes(
                 programSuite.getTriggers(), forced);
 
@@ -821,10 +825,10 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         if (triggerTimes.isEmpty()) {
             return writePlaylistFile(playlist, playlist.getModTime(), event,
-                    traceable);
+                    traceable, replacedMessage);
         } else if (triggerTimes.size() == 1) {
             return writePlaylistFile(playlist, triggerTimes.get(0), event,
-                    traceable);
+                    traceable, replacedMessage);
         } else {
             /*
              * If there are multiple triggers, need to write one file per
@@ -835,12 +839,12 @@ public class PlaylistManager implements IContextStateProcessor {
             for (int i = 0; i < (triggerTimes.size() - 1); i += 1) {
                 playlist.setEndTime(triggerTimes.get(0));
                 writePlaylistFile(playlist, triggerTimes.get(i), event,
-                        traceable);
+                        traceable, replacedMessage);
                 playlist.setStartTime(triggerTimes.get(i));
             }
             playlist.setEndTime(endTime);
             return writePlaylistFile(playlist, playlist.getStartTime(), event,
-                    traceable);
+                    traceable, replacedMessage);
         }
     }
 
@@ -892,8 +896,19 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private DacPlaylist writePlaylistFile(Playlist playlist,
             Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event,
-            ITraceable traceable) {
+            ITraceable traceable, BroadcastMsg replacedMessage) {
         DacPlaylist dacList = convertPlaylistForDAC(playlist, traceable);
+        if (replacedMessage != null) {
+            DacPlaylistMessageId id = new DacPlaylistMessageId(
+                    replacedMessage.getId());
+            /*
+             * We only care about the updated expiration time for a replaced
+             * message because its existence will not trigger the reload of
+             * message metadata.
+             */
+            id.setExpire(replacedMessage.getExpirationTime());
+            dacList.setReplacedMessage(id);
+        }
         dacList.setLatestTrigger(latestTriggerTime);
         PlaylistUpdateNotification notif = new PlaylistUpdateNotification(
                 dacList);
