@@ -78,6 +78,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 03, 2015  4350     bkowal      Fix spelling.
  * Aug 04, 2015  4671     bkowal      Throw a {@link ParseException} when mrd follows is
  *                                    encountered.
+ * Sep 24, 2015  4916     bkowal      Trim the afos id.
  * </pre>
  * 
  * @author bsteffen
@@ -208,7 +209,7 @@ public class InputMessageParser {
         if (afosid.find() == false) {
             throw new ParseException("Invalid Afosid.", index);
         }
-        message.setAfosid(afosid.group());
+        message.setAfosid(afosid.group().trim());
         return afosid.end();
     }
 
