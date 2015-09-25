@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Aug 04, 2015  4671     bkowal      Throw a {@link ParseException} when mrd follows is
  *                                    encountered.
  * Sep 24, 2015  4916     bkowal      Trim the afos id.
+ * Sep 24, 2015  4925     bkowal      Added {@link #parseUGCs(String, int)}.
  * </pre>
  * 
  * @author bsteffen
@@ -120,6 +121,10 @@ public class InputMessageParser {
 
     private static final Pattern endPattern = Pattern.compile("^(.*)\\eb",
             Pattern.DOTALL);
+
+    private static final String UGC_SEPARATOR = "-";
+
+    private static final String UGC_CONSECUTIVE = ">";
 
     private final IMessageLogger messageLogger;
 
@@ -400,10 +405,168 @@ public class InputMessageParser {
         Matcher ugc = ugcPattern.matcher(text);
         ugc.region(index, text.length());
         if (ugc.find()) {
-            message.setAreaCodes(ugc.group(1));
+            message.setAreaCodes(this.parseUGCs(ugc.group(1), index,
+                    message.getName()));
             return ugc.end();
         }
         throw new ParseException("Invalid Listening Area Codes.", index);
+    }
+
+    /**
+     * Examines the specified ugc {@link String} and performs the required
+     * substitutions in accordance with the specification:
+     * http://www.nws.noaa.gov/directives/sym/pd01017002curr.pdf (page 5).
+     * 
+     * @param ugcString
+     *            the specified ugc {@link String}
+     * @param index
+     *            index in header where the ugc String started. Only used for
+     *            exception reporting.
+     * @param name
+     *            the name of the {@link InputMessage}. Only used for logging
+     *            purposes.
+     * @return the ugc {@link String} with all applicable substitutions
+     * @throws ParseException
+     */
+    private String parseUGCs(String ugcString, final int index,
+            final String name) throws ParseException {
+        /*
+         * We will resolve all substitutions that should take place based on the
+         * specification so that the substitution handling will not need to be
+         * propagated throughout the entire BMH code base.
+         */
+
+        StringBuilder sb = new StringBuilder();
+        String[] ugcComponents = ugcString.split(UGC_SEPARATOR);
+        if (ugcComponents.length == 1) {
+            return ugcComponents[0];
+        }
+
+        boolean first = true;
+        String lastSSF = null;
+        for (int i = 0; i < ugcComponents.length; i++) {
+            if (first) {
+                first = false;
+            } else {
+                sb.append(UGC_SEPARATOR);
+            }
+
+            String ugcComponent = ugcComponents[i];
+            if (ugcComponent.contains(UGC_CONSECUTIVE)) {
+                String[] consecutiveComponents = ugcComponent
+                        .split(UGC_CONSECUTIVE);
+                if (consecutiveComponents.length != 2) {
+                    throw new ParseException("UGC consecutive sequence: "
+                            + ugcComponent
+                            + " was not in the expected [SSF]NNN>NNN format.",
+                            index);
+                }
+                String consecutive0 = consecutiveComponents[0];
+                final String consecutive1 = consecutiveComponents[1];
+                if (lastSSF == null && consecutive0.length() != 6) {
+                    /*
+                     * This component MUST contain a SSF.
+                     */
+                    throw new ParseException("First ugc: " + ugcComponent
+                            + " was not in the expected SSFNNN format.", index);
+                }
+
+                if (consecutive0.length() == 6) {
+                    lastSSF = consecutive0.substring(0, 3);
+                    consecutive0 = consecutive0.substring(3);
+                }
+
+                if (consecutive0.length() != 3) {
+                    throw new ParseException("Component: " + consecutive0
+                            + " of ugc consecutive sequence: " + ugcComponent
+                            + " was not in the expected NNN format.", index);
+                }
+                if (consecutive1.length() != 3) {
+                    throw new ParseException("Component: " + consecutive1
+                            + " of ugc consecutive sequence: " + ugcComponent
+                            + " was not in the expected NNN format.", index);
+                }
+
+                /*
+                 * Verify the sequence.
+                 */
+                int sequenceStart;
+                int sequenceEnd;
+                try {
+                    sequenceStart = Integer.parseInt(consecutive0);
+                    sequenceEnd = Integer.parseInt(consecutive1);
+                } catch (NumberFormatException e) {
+                    throw new ParseException("UGC consecutive sequence: "
+                            + ugcComponent
+                            + " contains invalid numeric reference.", index);
+                }
+
+                if (sequenceStart > sequenceEnd) {
+                    throw new ParseException("UGC consecutive sequence: "
+                            + ugcComponent + " start is before end.", index);
+                }
+
+                /*
+                 * Now we are finally fairly confident that we may be able to
+                 * reasonably work with the specified ugc sequence.
+                 */
+                boolean firstInSequence = true;
+                for (int j = sequenceStart; j <= sequenceEnd; j++) {
+                    if (firstInSequence) {
+                        firstInSequence = false;
+                    } else {
+                        sb.append(UGC_SEPARATOR);
+                    }
+
+                    String sequenceNum = Integer.toString(j);
+                    while (sequenceNum.length() < 3) {
+                        /*
+                         * 0-Padding.
+                         */
+                        sequenceNum = "0" + sequenceNum;
+                    }
+                    sb.append(lastSSF).append(sequenceNum);
+                }
+            } else {
+                if (lastSSF == null && ugcComponent.length() != 6) {
+                    /*
+                     * This component MUST contain a SSF.
+                     */
+                    throw new ParseException("First ugc: " + ugcComponent
+                            + " was not in the expected SSFNNN format.", index);
+                }
+
+                if (ugcComponent.length() == 6) {
+                    /*
+                     * Extract the SSF.
+                     */
+                    lastSSF = ugcComponent.substring(0, 3);
+                    sb.append(ugcComponent);
+                } else {
+                    if (ugcComponent.length() != 3) {
+                        throw new ParseException("UGC component: "
+                                + ugcComponent
+                                + " was not in the expected NNN format.", index);
+                    }
+
+                    /*
+                     * Just the county, territory, parish, or independent city
+                     * number.
+                     */
+                    sb.append(lastSSF).append(ugcComponent);
+                }
+            }
+        }
+
+        if (sb.length() != ugcString.length()) {
+            StringBuilder msg = new StringBuilder("Expanded the ugc string: ");
+            msg.append(ugcString).append(" for input message: ").append(name)
+                    .append(" to: ").append(sb.toString()).append(".");
+
+            statusHandler.info(msg.toString());
+        }
+
+        return sb.toString();
     }
 
     private int parseExpirationDate(InputMessage message, CharSequence text,
