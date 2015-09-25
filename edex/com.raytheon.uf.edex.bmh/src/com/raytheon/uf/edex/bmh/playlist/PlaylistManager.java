@@ -41,7 +41,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
-import javax.xml.bind.DataBindingException;
 import javax.xml.bind.JAXB;
 
 import org.springframework.util.CollectionUtils;
@@ -208,7 +207,9 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Aug 27, 2015  4811     bkowal      Create a server-side record of the unlikely scenario.
  * Sep 21, 2015  4901     bkowal      Verify the {@link Area} associated with a ugc actually
  *                                    exists before adding it to the dac playlist message.
- * Sep 22, 2015  4904     bkowal      Propagate replaced messages to the playlist.                                   
+ * Sep 22, 2015  4904     bkowal      Propagate replaced messages to the playlist.
+ * Sep 24, 2015  4924     bkowal      Catch any error encountered when producing a
+ *                                    {@link DacPlaylistMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -1207,7 +1208,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 this.messageLogger.logPlaylistMessageActivity(traceable, dac,
                         broadcast.getTransmitterGroup());
             }
-        } catch (DataBindingException | IOException e) {
+        } catch (Throwable e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write message file.", e);
             this.messageLogger.logError(traceable,

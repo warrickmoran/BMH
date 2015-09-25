@@ -63,6 +63,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 13, 2015  4429     rferrel     Set traceId.
  * May 21, 2015  4429     rjpeter     Added additional logging.
  * Jul 29, 2015  4690     rjpeter     Added reject/checkReject methods.
+ * Sep 24, 2015  4924     bkowal      Added {@link #getValidationNotificationCategory(TransmissionStatus)}.
  * </pre>
  * 
  * @author bsteffen
@@ -120,7 +121,8 @@ public class InputMessageValidator {
             ldadCheck.validate(valid);
             if (!valid.isAccepted()) {
                 statusHandler
-                        .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                        .error(this.getValidationNotificationCategory(valid
+                                .getTransmissionStatus()),
                                 TraceableUtil.createTraceMsgHeader(valid)
                                         + "failed to validate with transmission status: "
                                         + valid.getTransmissionStatus());
@@ -172,7 +174,8 @@ public class InputMessageValidator {
             valid.setTransmissionStatus(TransmissionStatus.UNACCEPTABLE);
             valid.setLdadStatus(LdadStatus.UNACCEPTABLE);
             statusHandler
-                    .error(BMH_CATEGORY.MESSAGE_VALIDATION_FAILED,
+                    .error(this
+                            .getValidationNotificationCategory(TransmissionStatus.UNACCEPTABLE),
                             TraceableUtil.createTraceMsgHeader(valid)
                                     + "("
                                     + input.getAfosid()
@@ -184,6 +187,41 @@ public class InputMessageValidator {
         this.messageLogger.logValidationActivity(valid);
 
         return valid;
+    }
+
+    /**
+     * Get the {@link BMH_CATEGORY} associated with the specified [@link
+     * TransmissionStatus}. There is NOT a {@link BMH_CATEGORY} associated with
+     * {@link TransmissionStatus#ACCEPTED}.
+     * 
+     * @param status
+     * @return
+     */
+    private BMH_CATEGORY getValidationNotificationCategory(
+            final TransmissionStatus status) {
+        if (status == TransmissionStatus.ACCEPTED) {
+            throw new IllegalArgumentException(
+                    "No BMH Category exists for the ACCEPTED Transmission Status!");
+        }
+
+        switch (status) {
+        case DUPLICATE:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_DUPLICATE;
+        case ERROR:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_ERROR;
+        case EXPIRED:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_EXPIRED;
+        case UNACCEPTABLE:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_UNACCEPTABLE;
+        case UNASSIGNED:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_UNASSIGNED;
+        case UNDEFINED:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_UNDEFINED;
+        case UNPLAYABLE:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_UNPLAYABLE;
+        default:
+            return BMH_CATEGORY.MESSAGE_VALIDATION_FAILED;
+        }
     }
 
     /**
