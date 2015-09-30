@@ -80,6 +80,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                    encountered.
  * Sep 24, 2015  4916     bkowal      Trim the afos id.
  * Sep 24, 2015  4925     bkowal      Added {@link #parseUGCs(String, int)}.
+ * Sep 30, 2015  4938     bkowal      Validate that the afos id meets the minimum length
+ *                                    requirements when the same tone flag is set.
  * </pre>
  * 
  * @author bsteffen
@@ -352,6 +354,13 @@ public class InputMessageParser {
             throw new ParseException("Unrecognized Alert Tone Character: "
                     + active, index);
         }
+
+        if (message.getNwrsameTone() && message.getAfosid().length() < 7) {
+            throw new ParseException(
+                    "Invalid message type. Message type length must be >= 7 characters.",
+                    index);
+        }
+
         return index + 1;
     }
 
