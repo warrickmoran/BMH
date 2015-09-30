@@ -53,6 +53,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 05, 2015  4222     bkowal      Handle playlists that never expire.
  * May 11, 2015  4002     bkowal      Added {@link #triggerBroadcastId}.
  * May 21, 2015  4429     rjpeter     Implement {@link ITraceable}.
+ * Sep 22, 2015  4904     bkowal      Keep track of messages no longer in the playlist
+ *                                    that have been expired before their time.
  * </pre>
  * 
  * @author bsteffen
@@ -91,6 +93,16 @@ public class DacPlaylist implements ITraceable {
 
     @XmlElement(name = "message")
     private List<DacPlaylistMessageId> messages = new ArrayList<>();
+
+    /*
+     * These are {@link DacPlaylistMessage}s that have been replaced by other
+     * {@link DacPlaylistMessage}s. These messages have been included in the
+     * playlist so that the expiration time can be updated on the associated
+     * messages in the dac transmit playlist cache to ensure that the messages
+     * do not just sit in cache until their original expiration time.
+     */
+    @XmlElement(name = "replacedMessage")
+    private DacPlaylistMessageId replacedMessage;
 
     private transient Path path;
 
@@ -213,6 +225,21 @@ public class DacPlaylist implements ITraceable {
         this.messages = messages;
     }
 
+    /**
+     * @return the replacedMessage
+     */
+    public DacPlaylistMessageId getReplacedMessage() {
+        return replacedMessage;
+    }
+
+    /**
+     * @param replacedMessage
+     *            the replacedMessage to set
+     */
+    public void setReplacedMessage(DacPlaylistMessageId replacedMessage) {
+        this.replacedMessage = replacedMessage;
+    }
+
     public boolean isInterrupt() {
         return interrupt;
     }
@@ -234,7 +261,8 @@ public class DacPlaylist implements ITraceable {
      * the expiration time is not after the start time.
      */
     public boolean isEmpty() {
-        return (expired != null && !expired.after(start)) || messages.isEmpty();
+        return (expired != null && !expired.after(start))
+                || (messages.isEmpty() && this.replacedMessage != null);
     }
 
     /**

@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.program;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -67,6 +68,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 07, 2014   3846     mpduff      Populate hashmap internally, handle state of add button
  * Feb 09, 2015   4095     bsteffen    Remove Transmitter Name.
  * Mar 31, 2015   4248     rjpeter     Use PositionComparator.
+ * Sep 24, 2015   4923     bkowal      Exclude {@link TransmitterGroup}s that the {@link Program}
+ *                                     has already been assigned to from the backing {@link List}.
  * </pre>
  * 
  * @author lvenable
@@ -258,10 +261,24 @@ public class AddTransmittersDlg extends CaveSWTDialog {
 
             Collections.sort(transmitterGrps, new PositionComparator());
 
-            for (TransmitterGroup tg : transmitterGrps) {
-                if (transGrpProgramMap.containsKey(tg.getName())) {
+            /*
+             * Filter out {@link TransmitterGroup}s that have already been
+             * assigned to the Program.
+             */
+            Iterator<TransmitterGroup> iterator = this.transmitterGrps
+                    .iterator();
+            while (iterator.hasNext()) {
+                TransmitterGroup tg = iterator.next();
+                if (tg.getProgramSummary() == null) {
                     continue;
                 }
+
+                if (this.programName.equals(tg.getProgramSummary().getName())) {
+                    iterator.remove();
+                }
+            }
+
+            for (TransmitterGroup tg : transmitterGrps) {
                 if (tg.getProgramSummary() != null) {
                     transGrpProgramMap.put(tg.getName(), tg.getProgramSummary()
                             .getName());
@@ -292,12 +309,6 @@ public class AddTransmittersDlg extends CaveSWTDialog {
         TableData transGrpTableData = new TableData(columnNames);
 
         for (TransmitterGroup tg : transmitterGrps) {
-
-            // If the program is the current program selected then don't put it
-            // in the list.
-            if (programName.equals(transGrpProgramMap.get(tg.getName()))) {
-                continue;
-            }
 
             TableRowData trd = new TableRowData();
 
