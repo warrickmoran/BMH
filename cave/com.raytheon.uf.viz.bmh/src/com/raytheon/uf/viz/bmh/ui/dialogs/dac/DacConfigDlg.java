@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.CreateEditDacConfigDlg.DialogType;
+import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -64,6 +65,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Feb 03, 2015  4056      bsteffen     Pass the data manager to the create/edit dialog.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Sep 24, 2015  4922      bkowal       Prevent editing / adding / deleting dacs when not
+ *                                      in operational mode.
  * </pre>
  * 
  * @author lvenable
@@ -233,6 +236,15 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
                 handleDeleteAction();
             }
         });
+
+        /*
+         * Disable the {@link Button}s if in practice mode.
+         */
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            newBtn.setEnabled(false);
+            editBtn.setEnabled(false);
+            deleteBtn.setEnabled(false);
+        }
     }
 
     /**
@@ -305,7 +317,8 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     @Override
     public void tableSelectionChange(int selectionCount) {
-        editBtn.setEnabled(selectionCount > 0);
+        editBtn.setEnabled(selectionCount > 0
+                && CAVEMode.getMode() == CAVEMode.OPERATIONAL);
     }
 
     private void updateTable(Dac dac) {

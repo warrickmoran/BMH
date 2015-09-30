@@ -77,6 +77,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jun 17, 2015 4490       bkowal      Added {@link #statusHandler}.
  * Aug 27, 2015 4811       bkowal      Fix spelling.
+ * Sep 08, 2015 4836       bkowal      Fix spelling.
  * </pre>
  * 
  * @author rferrel
@@ -347,7 +348,7 @@ public class ImportLegacyDbDlg extends AbstractBMHDialog {
         sb.append(determineSize(data.getAreas())).append(" areas\n");
         sb.append(determineSize(data.getZones())).append(" zones\n");
         sb.append(determineSize(data.getMsgTypes()))
-                .append(" messaage types\n");
+                .append(" message types\n");
         sb.append(determineSize(data.getReplaceMap())).append(
                 " replacement message types\n");
         sb.append(determineSize(data.getSuites())).append(" suites\n");

@@ -7,7 +7,7 @@
 	<dbSilenceLimit>-40.0</dbSilenceLimit>
 	<disableSilenceLimit>false</disableSilenceLimit>
 	<dbMaxLimit>-15.0</dbMaxLimit>
-	<disableMaxLimit>false</disableMaxLimit>
+	<disableMaxLimit>true</disableMaxLimit>
 	<!-- 
 		OPTIONS:
 			* LINEAR_PCM

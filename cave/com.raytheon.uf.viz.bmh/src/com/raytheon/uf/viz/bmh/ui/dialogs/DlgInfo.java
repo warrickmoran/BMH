@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
  * Dec 15, 2014 3618       bkowal      Added TTS_VOICE_CONFIGURATION.
  * Jan 08, 2015 3963       bkowal      Added {@link #TRANSMITTER_CONFIGURATION_DECOMMISSION}.
  * Feb 19, 2015 4143       bsteffen    Add demo message dialog.
+ * Sep 25, 2015 4909       bkowal      Fixed {@link #DEMO_MESSAGE}.
  * 
  * </pre>
  * 
@@ -75,7 +76,7 @@ public enum DlgInfo {
 
     WEATHER_MESSAGES("bmh.dialog.weatherMessages", "Weather Messages"),
 
-    DEMO_MESSAGE("bmh.dialog.weatherMessages", "Send Demo Message"),
+    DEMO_MESSAGE("bmh.dialog.demoMessage", "Send Demo Message"),
 
     EMERGENCY_OVERRIDE("bmh.dialog.emergencyOverride", "Emergency Override"),
 
