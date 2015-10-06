@@ -764,9 +764,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private void schedulePurge() {
         synchronized (purgeLock) {
-            if (this.lastPurgeTime == 0
-                    || (lastPurgeTime + PURGE_JOB_INTERVAL < System
-                            .currentTimeMillis())) {
+            if (lastPurgeTime + PURGE_JOB_INTERVAL < System.currentTimeMillis()) {
                 lastPurgeTime = System.currentTimeMillis();
                 logger.info("Scheduling a cache purge ... {}",
                         this.lastPurgeTime);
