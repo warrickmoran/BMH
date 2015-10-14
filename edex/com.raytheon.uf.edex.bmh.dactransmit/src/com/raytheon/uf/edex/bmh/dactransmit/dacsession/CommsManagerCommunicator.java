@@ -104,7 +104,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Jun 02, 2015  4369     rferrel     Handle {@link NoPlaybackMessageNotification}.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- * 
+ * Oct 14, 2015  4984     rjpeter     Updated to set new transmitters and audio targets back to config.
  * </pre>
  * 
  * @author bsteffen
@@ -264,8 +264,14 @@ public final class CommsManagerCommunicator extends Thread {
         } else if (message instanceof PlaylistUpdateNotification) {
             eventBus.post(message);
         } else if (message instanceof ChangeTransmitters) {
+            config.setTransmitters(Ints.asList(((ChangeTransmitters) message)
+                    .getTransmitters()));
             eventBus.post(message);
         } else if (message instanceof ChangeDecibelTarget) {
+            ChangeDecibelTarget event = (ChangeDecibelTarget) message;
+            config.setAlertDbTarget(event.getAlertDbTarget());
+            config.setDbTarget(event.getAudioDbTarget());
+            config.setSameDbTarget(event.getSameDbTarget());
             eventBus.post(message);
         } else if (message instanceof ILiveBroadcastMessage) {
             eventBus.post(message);

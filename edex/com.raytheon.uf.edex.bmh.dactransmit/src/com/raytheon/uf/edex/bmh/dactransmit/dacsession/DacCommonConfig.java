@@ -30,7 +30,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * ------------ ---------- ----------- --------------------------
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 29, 2015 4394       bkowal      Added {@link #managerPort}.
- * 
+ * Oct 14, 2015 4984       rjpeter     Added {@link #setDbTarget(double)} and {@link #setTransmitters(Collection)}
  * </pre>
  * 
  * @author bkowal
@@ -50,9 +50,9 @@ public class DacCommonConfig {
 
     protected final int controlPort;
 
-    protected final Collection<Integer> transmitters;
+    protected volatile Collection<Integer> transmitters;
 
-    protected final double dbTarget;
+    protected volatile double dbTarget;
 
     private final int managerPort;
 
@@ -105,10 +105,26 @@ public class DacCommonConfig {
     }
 
     /**
+     * @param transmitters
+     *            the transmitters to set
+     */
+    public void setTransmitters(Collection<Integer> transmitters) {
+        this.transmitters = transmitters;
+    }
+
+    /**
      * @return the dbTarget
      */
     public double getDbTarget() {
         return dbTarget;
+    }
+
+    /**
+     * @param dbTarget
+     *            the dbTarget to set
+     */
+    public void setDbTarget(double dbTarget) {
+        this.dbTarget = dbTarget;
     }
 
     /**

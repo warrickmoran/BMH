@@ -48,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  *                                      dac modes.
  * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * Aug 12, 2015  #4424     bkowal       Eliminate Dac Transmit Key.
+ * Oct 14, 2015 4984       rjpeter     Added {@link #setAlertDbTarget(double)} and {@link #setSameDbTarget(double)}
  * </pre>
  * 
  * @author dgilling
@@ -60,9 +61,9 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     private final TimeZone timezone;
 
-    private final double sameDbTarget;
+    private volatile double sameDbTarget;
 
-    private final double alertDbTarget;
+    private volatile double alertDbTarget;
 
     private final String transmitterGroup;
 
@@ -115,10 +116,26 @@ public final class DacSessionConfig extends AbstractDacConfig {
     }
 
     /**
+     * @param sameDbTarget
+     *            the sameDbTarget to set
+     */
+    public void setSameDbTarget(double sameDbTarget) {
+        this.sameDbTarget = sameDbTarget;
+    }
+
+    /**
      * @return the alertDbTarget
      */
     public double getAlertDbTarget() {
         return alertDbTarget;
+    }
+
+    /**
+     * @param alertDbTarget
+     *            the alertDbTarget to set
+     */
+    public void setAlertDbTarget(double alertDbTarget) {
+        this.alertDbTarget = alertDbTarget;
     }
 
     /**

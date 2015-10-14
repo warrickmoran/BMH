@@ -37,7 +37,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 25, 2015 4771       bkowal      Initial creation
- * 
+ * Oct 14, 2015 4984       rjpeter     Fix sign on clipping.
  * </pre>
  * 
  * @author bkowal
@@ -106,7 +106,7 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             short audioSample = (short) (((sample[i + 1] & 0xff) << 8) | (sample[i] & 0xff));
             double calculation = audioSample * volumeAdjustment;
             if (Math.abs(calculation) > BMHAudioConstants.MAX_AMPLITUDE) {
-                audioSample = (short) BMHAudioConstants.MAX_AMPLITUDE;
+                audioSample = (short) (Math.signum(calculation) * BMHAudioConstants.MAX_AMPLITUDE);
             } else {
                 audioSample = (short) calculation;
             }
@@ -159,6 +159,7 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
         return ulawData;
     }
 
+    @Override
     public List<byte[]> regulateAudioCollection(final double dbTarget)
             throws Exception {
         if (this.audioCollectionToRegulate == null) {
