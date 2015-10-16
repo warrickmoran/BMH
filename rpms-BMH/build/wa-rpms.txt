@@ -4,3 +4,5 @@ awips2-bmh
 awips2-bmh-test
 awips2-bmh-shure
 awips2-edex-request-bmh
+awips2-neospeech
+awips2-neospeech-english
