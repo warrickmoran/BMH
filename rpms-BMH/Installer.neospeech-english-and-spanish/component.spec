@@ -2,9 +2,9 @@
 # AWIPS II BMH spec file
 #
 %define _version 3.10
-%define _neospeech_zip neospeech.zip
+%define _neospeech_zip neospeech-spanish.zip
 
-Name: awips2-neospeech
+Name: awips2-neospeech-english-and-spanish
 Summary: AWIPS II BMH Installation
 Version: %{_version}
 Release: 2
@@ -16,10 +16,12 @@ License: N/A
 Distribution: N/A
 Vendor: Raytheon
 
-Provides: awips2-neospeech
+Provides: awips2-neospeech-english-and-spanish
+Requires: awips2-neospeech
+Conflicts: awips2-neospeech-english
 
 %description
-AWIPS II BMH - Installs the NeoSpeech TTS Server with the Paul voice.
+AWIPS II BMH - Enables both the English and Spanish NeoSpeech Voices.
 
 %prep
 # Verify That The User Has Specified A BuildRoot.
@@ -36,15 +38,6 @@ fi
 %build
 
 %install
-mkdir -p %{_build_root}
-if [ $? -ne 0 ]; then
-   exit 1
-fi
-mkdir -p %{_build_root}/etc/init.d
-if [ $? -ne 0 ]; then
-   exit 1
-fi
-
 neospeech_package=%{_awipscm_share}/awips2-static/neospeech/%{_version}/%{_neospeech_zip}
 if [ ! -f ${neospeech_package} ]; then
    file ${neospeech_package}
@@ -56,11 +49,13 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
-# deploy the NeoSpeech service scripts
-cp -v %{_baseline_workspace}/rpms-BMH/Installer.neospeech/scripts/init.d/neospeech_tts %{_build_root}/etc/init.d
+mkdir -p %{_build_root}/awips2/bmh/neospeech/verify/
 if [ $? -ne 0 ]; then
    exit 1
 fi
+
+_all_license=%{_baseline_workspace}/neospeech/verification_paulvioleta_07102017.txt
+cp -v ${_all_license} %{_build_root}/awips2/bmh/neospeech/verify/verification.txt
 
 %pre
 %post
@@ -76,15 +71,4 @@ rm -rf ${RPM_BUILD_ROOT}
 %dir /awips2/bmh
 %defattr(774,root,root,775)
 %dir /awips2/bmh/neospeech
-/awips2/bmh/neospeech/
-
-/etc/ttssrv.ini
-/etc/voiced.conf
-/etc/vtpath.ini
-/etc/dictlist.ini
-
-%defattr(774,root,root,775)
-%dir /awips2/bmh/neospeech/bin
-/awips2/bmh/neospeech/bin/*
-
-%attr(744,root,root) /etc/init.d/* 
+/awips2/bmh/neospeech/*

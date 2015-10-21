@@ -7,7 +7,7 @@
 Name: awips2-neospeech-english
 Summary: AWIPS II BMH Installation
 Version: %{_version}
-Release: 1
+Release: 2
 Group: AWIPSII
 BuildRoot: %{_build_root}
 BuildArch: noarch
@@ -17,6 +17,8 @@ Distribution: N/A
 Vendor: Raytheon
 
 Provides: awips2-neospeech-english
+Requires: awips2-neospeech
+Conflicts: awips2-neospeech-english-and-spanish
 
 %description
 AWIPS II BMH - Installs the NeoSpeech English Voice License.
