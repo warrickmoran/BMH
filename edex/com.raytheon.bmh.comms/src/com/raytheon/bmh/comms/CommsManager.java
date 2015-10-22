@@ -32,6 +32,7 @@ import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -137,6 +138,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    dacs that fail to sync that have been started on another member.
  * Aug 25, 2015  4775     bkowal      Notify the {@link BroadcastStreamServer} when remote dac
  *                                    transmits connect or disconnect.
+ * Oct 22, 2015  5010     bkowal      Restart a dac transmit process that runs out of heap space.
  * </pre>
  * 
  * @author bsteffen
@@ -146,6 +148,8 @@ public class CommsManager {
 
     private static final Logger logger = LoggerFactory
             .getLogger(CommsManager.class);
+
+    private static final String JAVA_HEAP_SPACE = "Java heap space";
 
     /**
      * The amount of time(in ms) to wait after startup before launching dac
@@ -220,6 +224,9 @@ public class CommsManager {
     private final Map<String, Process> startedProcesses = new HashMap<>();
 
     private final ConcurrentMap<String, Long> disconnectedDacProcesses = new ConcurrentHashMap<>();
+
+    private final List<String> dacProcessesToRestart = Collections
+            .synchronizedList(new ArrayList<String>());
 
     /**
      * Create a comms manager, this will fail if there are problems starting
@@ -449,6 +456,15 @@ public class CommsManager {
                                     sleeptime += DAC_START_SLEEP_TIME;
                                     allDacsRunning = false;
                                 }
+                            } else if (this.dacProcessesToRestart
+                                    .contains(transmitterGroup)) {
+                                this.dacProcessesToRestart
+                                        .remove(transmitterGroup);
+                                logger.info(
+                                        "Restarting dac transmit process for: {} ...",
+                                        transmitterGroup);
+                                launchDacTransmit(dac, channel, true);
+                                allDacsRunning = false;
                             }
                         }
                     }
@@ -966,6 +982,48 @@ public class CommsManager {
                 MarkerFactory.getMarker("Dac Transmit"),
                 "Critical error received from group: " + group + ": "
                         + e.getErrorMessage(), e.getThrowable());
+        /*
+         * The actual {@link Throwable} received with the {@link
+         * DacTransmitCriticalError} is a {@link WrappedException}. So, the only
+         * available option is to check the error text. When the error text is
+         * "Java heap space", a restart of the dac transmit process that the
+         * error was received from will be triggered because the dac transmit
+         * cannot do anything useful without sufficient memory resources.
+         */
+        this.checkRestartOnError(group, e.getErrorMessage());
+    }
+
+    /**
+     * Determines if a dac transmit process should be restarted after a
+     * {@link DacTransmitCriticalError}. This method will currently trigger a
+     * restart for Java heap space errors.
+     * 
+     * @param group
+     *            the transmitter group that the specified error occurred on.
+     * @param errorText
+     *            the specified error.
+     */
+    private void checkRestartOnError(final String group, final String errorText) {
+        if (errorText == null || errorText.isEmpty()) {
+            return;
+        }
+
+        if (JAVA_HEAP_SPACE.equals(errorText.trim())) {
+            /*
+             * Trigger a restart of the associated dac transmit process.
+             */
+            logger.info(
+                    "Scheduling a restart of dac transmit for: {} due to critical error: {} ...",
+                    group, errorText);
+            this.dacProcessesToRestart.add(group);
+            /*
+             * It is not truly the state of the dac transmit. However, the dac
+             * transmit is completely unusable in its current state so we want
+             * to ensure that it does not appear available to trigger the
+             * restart.
+             */
+            this.dacDisconnectedLocal(group);
+        }
     }
 
     /**
