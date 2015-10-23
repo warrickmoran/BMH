@@ -27,9 +27,9 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.slf4j.Logger;
@@ -39,6 +39,7 @@ import com.raytheon.bmh.comms.AbstractServerThread;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
 
@@ -66,7 +67,11 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Aug 19, 2015  4764     bkowal      Handle the case when there are not any transmitters
  *                                    that can be load balanced due to restrictions.
- * 
+ * Oct 23, 2015  5029     rjpeter     Added removeCommunicator, fix addCommunicator to not
+ *                                    prefer a disconnected communicator over a new one,
+ *                                    load balance failure only effects specific transmitter
+ *                                    that failed to start and load balance state will clear
+ *                                    if the transmitter ever stops running on the remote host.
  * </pre>
  * 
  * @author bsteffen
@@ -91,8 +96,12 @@ public class ClusterServer extends AbstractServerThread {
 
     private final CommsManager manager;
 
-    private final Map<String, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ClusterCommunicator> communicators = new ConcurrentHashMap<>();
 
+    /*
+     * Lock used when adding or removing from communicators map. Utilized to
+     * ensure two sockets not processed concurrently for the same host.
+     */
     private final Object communicatorLock = new Object();
 
     private final Set<String> configuredAddresses = new CopyOnWriteArraySet<>();
@@ -124,11 +133,16 @@ public class ClusterServer extends AbstractServerThread {
 
     public void attempClusterConnections(CommsConfig config) {
         if (config.getClusterHosts() == null) {
-            for (ClusterCommunicator communicator : communicators.values()) {
-                communicator.disconnect();
+            synchronized (communicatorLock) {
+                logger.info("No cluster hosts define in config, disconnecting from any clustered hosts");
+                for (ClusterCommunicator communicator : communicators.values()) {
+                    logger.info("Cluster host: {}, disconnecting...",
+                            communicator.getClusterId());
+                    communicator.disconnect();
+                }
+                communicators.clear();
+                return;
             }
-            communicators.clear();
-            return;
         }
         Set<String> configuredAddresses = new HashSet<>();
         for (CommsHostConfig host : config.getClusterHosts()) {
@@ -174,8 +188,9 @@ public class ClusterServer extends AbstractServerThread {
             if (communicator != null) {
                 if (communicator.getTimeLastMessageReceived() < timeoutThreshold) {
                     logger.error(
-                            "Cluster time out for cluster member: {}.  Have not received heartbeat message within threshold",
-                            remoteAddress);
+                            "Cluster time out for cluster member: {}.  Have not received heartbeat message within threshold of {}, disconnecting...",
+                            remoteAddress,
+                            TimeUtil.prettyDuration(CLUSTER_TIMEOUT_INTERVAL));
                     communicator.disconnect();
                 } else {
                     communicator.send(new ClusterHeartbeatMessage(localIp));
@@ -188,7 +203,7 @@ public class ClusterServer extends AbstractServerThread {
                         remoteAddress);
                 Socket socket = new Socket(address, config.getClusterPort());
                 socket.setTcpNoDelay(true);
-                communicator = new ClusterCommunicator(manager, socket,
+                communicator = new ClusterCommunicator(manager, this, socket,
                         host.getIpAddress());
                 if (communicator.send(localIp)) {
                     addCommunicator(communicator);
@@ -205,12 +220,19 @@ public class ClusterServer extends AbstractServerThread {
         this.configuredAddresses.addAll(configuredAddresses);
         this.configuredAddresses.retainAll(configuredAddresses);
 
-        Set<String> disconnectSet = new HashSet<>(communicators.keySet());
-        disconnectSet.removeAll(configuredAddresses);
-        for (String address : disconnectSet) {
-            ClusterCommunicator communicator = communicators.remove(address);
-            if (communicator != null) {
-                communicator.shutdown();
+        synchronized (communicatorLock) {
+            Set<String> disconnectSet = new HashSet<>(communicators.keySet());
+            disconnectSet.removeAll(configuredAddresses);
+
+            for (String address : disconnectSet) {
+                ClusterCommunicator communicator = communicators
+                        .remove(address);
+                if (communicator != null) {
+                    logger.info(
+                            "Cluster member {} no longer configured as part of cluster.  Disconnecting...",
+                            address);
+                    communicator.shutdown();
+                }
             }
         }
     }
@@ -240,10 +262,12 @@ public class ClusterServer extends AbstractServerThread {
     @Override
     public void shutdown() {
         super.shutdown();
-        for (ClusterCommunicator communicator : communicators.values()) {
-            communicator.shutdown();
+        synchronized (communicatorLock) {
+            for (ClusterCommunicator communicator : communicators.values()) {
+                communicator.shutdown();
+            }
+            communicators.clear();
         }
-        communicators.clear();
     }
 
     @Override
@@ -255,7 +279,7 @@ public class ClusterServer extends AbstractServerThread {
             if (id != null) {
                 logger.info("Received new cluster request from {}", id);
                 ClusterCommunicator communicator = new ClusterCommunicator(
-                        manager, socket, id);
+                        manager, this, socket, id);
                 addCommunicator(communicator);
             } else {
                 logger.warn(
@@ -291,14 +315,21 @@ public class ClusterServer extends AbstractServerThread {
             ClusterCommunicator prev = communicators.get(remoteAddress);
 
             if (prev != null) {
-                // reject new communicator
+                // reject new communicator?
                 if (prev.remoteAccepted()
-                        || localIp.compareTo(remoteAddress) < 0) {
+                        || (localIp.compareTo(remoteAddress) < 0 && prev
+                                .isConnected())) {
+                    logger.info(
+                            "Already connected to {}, closing new connection",
+                            remoteAddress);
                     communicator.disconnect();
                     return;
                 }
 
                 // new communicator better, close prev
+                logger.info(
+                        "Received new connection for {}, closing previous connection",
+                        remoteAddress);
                 prev.disconnect();
             }
 
@@ -307,6 +338,18 @@ public class ClusterServer extends AbstractServerThread {
             synchronized (state) {
                 communicator.sendState(state);
             }
+        }
+    }
+
+    /**
+     * Removes a communicator from internal map. Should only be called by
+     * ClusterServer.disconnect().
+     * 
+     * @param communicator
+     */
+    protected void removeCommunicator(ClusterCommunicator communicator) {
+        synchronized (communicatorLock) {
+            communicators.remove(communicator.getClusterId(), communicator);
         }
     }
 
@@ -436,11 +479,15 @@ public class ClusterServer extends AbstractServerThread {
                     sendStateToAll();
                 }
             } else if (pendingRequest && requestFailed) {
+                String transmitter = state.getRequestedTransmitter();
                 logger.error(
-                        "Load balancing has been disabled due to failure to start a requested dac: {}.",
-                        state.getRequestedTransmitter());
+                        "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
+                        transmitter,
+                        TimeUtil.prettyDuration(REQUEST_TIMEOUT_INTERVAL));
+                lockLoadBalanceDac(transmitter);
                 state.setRequestedTransmitter(null);
                 sendStateToAll();
+                requestTimeout = Long.MAX_VALUE;
             }
         }
     }

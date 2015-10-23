@@ -40,7 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Aug 17, 2015  4424     bkowal      Added {@link #setConnectedTransmitters(List)}.
  * Aug 19, 2015  4764     bkowal      Added a copy constructor.
- * 
+ * Oct 23, 2015  5029     rjpeter     Fix NPE when state is null.
  * </pre>
  * 
  * @author bsteffen
@@ -59,9 +59,11 @@ public class ClusterStateMessage {
     }
 
     public ClusterStateMessage(ClusterStateMessage state) {
-        this.connectedTransmitters = new ArrayList<>(
-                state.getConnectedTransmitters());
-        this.requestedTransmitter = state.getRequestedTransmitter();
+        if (state != null) {
+            this.connectedTransmitters = new ArrayList<>(
+                    state.getConnectedTransmitters());
+            this.requestedTransmitter = state.getRequestedTransmitter();
+        }
     }
 
     public void add(String transmitterGroup) {
