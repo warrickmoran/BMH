@@ -113,6 +113,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  *                                      {@link #deliverAllStartupStats()}.
  * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * Jul 28, 2015  #4686     bkowal       Moved statistics to common.
+ * Oct 26, 2015  #5034     bkowal       Added {@link #checkForActiveLiveBroadcast()}.
  * </pre>
  * 
  * @author dgilling
@@ -508,7 +509,8 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.broadcastThread.start();
     }
 
-    private void shutdownLiveBroadcast(final String broadcastId) {
+    public void shutdownLiveBroadcast(final String broadcastId) {
+        logger.info("Shutting down live broadcast ... {}", broadcastId);
         if (this.broadcastThread != null) {
             this.broadcastThread.shutdown();
             try {
@@ -526,6 +528,19 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
          * Resume interrupts.
          */
         this.playlistMgr.resumeInterrupts();
+    }
+
+    /**
+     * Checks for and returns the id of any live broadcast that may be running.
+     * 
+     * @return the id of the currently running live broadcast or {@code null} if
+     *         a live broadcast is not currently running.
+     */
+    public String checkForActiveLiveBroadcast() {
+        if (this.broadcastThread != null) {
+            return this.broadcastThread.getBroadcastId();
+        }
+        return null;
     }
 
     /*

@@ -105,6 +105,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Oct 14, 2015  4984     rjpeter     Updated to set new transmitters and audio targets back to config.
+ * Oct 26, 2015  5034     bkowal      Halt any active live broadcasts when communication is lost with
+ *                                    the comms manager.
  * </pre>
  * 
  * @author bsteffen
@@ -254,6 +256,18 @@ public final class CommsManagerCommunicator extends Thread {
             } catch (IOException ignorable) {
                 logger.error("Error closing message to comms manager");
             }
+        }
+
+        /*
+         * Halt any active live broadcasts because the communication layer that
+         * was lost will prevent the proper management of the live broadcast
+         * sessions.
+         */
+        String broadcastId = this.dacSession.checkForActiveLiveBroadcast();
+        if (broadcastId != null) {
+            logger.warn("Forcibly halting live broadcast session: "
+                    + broadcastId + " ...");
+            this.dacSession.shutdownLiveBroadcast(broadcastId);
         }
     }
 
