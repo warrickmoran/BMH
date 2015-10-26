@@ -95,6 +95,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * Sep 01, 2015 4825       bkowal      Log Broadcast Live activity to the Message Activity log.
  * Sep 03, 2015 4825       bkowal      Only attempt to broadcast end tones when there are same tones.
+ * Oct 26, 2015 5034       bkowal      Added {@link #getBroadcastId()}.
  * </pre>
  * 
  * @author bkowal
@@ -379,5 +380,9 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
         notification.setAlertTone(this.config.getAlert());
 
         eventBus.post(notification);
+    }
+    
+    public String getBroadcastId() {
+        return this.broadcastId;
     }
 }
