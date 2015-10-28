@@ -55,6 +55,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  *                                    cluster members.
  * Oct 23, 2015  5029     rjpeter     Make isConnected public, have disconnect call removeCommunicator.
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -140,7 +141,7 @@ public class ClusterCommunicator extends Thread {
                             "Clustered manager {} has requested a dac transmit.",
                             remoteHost);
                     manager.dacRequestedRemote(newState
-                            .getRequestedTransmitter());
+                            .getRequestedTransmitters());
                 }
             } else {
                 for (String transmitterGroup : newState
@@ -156,13 +157,13 @@ public class ClusterCommunicator extends Thread {
                     }
                 }
                 if (newState.hasRequestedTransmitter()
-                        && !oldState.isRequestedTransmitter(newState
-                                .getRequestedTransmitter())) {
+                        && !newState.getRequestedTransmitters().equals(
+                                oldState.getRequestedTransmitters())) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
                             remoteHost);
                     manager.dacRequestedRemote(newState
-                            .getRequestedTransmitter());
+                            .getRequestedTransmitters());
                 }
             }
         } else if (message instanceof ClusterShutdownMessage) {

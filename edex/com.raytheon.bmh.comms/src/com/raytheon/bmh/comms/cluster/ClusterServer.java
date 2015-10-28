@@ -27,7 +27,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -42,6 +45,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
+import com.raytheon.uf.edex.bmh.comms.DacConfig;
 
 /**
  * 
@@ -72,6 +76,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  *                                    load balance failure only effects specific transmitter
  *                                    that failed to start and load balance state will clear
  *                                    if the transmitter ever stops running on the remote host.
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -108,11 +113,13 @@ public class ClusterServer extends AbstractServerThread {
 
     private final ClusterStateMessage state = new ClusterStateMessage();
 
-    private long requestTimeout = Long.MAX_VALUE;
+    private final ConcurrentMap<String, Long> requestTimeout = new ConcurrentHashMap<String, Long>();
 
     private String localIp;
 
     private final List<String> unavailableLoadBalanceCandidates = new ArrayList<>();
+
+    private volatile int totalDacTransmits = 0;
 
     /**
      * Create a server for listening to dac transmit applications.
@@ -128,6 +135,10 @@ public class ClusterServer extends AbstractServerThread {
         if (config.getClusterHosts() == null) {
             logger.warn("No cluster members in config, continuing without clustering.");
             return;
+        }
+
+        for (DacConfig dConfig : config.getDacs()) {
+            totalDacTransmits += dConfig.getChannels().size();
         }
     }
 
@@ -356,10 +367,8 @@ public class ClusterServer extends AbstractServerThread {
     public void dacConnectedLocal(final String transmitterGroup) {
         synchronized (state) {
             state.add(transmitterGroup);
-            if (state.isRequestedTransmitter(transmitterGroup)) {
-                state.setRequestedTransmitter(null);
-                requestTimeout = Long.MAX_VALUE;
-            }
+            state.removeRequestedTransmitter(transmitterGroup);
+            requestTimeout.remove(transmitterGroup);
             sendStateToAll();
             this.unlockLoadBalanceDac(transmitterGroup);
         }
@@ -376,8 +385,8 @@ public class ClusterServer extends AbstractServerThread {
     public void dacDisconnectedRemote(final String transmitterGroup) {
         synchronized (state) {
             if (state.isRequestedTransmitter(transmitterGroup)) {
-                requestTimeout = System.currentTimeMillis()
-                        + REQUEST_TIMEOUT_INTERVAL;
+                requestTimeout.put(transmitterGroup, System.currentTimeMillis()
+                        + REQUEST_TIMEOUT_INTERVAL);
             }
             this.unlockLoadBalanceDac(transmitterGroup);
         }
@@ -427,67 +436,125 @@ public class ClusterServer extends AbstractServerThread {
     public void balanceDacTransmits(boolean allDacsRunning) {
         synchronized (state) {
             boolean pendingRequest = state.hasRequestedTransmitter();
-            boolean requestFailed = System.currentTimeMillis() > requestTimeout;
+            Set<String> failedRequests = new HashSet<>();
+            long currentTime = System.currentTimeMillis();
+            for (Map.Entry<String, Long> entry : requestTimeout.entrySet()) {
+                if (currentTime > entry.getValue()) {
+                    failedRequests.add(entry.getKey());
+                }
+            }
+
             if (allDacsRunning && (pendingRequest == false)
-                    && (requestFailed == false)) {
-                String overloadId = null;
-                ClusterStateMessage overloaded = new ClusterStateMessage(state);
+                    && (failedRequests.isEmpty())) {
+                /* determine total number of transmitters */
+                int requiredForBalance = totalDacTransmits
+                        / (communicators.size() + 1);
+                int numConnected = state.getConnectedTransmitters().size();
+                int numToRequest = requiredForBalance - numConnected;
+
+                NavigableMap<Integer, ClusterCommunicator> commMap = new TreeMap<>();
                 for (ClusterCommunicator communicator : communicators.values()) {
-                    ClusterStateMessage other = new ClusterStateMessage(
-                            communicator.getClusterState());
-                    if ((other == null) || other.hasRequestedTransmitter()) {
+                    ClusterStateMessage otherState = communicator
+                            .getClusterState();
+                    if (otherState == null
+                            || otherState.hasRequestedTransmitter()) {
+                        /*
+                         * another comms manager already clustering or just
+                         * connected
+                         */
                         return;
                     }
-                    if (other.getConnectedTransmitters().size() > overloaded
-                            .getConnectedTransmitters().size()) {
-                        overloaded = other;
-                        overloadId = communicator.getClusterId();
+                    commMap.put(otherState.getConnectedTransmitters().size(),
+                            communicator);
+                }
+
+                /*
+                 * double check in a large cluster that everything is balanced,
+                 * say with 7 transmitters across 4 nodes (1, 1, 1, 4)
+                 */
+                if (numToRequest == 0) {
+                    // map sorted by least number of connections
+                    for (Integer key : commMap.keySet()) {
+                        if (key < numConnected) {
+                            /*
+                             * we have more than another communicator, don't
+                             * request anything
+                             */
+                            break;
+                        } else if (key > numConnected + 1) {
+                            /*
+                             * another entry has more than 1 more than me,
+                             * request 1
+                             */
+                            numToRequest = 1;
+                            break;
+                        }
                     }
                 }
-                if ((overloaded.getConnectedTransmitters().size() - 1) > state
-                        .getConnectedTransmitters().size()) {
+
+                if (numToRequest > 0) {
+                    int numRequested = 0;
+
                     /*
-                     * Remove any transmitters that cannot be load balanced from
-                     * the overloaded keys list.
+                     * Iterate in order of most connected transmitters
                      */
-                    synchronized (this.unavailableLoadBalanceCandidates) {
-                        Iterator<String> iterator = overloaded
-                                .getConnectedTransmitters().iterator();
-                        while (iterator.hasNext()) {
-                            if (this.unavailableLoadBalanceCandidates
-                                    .contains(iterator.next())) {
-                                iterator.remove();
+                    for (ClusterCommunicator communicator : commMap
+                            .descendingMap().values()) {
+                        String otherId = communicator.getClusterId();
+                        ClusterStateMessage otherState = communicator
+                                .getClusterState();
+                        Set<String> otherTrans = new HashSet<>(
+                                otherState.getConnectedTransmitters());
+                        if (otherTrans.size() > requiredForBalance) {
+                            int numAllowedToTake = otherTrans.size()
+                                    - requiredForBalance;
+
+                            synchronized (this.unavailableLoadBalanceCandidates) {
+                                /*
+                                 * Remove any transmitters that cannot be load
+                                 * balanced.
+                                 */
+                                otherTrans
+                                        .removeAll(unavailableLoadBalanceCandidates);
+                            }
+
+                            if (otherTrans.isEmpty() == false) {
+                                Iterator<String> iter = otherTrans.iterator();
+
+                                while (numRequested < numToRequest
+                                        && numAllowedToTake > 0
+                                        && iter.hasNext()) {
+                                    String group = iter.next();
+                                    logger.info(
+                                            "To balance the load, {} dac transmit has been requested from {}",
+                                            group, otherId);
+                                    state.addRequestedTransmitter(group);
+                                    numRequested++;
+                                    numAllowedToTake--;
+                                }
+                            } else {
+                                logger.info(
+                                        "Unable to load balance with {}, all transmitters are unavailable for balancing",
+                                        otherId);
                             }
                         }
                     }
 
-                    if (overloaded.getConnectedTransmitters().isEmpty() == false) {
-                        logger.info(
-                                "To balance the load 1 dac transmit has been requested from {}",
-                                overloadId);
-                        /*
-                         * TODO its entirely possible for 2 cluster members to
-                         * be here at the same time and both request the same
-                         * key, to minimize conflict it would be better if each
-                         * requested a different key using a better key
-                         * selection mechanism.
-                         */
-                        String requestedGroup = overloaded
-                                .getConnectedTransmitters().get(0);
-                        state.setRequestedTransmitter(requestedGroup);
+                    if (state.hasRequestedTransmitter()) {
+                        sendStateToAll();
                     }
-                    sendStateToAll();
                 }
-            } else if (pendingRequest && requestFailed) {
-                String transmitter = state.getRequestedTransmitter();
-                logger.error(
-                        "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
-                        transmitter,
-                        TimeUtil.prettyDuration(REQUEST_TIMEOUT_INTERVAL));
-                lockLoadBalanceDac(transmitter);
-                state.setRequestedTransmitter(null);
+            } else if (pendingRequest && failedRequests.isEmpty() == false) {
+                for (String transmitter : failedRequests) {
+                    logger.error(
+                            "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
+                            transmitter,
+                            TimeUtil.prettyDuration(REQUEST_TIMEOUT_INTERVAL));
+                    lockLoadBalanceDac(transmitter);
+                    requestTimeout.remove(transmitter);
+                    state.removeRequestedTransmitter(transmitter);
+                }
                 sendStateToAll();
-                requestTimeout = Long.MAX_VALUE;
             }
         }
     }
@@ -510,17 +577,19 @@ public class ClusterServer extends AbstractServerThread {
      *            configuration.
      */
     public void reconfigure(Set<String> activeDacTransmits) {
+        totalDacTransmits = activeDacTransmits.size();
+
         synchronized (state) {
             if (state.hasRequestedTransmitter()) {
-                final String requestedTransmitter = state
-                        .getRequestedTransmitter();
-                if (activeDacTransmits.contains(requestedTransmitter) == false) {
-                    /*
-                     * No longer wait for the process to start locally because
-                     * it is no longer even enabled.
-                     */
-                    state.setRequestedTransmitter(null);
-                    requestTimeout = Long.MAX_VALUE;
+                for (String transmitter : state.getRequestedTransmitters()) {
+                    if (activeDacTransmits.contains(transmitter) == false) {
+                        /*
+                         * No longer wait for the process to start locally
+                         * because it is no longer enabled.
+                         */
+                        state.remove(transmitter);
+                        requestTimeout.remove(transmitter);
+                    }
                 }
             }
         }
