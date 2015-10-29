@@ -23,7 +23,6 @@ import java.net.Socket;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.ManagedTransmitterGroup.STREAMING_STATUS;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -59,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
  * ------------ ---------- ----------- --------------------------
  * Nov 25, 2014 3797       bkowal      Initial creation
  * Jun 19, 2015 4482       rjpeter     Remove override of stopBroadcast.
+ * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
  * </pre>
  * 
  * @author bkowal
@@ -96,9 +96,7 @@ public class ClusteredBroadcastStreamTask extends BroadcastStreamTask {
          */
         for (TransmitterGroup transmitterGrp : this.command
                 .getTransmitterGroups()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGrp.getName());
-            if (key == null) {
+            if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
                 continue;
             }
             this.tgManager.claimResponsibility(transmitterGrp);

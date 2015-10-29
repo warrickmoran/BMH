@@ -27,9 +27,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.bmh.comms.DacTransmitKey;
-import com.raytheon.bmh.comms.cluster.ClusterStateMessage.ClusterDacTransmitKey;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
 /**
@@ -51,6 +50,10 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Mar 20, 2015  4296     bsteffen    Catch all throwables from SerializationUtil.
  * Apr 07, 2015  4370     rjpeter     Add handling of ClusterConfigMessage.
  * Apr 08, 2015  4368     rjpeter     Add uniqueId and remoteAccepted.
+ * Aug 10, 2015  4711     rjpeter     Add cluster heartbeat.
+ * Aug 11, 2015  4372     bkowal      Handle {@link LiveBroadcastSwitchNotification} from other
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
+ *                                    cluster members.
  * </pre>
  * 
  * @author bsteffen
@@ -68,14 +71,16 @@ public class ClusterCommunicator extends Thread {
 
     private ClusterStateMessage state;
 
-    private final String uniqueId;
+    private final String remoteHost;
+
+    private volatile long timeLastMessageReceived = System.currentTimeMillis();
 
     public ClusterCommunicator(CommsManager manager, Socket socket,
-            String uniqueId) {
-        super("ClusterCommunicator-" + socket.getRemoteSocketAddress());
+            String remoteHost) {
+        super("ClusterCommunicator-" + remoteHost);
         this.socket = socket;
         this.manager = manager;
-        this.uniqueId = uniqueId;
+        this.remoteHost = remoteHost;
     }
 
     @Override
@@ -84,6 +89,7 @@ public class ClusterCommunicator extends Thread {
             try {
                 Object message = SerializationUtil.transformFromThrift(
                         Object.class, socket.getInputStream());
+                timeLastMessageReceived = System.currentTimeMillis();
                 handleMessage(message);
             } catch (Throwable e) {
                 boolean lostConnection = false;
@@ -95,11 +101,11 @@ public class ClusterCommunicator extends Thread {
                 }
                 if (lostConnection) {
                     logger.error("Lost connection to cluster member: {}",
-                            getClusterId());
+                            remoteHost);
                 } else {
                     logger.error(
                             "Error reading message from cluster member: {}",
-                            getClusterId(), e);
+                            remoteHost, e);
                 }
                 disconnect();
             }
@@ -112,36 +118,40 @@ public class ClusterCommunicator extends Thread {
             ClusterStateMessage oldState = state;
             state = newState;
             logger.info("Clustered manager {} is connected to {} dac(s)",
-                    getClusterId(), newState.getKeys().size());
+                    remoteHost, newState.getConnectedTransmitters().size());
             if (oldState == null) {
-                for (ClusterDacTransmitKey key : newState.getKeys()) {
-                    manager.dacConnectedRemote(key.toKey());
+                for (String transmitterGroup : newState
+                        .getConnectedTransmitters()) {
+                    manager.dacConnectedRemote(transmitterGroup);
                 }
-                if (newState.hasRequestedKey()) {
+                if (newState.hasRequestedTransmitter()) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            getClusterId(), newState.getKeys().size());
-                    manager.dacRequestedRemote(newState.getRequestedKey()
-                            .toKey());
+                            remoteHost);
+                    manager.dacRequestedRemote(newState
+                            .getRequestedTransmitter());
                 }
             } else {
-                for (ClusterDacTransmitKey key : newState.getKeys()) {
-                    if (!oldState.contains(key)) {
-                        manager.dacConnectedRemote(key.toKey());
+                for (String transmitterGroup : newState
+                        .getConnectedTransmitters()) {
+                    if (oldState.contains(transmitterGroup) == false) {
+                        manager.dacConnectedRemote(transmitterGroup);
                     }
                 }
-                for (ClusterDacTransmitKey key : oldState.getKeys()) {
-                    if (!newState.contains(key)) {
-                        manager.dacDisconnectedRemote(key.toKey());
+                for (String transmitterGroup : oldState
+                        .getConnectedTransmitters()) {
+                    if (newState.contains(transmitterGroup) == false) {
+                        manager.dacDisconnectedRemote(transmitterGroup);
                     }
                 }
-                if (newState.hasRequestedKey()
-                        && !oldState.isRequestedKey(newState.getRequestedKey())) {
+                if (newState.hasRequestedTransmitter()
+                        && !oldState.isRequestedTransmitter(newState
+                                .getRequestedTransmitter())) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
-                            getClusterId(), newState.getKeys().size());
-                    manager.dacRequestedRemote(newState.getRequestedKey()
-                            .toKey());
+                            remoteHost);
+                    manager.dacRequestedRemote(newState
+                            .getRequestedTransmitter());
                 }
             }
         } else if (message instanceof ClusterShutdownMessage) {
@@ -149,7 +159,7 @@ public class ClusterCommunicator extends Thread {
                 disconnect();
             } else {
                 logger.info("Clustered manager {} is shutting down.",
-                        getClusterId());
+                        remoteHost);
                 send(new ClusterShutdownMessage(true));
                 disconnect();
             }
@@ -158,6 +168,17 @@ public class ClusterCommunicator extends Thread {
         } else if (message instanceof ILiveBroadcastMessage) {
             this.manager
                     .forwardDacBroadcastMsg((ILiveBroadcastMessage) message);
+        } else if (message instanceof ClusterHeartbeatMessage) {
+            String heartbeatIp = ((ClusterHeartbeatMessage) message).getHost();
+            if (!remoteHost.equals(heartbeatIp)) {
+                logger.error(
+                        "Received wrong host for heartbeat.  Expected {} received {}.  Closing connection to {}",
+                        remoteHost, heartbeatIp, remoteHost);
+                disconnect();
+            }
+        } else if (message instanceof LiveBroadcastSwitchNotification) {
+            LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) message;
+            this.manager.checkLoadBalanceLockdown(notification);
         } else {
             logger.error("Unexpected message from cluster member of type: {}",
                     message.getClass().getSimpleName());
@@ -170,7 +191,7 @@ public class ClusterCommunicator extends Thread {
                 // No usable connection. Initiate cleanup.
                 this.disconnect();
                 logger.error("No active connection(s) to cluster member: {}.",
-                        this.getClusterId());
+                        this.remoteHost);
                 return false;
             }
             try {
@@ -178,7 +199,7 @@ public class ClusterCommunicator extends Thread {
                         socket.getOutputStream());
             } catch (Throwable e) {
                 logger.error("Error communicating with cluster member: {}",
-                        getClusterId(), e);
+                        remoteHost, e);
                 this.disconnect();
                 return false;
             }
@@ -213,27 +234,27 @@ public class ClusterCommunicator extends Thread {
             }
         } catch (IOException e) {
             logger.error("Error disconnecting from cluster member: {}",
-                    getClusterId(), e);
+                    remoteHost, e);
         }
         if (state != null) {
-            for (ClusterDacTransmitKey key : state.getKeys()) {
-                manager.dacDisconnectedRemote(key.toKey());
+            for (String transmitterGroup : state.getConnectedTransmitters()) {
+                manager.dacDisconnectedRemote(transmitterGroup);
             }
         }
     }
 
-    public boolean isConnected(DacTransmitKey key) {
+    public boolean isConnected(String transmitterGroup) {
         if ((state == null) || socket.isClosed()) {
             return false;
         }
-        return state.contains(key);
+        return state.contains(transmitterGroup);
     }
 
-    public boolean isRequested(DacTransmitKey key) {
+    public boolean isRequested(String transmitterGroup) {
         if ((state == null) || socket.isClosed()) {
             return false;
         }
-        return state.isRequestedKey(key);
+        return state.isRequestedTransmitter(transmitterGroup);
     }
 
     public void shutdown() {
@@ -244,14 +265,17 @@ public class ClusterCommunicator extends Thread {
         return state;
     }
 
-    public String getUniqueId() {
-        return uniqueId;
-    }
-
     /**
      * Convenience method, this is used in logging
      */
     public String getClusterId() {
-        return socket.getInetAddress().getHostAddress();
+        return remoteHost;
+    }
+
+    /**
+     * @return the timeLastMessageReceived
+     */
+    public long getTimeLastMessageReceived() {
+        return timeLastMessageReceived;
     }
 }

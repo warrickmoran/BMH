@@ -25,7 +25,6 @@ import java.nio.file.Paths;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
@@ -48,6 +47,7 @@ import com.raytheon.uf.common.jms.notification.NotificationMessage;
  * Oct 17, 2014  3687     bsteffen    Add info log statement for normal playlist updates.
  * Feb 09, 2015  4071     bsteffen    Consolidate Queues.
  * Feb 16, 2015  4107     bsteffen    Notify dac transmit server when actually connected.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * 
  * 
  * </pre>
@@ -62,12 +62,12 @@ public class PlaylistNotificationObserver implements INotificationObserver {
 
     private final DacTransmitServer server;
 
-    private final DacTransmitKey key;
+    private final String transmitterGroup;
 
     public PlaylistNotificationObserver(DacTransmitServer server,
-            DacTransmitKey key) {
+            String transmitterGroup) {
         this.server = server;
-        this.key = key;
+        this.transmitterGroup = transmitterGroup;
     }
 
     @Override
@@ -78,14 +78,13 @@ public class PlaylistNotificationObserver implements INotificationObserver {
                 Object payload = message.getMessagePayload();
                 if (payload instanceof PlaylistUpdateNotification) {
                     PlaylistUpdateNotification update = (PlaylistUpdateNotification) payload;
-                    Path keyPath = Paths.get(key.getInputDirectory());
                     Path playlistPath = Paths.get(update.getPlaylistPath());
-                    String keyGroup = keyPath.getFileName().toString();
                     String playlistGroup = playlistPath.getName(0).toString();
-                    if (keyGroup.equals(playlistGroup)) {
+                    if (transmitterGroup.equals(playlistGroup)) {
                         logger.info("A new playlist is at {}",
                                 update.getPlaylistPath());
-                        server.playlistNotificationArrived(key, update);
+                        server.playlistNotificationArrived(
+                                this.transmitterGroup, update);
                     }
                 } else if (payload != null) {
                     logger.error("Unexpected notification of type: "
@@ -99,19 +98,22 @@ public class PlaylistNotificationObserver implements INotificationObserver {
     }
 
     public void connected() {
-        server.updatePlaylistListener(key, true);
+        server.updatePlaylistListener(this.transmitterGroup, true);
 
     }
 
     public void disconnected() {
-        server.updatePlaylistListener(key, false);
+        server.updatePlaylistListener(this.transmitterGroup, false);
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((key == null) ? 0 : key.hashCode());
+        result = prime
+                * result
+                + ((this.transmitterGroup == null) ? 0 : this.transmitterGroup
+                        .hashCode());
         return result;
     }
 
@@ -124,10 +126,10 @@ public class PlaylistNotificationObserver implements INotificationObserver {
         if (getClass() != obj.getClass())
             return false;
         PlaylistNotificationObserver other = (PlaylistNotificationObserver) obj;
-        if (key == null) {
-            if (other.key != null)
+        if (transmitterGroup == null) {
+            if (other.transmitterGroup != null)
                 return false;
-        } else if (!key.equals(other.key))
+        } else if (!transmitterGroup.equals(other.transmitterGroup))
             return false;
         return true;
     }

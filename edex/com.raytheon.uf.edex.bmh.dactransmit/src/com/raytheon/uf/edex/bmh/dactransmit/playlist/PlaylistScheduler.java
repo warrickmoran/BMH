@@ -156,6 +156,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jun 01, 2015  4490      bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
  * Jun 02, 2016  #4369     rferrel      Added method {@link #sendNoPlaybackNotification()}.
  * Jun 04, 2015  4482      rjpeter      Create playlist directory on start.
+ * Sep 22, 2015  4904      bkowal       Write replaced messages to the playlist as an
+ *                                      expired message.
  * </pre>
  * 
  * @author dgilling
@@ -783,6 +785,10 @@ public final class PlaylistScheduler implements
 
             newPlaylist.setPath(playlistPath);
             cache.retrieveAudio(newPlaylist);
+            if (newPlaylist.getReplacedMessage() != null) {
+                this.cache.expirePlaylistMessage(newPlaylist
+                        .getReplacedMessage());
+            }
 
             ITimer timer = TimeUtil.getTimer();
             timer.start();

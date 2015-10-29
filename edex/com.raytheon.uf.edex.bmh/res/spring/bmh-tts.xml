@@ -54,7 +54,7 @@
 						<to uri="jms-durable:queue:BMH.Schedule" />
 					</when>
 					<otherwise>
-						<bean ref="ttsManager" method="process" />
+						<bean ref="ttsManager" method="processLdad" />
 						<filter>
 							<simple>${body.isSuccess} == false</simple>
 							<stop />

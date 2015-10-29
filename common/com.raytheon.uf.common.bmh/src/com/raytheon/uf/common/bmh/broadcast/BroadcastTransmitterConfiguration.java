@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.broadcast;
 
 import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
 import com.raytheon.uf.common.bmh.tones.GeneratedTonesBuffer;
+import com.raytheon.uf.common.bmh.datamodel.playlist.LiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 04, 2015 4394       bkowal      Relocated tone playback text to
  *                                     {@link INonStandardBroadcast}.
  * Jul 08, 2015 4636       bkowal      Updated to use {@link GeneratedTonesBuffer}.
+ * Sep 01, 2015 4825       bkowal      Added {@link #message}.
  * </pre>
  * 
  * @author bkowal
@@ -89,6 +91,9 @@ public class BroadcastTransmitterConfiguration {
 
     @DynamicSerializeElement
     private byte[] endToneAudio;
+
+    @DynamicSerializeElement
+    private LiveBroadcastMessage message;
 
     /**
      * 
@@ -209,7 +214,8 @@ public class BroadcastTransmitterConfiguration {
     }
 
     /**
-     * @param toneAudio the toneAudio to set
+     * @param toneAudio
+     *            the toneAudio to set
      */
     public void setToneAudio(GeneratedTonesBuffer toneAudio) {
         this.toneAudio = toneAudio;
@@ -243,5 +249,19 @@ public class BroadcastTransmitterConfiguration {
      */
     public void setEndToneAudio(byte[] endToneAudio) {
         this.endToneAudio = endToneAudio;
+    }
+
+    /**
+     * @return the message
+     */
+    public LiveBroadcastMessage getMessage() {
+        return message;
+    }
+
+    /**
+     * @param message the message to set
+     */
+    public void setMessage(LiveBroadcastMessage message) {
+        this.message = message;
     }
 }

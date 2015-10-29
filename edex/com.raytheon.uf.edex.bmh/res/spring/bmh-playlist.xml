@@ -13,6 +13,7 @@
 		<property name="transmitterGroupDao" ref="transmitterGroupDao" />
 		<property name="messageTypeDao" ref="messageTypeDao" />
         <property name="inputMessageDao" ref="inputMessageDao" />
+        <property name="validatedMessageDao" ref="validatedMessageDao" />
 	</bean>
 
 	<bean id="playlistStateManager" class="com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager">

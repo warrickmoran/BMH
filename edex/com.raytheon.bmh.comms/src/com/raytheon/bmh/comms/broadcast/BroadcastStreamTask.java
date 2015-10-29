@@ -27,7 +27,6 @@ import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-import com.raytheon.bmh.comms.DacTransmitKey;
 import com.raytheon.bmh.comms.broadcast.ManagedTransmitterGroup.STREAMING_STATUS;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -77,6 +76,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Nov 21, 2014 3845       bkowal      Re-factor/cleanup
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * Jun 19, 2015 4482       rjpeter     Always call stopBroadcast.
+ * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
  * </pre>
  * 
  * @author bkowal
@@ -203,9 +203,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          */
         for (TransmitterGroup transmitterGrp : this.command
                 .getTransmitterGroups()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGrp.getName());
-            if (key == null) {
+            if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
                 continue;
             }
             this.tgManager.claimResponsibility(transmitterGrp);
@@ -379,9 +377,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     protected void sendStartCmdToDacs() {
         for (TransmitterGroup transmitterGroup : this.tgManager
                 .getManagedTransmitters()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getName());
-            if (key == null) {
+            if (this.streamingServer.isDacConnected(transmitterGroup.getName()) == false) {
                 /*
                  * for now assume that the dac transmit was given to another
                  * comms manager.
@@ -401,7 +397,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             startCommand.setMsgSource(MSGSOURCE.COMMS);
             startCommand.addTransmitterConfiguration(config);
 
-            this.dacServer.sendToDac(key, startCommand);
+            this.dacServer.sendToDac(transmitterGroup.getName(), startCommand);
         }
     }
 
@@ -477,9 +473,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     protected void sendCmdToDacs(ACTION cmdAction) {
         for (TransmitterGroup transmitterGrp : this.tgManager
                 .getManagedTransmitters()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGrp.getName());
-            if (key == null) {
+            if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
                 /*
                  * for now assume that the dac transmit was given to another
                  * comms manager.
@@ -492,7 +486,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             command.setBroadcastId(this.getName());
             command.setMsgSource(MSGSOURCE.COMMS);
             command.setAction(cmdAction);
-            this.dacServer.sendToDac(key, command);
+            this.dacServer.sendToDac(transmitterGrp.getName(), command);
         }
     }
 
@@ -618,9 +612,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         // TODO: thread audio data transmissions to the managed dacs.
         for (TransmitterGroup transmitterGroup : this.tgManager
                 .getManagedTransmitters()) {
-            this.dacServer.sendToDac(this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getName()),
-                    playCommand);
+            this.dacServer.sendToDac(transmitterGroup.getName(), playCommand);
         }
     }
 
@@ -855,13 +847,11 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         command.setAction(ACTION.STOP);
         for (TransmitterGroup transmitterGroup : this.tgManager
                 .getManagedTransmitters()) {
-            DacTransmitKey key = this.streamingServer
-                    .getLocalDacCommunicationKey(transmitterGroup.getName());
-            if (key == null) {
+            if (this.streamingServer.isDacConnected(transmitterGroup.getName()) == false) {
                 this.dacMsgFailed(transmitterGroup);
                 continue;
             }
-            this.dacServer.sendToDac(key, command);
+            this.dacServer.sendToDac(transmitterGroup.getName(), command);
         }
     }
 

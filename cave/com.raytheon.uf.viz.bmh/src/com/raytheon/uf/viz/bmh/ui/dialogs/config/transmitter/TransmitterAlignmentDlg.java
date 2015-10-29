@@ -38,7 +38,6 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.List;
-import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
@@ -107,6 +106,10 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Jul 17, 2015 4636       bkowal      Automatically updates internal data structures in response to
  *                                     Transmitter Group updates.
  * Jul 22, 2015 4676       bkowal      Prevent widget-disposed errors.
+ * Aug 05, 2015 4685       bkowal      The maintenance -> enabled state transition will no
+ *                                     longer be the only option.
+ * Aug 12, 2015 4724       bkowal      Allow users to close the dialog even when {@link Transmitters}
+ *                                     are in maintenance mode.
  * </pre>
  * 
  * @author mpduff
@@ -151,12 +154,17 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
     /** Duration ScaleSpinner composite */
     private ScaleSpinnerComp durScaleComp;
 
-    /** Button to change toggle status between ENABLED and MAINT. */
-    private Button changeStatusBtn;
+    private Button maintButton;
+
+    private Button enableButton;
+
+    private Button disableButton;
 
     private final String maintStr = "Maintenance";
 
     private final String enableStr = "Enable";
+
+    private final String disableStr = "Disable";
 
     private Button sameRdo;
 
@@ -170,12 +178,6 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
 
     /** "Run Test" Button **/
     private Button testBtn;
-
-    /**
-     * Keep track of which {@link TransmitterGroup}s have been disabled via the
-     * dialog.
-     **/
-    java.util.List<TransmitterGroup> transmittersDisabledByDialog = new ArrayList<>();
 
     /**
      * Used to lock knowledge of the known current state of all known
@@ -380,7 +382,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         statusLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        gl = new GridLayout(1, false);
+        gl = new GridLayout(3, true);
         Composite btnComp = new Composite(statusGrp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
@@ -388,43 +390,42 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         int btnWidth = 130;
         gd = new GridData(btnWidth, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.CENTER;
+        this.maintButton = new Button(btnComp, SWT.PUSH);
+        this.maintButton.setText(maintStr);
+        this.maintButton.setLayoutData(gd);
+        this.maintButton.addSelectionListener(new SelectionAdapter() {
 
-        changeStatusBtn = new Button(btnComp, SWT.PUSH);
-        changeStatusBtn.setText(maintStr);
-        changeStatusBtn.setLayoutData(gd);
-        changeStatusBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                changeStatusAction();
+                transmitterGroupMaintenanceMode();
             }
         });
-    }
 
-    private void changeStatusAction() {
-        if (changeStatusBtn.getText().equals(maintStr)) {
-            int answer = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_INFORMATION | SWT.YES | SWT.NO, "Disable Group",
-                    "Are you sure you want to do maintenance on Transmitter Group "
-                            + selectedTransmitterGrp.getName() + "?");
-            if (answer != SWT.YES) {
-                return;
+        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd.horizontalAlignment = SWT.CENTER;
+        this.enableButton = new Button(btnComp, SWT.PUSH);
+        this.enableButton.setText(enableStr);
+        this.enableButton.setLayoutData(gd);
+        this.enableButton.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                enableTransmitterGroup();
             }
+        });
 
-            transmitterGroupMaintenanceMode();
-            changeStatusBtn.setText(enableStr);
-        } else {
-            int answer = DialogUtility.showMessageBox(getShell(),
-                    SWT.ICON_INFORMATION | SWT.YES | SWT.NO,
-                    "Enable Transmitter",
-                    "Are you sure you want to enable Transmitter Group "
-                            + selectedTransmitterGrp.getName() + "?");
-            if (answer != SWT.YES) {
-                return;
+        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd.horizontalAlignment = SWT.CENTER;
+        this.disableButton = new Button(btnComp, SWT.PUSH);
+        this.disableButton.setText(disableStr);
+        this.disableButton.setLayoutData(gd);
+        this.disableButton.addSelectionListener(new SelectionAdapter() {
+
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                disableTransmitterGroup();
             }
-
-            enableTransmitterGroup();
-            changeStatusBtn.setText(maintStr);
-        }
+        });
     }
 
     private void createComp(Composite comp) {
@@ -568,24 +569,27 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.ENABLED.toString());
                 this.updateLevelTestState(false);
-                this.changeStatusBtn.setText(maintStr);
-                this.changeStatusBtn.setEnabled(true);
+                this.enableButton.setEnabled(false);
+                this.disableButton.setEnabled(false);
+                this.maintButton.setEnabled(true);
             } else if (selectedTransmitterGrp.isMaint()) {
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.MAINT);
                 this.updateLevelTestState(this
                         .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
-                this.changeStatusBtn.setText(enableStr);
-                this.changeStatusBtn.setEnabled(true);
+                this.enableButton.setEnabled(this.allowTransmitterEnable());
+                this.disableButton.setEnabled(true);
+                this.maintButton.setEnabled(false);
             } else {
                 // Assume group DISABLED and disable the changeStatusBtn.
                 this.statusLbl.setText(STATUS_PREFIX
                         + selectedTransmitterGrp.getName() + " "
                         + TxStatus.DISABLED.toString());
                 this.updateLevelTestState(false);
-                this.changeStatusBtn.setText(maintStr);
-                this.changeStatusBtn
+                this.enableButton.setEnabled(false);
+                this.disableButton.setEnabled(false);
+                this.maintButton
                         .setEnabled(this
                                 .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             }
@@ -597,8 +601,23 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             this.tfr1800Volume.disable();
             this.tfr2400Volume.disable();
             this.updateLevelTestState(false);
-            this.changeStatusBtn.setEnabled(false);
+            this.enableButton.setEnabled(false);
+            this.disableButton.setEnabled(false);
+            this.maintButton.setEnabled(false);
         }
+    }
+
+    private boolean allowTransmitterEnable() {
+        try {
+            return BmhUtils.containsGeneralSuite(this.selectedTransmitterGrp
+                    .getProgramSummary());
+        } catch (Exception e) {
+            statusHandler.error("Failed to determine if Program "
+                    + this.selectedTransmitterGrp.getProgramSummary().getName()
+                    + " contains a General Suite.", e);
+        }
+
+        return false;
     }
 
     private boolean dataIsCurrent() {
@@ -639,58 +658,71 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
     }
 
     /**
-     * In selected group change transmitter's with maintenance status to
-     * enabled.
-     */
-    private void enableTransmitterGroup() {
-        try {
-            updateTransmitterGroup(TxStatus.ENABLED, selectedTransmitterGrp);
-            this.updateLevelTestState(false);
-
-            statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
-                    + " " + TxStatus.ENABLED.toString());
-            this.transmittersDisabledByDialog
-                    .remove(this.selectedTransmitterGrp);
-        } catch (Exception e) {
-            statusHandler.error("Error enabling Transmitter Group", e);
-        }
-    }
-
-    /**
-     * Update group's transmitters with given status.
-     * 
-     * 
-     * @param status
-     *            - update transmitters with this status
-     * @param tg
-     * @throws Exception
-     */
-    private void updateTransmitterGroup(TxStatus status, TransmitterGroup tg)
-            throws Exception {
-        for (Transmitter transmitter : tg.getTransmitterList()) {
-            if (transmitter.getTxStatus() != status) {
-                transmitter.setTxStatus(status);
-                dataManager.saveTransmitter(transmitter);
-            }
-        }
-    }
-
-    /**
      * In the selected group change status of enabled transmitters to
      * maintenance.
      */
     private void transmitterGroupMaintenanceMode() {
+        int answer = DialogUtility.showMessageBox(getShell(),
+                SWT.ICON_INFORMATION | SWT.YES | SWT.NO, "Disable Group",
+                "Are you sure you want to do maintenance on Transmitter Group "
+                        + selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
         try {
-            // Update status of transmitters changed to maintenance.
-            updateTransmitterGroup(TxStatus.MAINT, selectedTransmitterGrp);
-            dataManager.saveTransmitterGroup(selectedTransmitterGrp);
+            for (Transmitter transmitter : selectedTransmitterGrp
+                    .getTransmitters()) {
+                transmitter.setTxStatus(TxStatus.MAINT);
+            }
+            this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
             this.updateLevelTestState(this
                     .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
             statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
                     + " " + TxStatus.MAINT.toString());
-            this.transmittersDisabledByDialog.add(this.selectedTransmitterGrp);
         } catch (Exception e) {
-            statusHandler.error("Error enabling Transmitter Group", e);
+            statusHandler.error(
+                    "Error transitioning Transmitter Group to maintenance.", e);
+        }
+    }
+
+    private void enableTransmitterGroup() {
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Enable",
+                "Are you sure you want to enable Transmitter Group "
+                        + this.selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
+        try {
+            this.dataManager
+                    .enableTransmitterGroup(this.selectedTransmitterGrp);
+        } catch (Exception e) {
+            statusHandler.error("Failed to enable Transmitter Group: "
+                    + this.selectedTransmitterGrp.getName() + ".", e);
+        }
+    }
+
+    private void disableTransmitterGroup() {
+        int answer = DialogUtility.showMessageBox(this.getShell(),
+                SWT.ICON_QUESTION | SWT.YES | SWT.NO, "Confirm Group Disable",
+                "Are you sure you want to disable Transmitter Group "
+                        + this.selectedTransmitterGrp.getName() + "?");
+        if (answer != SWT.YES) {
+            return;
+        }
+
+        for (Transmitter transmitter : this.selectedTransmitterGrp
+                .getTransmitters()) {
+            transmitter.setTxStatus(TxStatus.DISABLED);
+        }
+
+        try {
+            this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
+        } catch (Exception e) {
+            statusHandler.error("Failed to disable Transmitter Group "
+                    + this.selectedTransmitterGrp.getName() + ".", e);
         }
     }
 
@@ -719,8 +751,8 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         return (transmitterGroup != null)
                 && (transmitterGroup.getDac() != null)
                 && (transmitterGroup.getTransmitterList() != null)
-                && (transmitterGroup.getTransmitterList().isEmpty() == false)
-                && (transmitterGroup.getTransmitterList().get(0).getDacPort() != null);
+                && (transmitterGroup.getOrderedConfiguredTransmittersList()
+                        .isEmpty() == false);
     }
 
     private void handleRunTest() {
@@ -891,30 +923,18 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         }
         if (!maintGroups.isEmpty()) {
             StringBuilder sb = new StringBuilder();
-            sb.append("The following transmitter group(s) are in maintenance:\n");
+            sb.append("The following transmitter group(s) are still in maintenance:\n");
             for (String groupName : maintGroups) {
                 sb.append(groupName).append(", ");
             }
             sb.replace(sb.length() - 2, sb.length(),
-                    ".\n\nSelect OK to enable and close dialog.");
+                    ".\n\nAre you sure you want to close the dialog?");
 
-            MessageBox mb = new MessageBox(shell, SWT.ICON_WARNING | SWT.OK
-                    | SWT.CANCEL);
-            mb.setText("Enable Transmitter(s)");
-            mb.setMessage(sb.toString());
-            int answer = mb.open();
-
-            if (answer != SWT.OK) {
+            int option = DialogUtility.showMessageBox(this.shell,
+                    SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                    "Transmitter Maintenance", sb.toString());
+            if (option != SWT.YES) {
                 return false;
-            }
-
-            for (String groupName : maintGroups) {
-                TransmitterGroup tg = transmitterGroupNameMap.get(groupName);
-                try {
-                    updateTransmitterGroup(TxStatus.ENABLED, tg);
-                } catch (Exception e) {
-                    statusHandler.error("Error enabling Transmitter Group", e);
-                }
             }
         }
 

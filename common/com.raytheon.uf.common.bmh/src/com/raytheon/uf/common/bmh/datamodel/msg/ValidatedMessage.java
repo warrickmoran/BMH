@@ -72,7 +72,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 02, 2014  3614     bsteffen    Add Unacceptable status.
  * Apr 16, 2015  4396     rferrel     Added {@link #ALL_UNEXPIRED_VALIDATED_MSGS_QUERY}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
- * May 13, 2016  4429     rferrel     Implement {@link ITraceable}.
+ * May 13, 2015  4429     rferrel     Implement {@link ITraceable}.
+ * Aug 10, 2015  4723     bkowal      Added {@link #GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS_QUERY}.
  * </pre>
  * 
  * @author bsteffen
@@ -80,7 +81,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({
         @NamedQuery(name = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG, query = ValidatedMessage.GET_VALIDATED_MSG_FOR_INPUT_MSG_QUERY),
-        @NamedQuery(name = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, query = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS_QUERY) })
+        @NamedQuery(name = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS, query = ValidatedMessage.ALL_UNEXPIRED_VALIDATED_MSGS_QUERY),
+        @NamedQuery(name = ValidatedMessage.GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS, query = ValidatedMessage.GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS_QUERY) })
 @Entity
 @Table(name = "validated_msg")
 @SequenceGenerator(initialValue = 1, name = ValidatedMessage.GEN, sequenceName = "validated_msg_seq")
@@ -94,6 +96,10 @@ public class ValidatedMessage implements ITraceable {
     public static final String ALL_UNEXPIRED_VALIDATED_MSGS = "getAllUnExpiredValidatedMsgs";
 
     protected static final String ALL_UNEXPIRED_VALIDATED_MSGS_QUERY = "SELECT vm FROM ValidatedMessage vm INNER JOIN vm.inputMessage  m  WHERE m.expirationTime IS NULL or m.expirationTime >= :currentTime";
+
+    public static final String GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS = "getExpiredValidatedNonDeliveredMsgs";
+
+    protected static final String GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS_QUERY = "SELECT vm FROM ValidatedMessage vm INNER JOIN vm.inputMessage im WHERE vm.transmissionStatus = 'ACCEPTED' AND im.expirationTime <= :exprTime AND EXISTS (FROM BroadcastMsg bm WHERE bm.delivered = false AND bm.inputMessage = im)";
 
     public static enum TransmissionStatus {
         /** This status must be set for a message to continue processing. */

@@ -120,6 +120,9 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jul 08, 2015 4636       bkowal       Support same and alert decibel levels.
  * Jul 28, 2015 4686       bkowal       Moved statistics to common.
  * Jul 29, 2015 4686       bkowal       Set the broadcast id on the {@link DeliveryTimeEvent}.
+ * Sep 22, 2015 4904       bkowal       Ensure that message metadata for replaced messages
+ *                                      matches the db. Add additional logging for purging.
+ * Oct 06, 2015 4904       bkowal       Handle the case when the last purge time is not set.
  * 
  * </pre>
  * 
@@ -175,6 +178,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private final DacSession dacSession;
 
     private long lastPurgeTime;
+
+    private final Object purgeLock = new Object();
 
     public PlaylistMessageCache(DacSession dacSession,
             PlaylistScheduler playlistScheduler) {
@@ -237,6 +242,41 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 }
             }
         }
+        schedulePurge();
+    }
+
+    /**
+     * Updates the expiration time of a message that is no longer in the
+     * playlist thus it is not eligible for a full metadata update. This will
+     * ensure that a message that will no longer be played will not remain in
+     * the cache (specifically the associated audio) until its natural
+     * expiration time (which could easily be a day or more away).
+     * 
+     * @param message
+     *            the id of the message to update the expiration time for.
+     */
+    public void expirePlaylistMessage(DacPlaylistMessageId message) {
+        /*
+         * This method does not explicitly mention expired messages because the
+         * same action may be extended to messages that are deactivated as well.
+         */
+        Future<IAudioFileBuffer> jobStatus = cacheStatus.remove(message);
+        if (jobStatus != null) {
+            jobStatus.cancel(true);
+        }
+
+        if (this.cachedMessages.containsKey(message) == false) {
+            return;
+        }
+
+        logger.info("Expiring message: {}.", message.toString());
+
+        /*
+         * We only update the expiration time instead of actually removing the
+         * message because we want to allow the purge mechanism to perform all
+         * necessary cleanup for a message removal.
+         */
+        this.cachedMessages.get(message).setExpire(message.getExpire());
     }
 
     private boolean checkMessageMetadata(DacPlaylist playlist,
@@ -723,9 +763,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void schedulePurge() {
-        if (lastPurgeTime + PURGE_JOB_INTERVAL > System.currentTimeMillis()) {
-            lastPurgeTime = System.currentTimeMillis();
-            executorService.submit(new PurgeTask());
+        synchronized (purgeLock) {
+            if (lastPurgeTime + PURGE_JOB_INTERVAL < System.currentTimeMillis()) {
+                lastPurgeTime = System.currentTimeMillis();
+                logger.info("Scheduling a cache purge ... {}",
+                        this.lastPurgeTime);
+                executorService.submit(new PurgeTask());
+            }
         }
     }
 
@@ -760,10 +804,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 activeMessageIds.addAll(playlist.getMessages());
             }
 
+            int messagesPurged = 0;
+            int audioFilesPurged = 0;
             for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
                 if (!activeMessageIds.contains(messageId)) {
                     purgeAudio(messageId);
+                    ++audioFilesPurged;
                     purgeMessage(messageId);
+                    ++messagesPurged;
                 } else if (isExpired(messageId)) {
                     /*
                      * we remove the cached audio buffer separate from the
@@ -774,8 +822,14 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                      * data.
                      */
                     purgeAudio(messageId);
+                    ++audioFilesPurged;
                 }
             }
+
+            logger.info(
+                    "Purge Summary: messages purged = {}; cached audio purged = {}.",
+                    messagesPurged, audioFilesPurged);
+
             return null;
         }
 

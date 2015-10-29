@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 08, 2015  #4403     bkowal       Added {@link #language}.
  * Jun 18, 2015  #4490     bkowal       {@link RecordedByUtils} and
  *                                      {@link ImportedByUtils} relocated to common.
+ * Aug 25, 2015  #4771     bkowal       {@link RecordPlaybackDlg} dialog creation may now fail.                                     
  * 
  * </pre>
  * 
@@ -697,8 +698,14 @@ public class MessageContentsDlg extends CaveSWTDialogBase {
      * For the microphone contents, display the record/playback dialog.
      */
     private void handleRecordAction() {
-        RecordPlaybackDlg recPlaybackDlg = new RecordPlaybackDlg(shell,
-                MAX_AUDIO_SECONDS);
+        RecordPlaybackDlg recPlaybackDlg = null;
+        try {
+            recPlaybackDlg = new RecordPlaybackDlg(shell, MAX_AUDIO_SECONDS);
+        } catch (Exception e) {
+            statusHandler.error("Failed to start the audio recording session.",
+                    e);
+            return;
+        }
         recPlaybackDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

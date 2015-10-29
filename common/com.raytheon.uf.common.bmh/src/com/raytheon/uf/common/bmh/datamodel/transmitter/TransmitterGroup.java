@@ -104,6 +104,8 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Jul 08, 2015 4636       bkowal      Support multiple decibel target levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 17, 2015 4636       bkowal      Added {@link #GET_TRANSMITTER_GROUPS_FOR_IDS}.
+ * Aug 05, 2015 4685       bkowal      Removed unused and incorrectly implemented status changing
+ *                                     methods.
  * </pre>
  * 
  * @author rjpeter
@@ -484,33 +486,6 @@ public class TransmitterGroup implements PositionOrdered {
         }
 
         return false;
-    }
-
-    /**
-     * Group's enabled transmitters change to maintenance.
-     */
-    public void maintenanceGroup() {
-        if (!transmitters.isEmpty()) {
-            for (Transmitter t : transmitters) {
-                if (t.getTxStatus() == TxStatus.ENABLED) {
-                    t.setTxStatus(TxStatus.MAINT);
-                }
-            }
-        }
-    }
-
-    /**
-     * Group's maintenance transmitters change to enabled.
-     * 
-     */
-    public void enableGroup() {
-        if (!transmitters.isEmpty()) {
-            for (Transmitter t : transmitters) {
-                if (t.getTxStatus() == TxStatus.MAINT) {
-                    t.setTxStatus(TxStatus.ENABLED);
-                }
-            }
-        }
     }
 
     /**

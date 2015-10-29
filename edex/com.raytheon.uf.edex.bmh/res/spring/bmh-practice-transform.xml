@@ -26,27 +26,31 @@
 			<doTry>
 				<bean ref="serializationUtil" method="transformFromThrift" />
 				<bean ref="practice_validatedMessageDao" method="getByTraceableId" />
-				<bean ref="practice_messageTransformer" method="process" />
-				<split>
-					<simple>${body}</simple>
-					<choice>
-						<when>
-							<simple>${body} is
-								"com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsgGroup"
-							</simple>
-							<bean ref="practice_broadcastMsgDao" method="persistGroup" />
-                            <bean ref="serializationUtil" method="transformToThrift" />
-							<to uri="jms-generic:queue:BMH.Practice.TTS" />
-						</when>
-						<when>
-							<simple>${body} is
-								"com.raytheon.uf.edex.bmh.ldad.LdadMsg"
-							</simple>
+				<multicast>
+					<pipeline>
+						<filter>
+							<simple>${body.transmissionStatus} != 'ACCEPTED'</simple>
+							<stop />
+						</filter>
+						<bean ref="practice_messageTransformer" method="process" />
+						<bean ref="practice_broadcastMsgDao" method="persistGroup" />
+                        <bean ref="serializationUtil" method="transformToThrift" />
+						<to uri="jms-generic:queue:BMH.Practice.TTS" />
+					</pipeline>
+					
+					<pipeline>
+						<filter>
+							<simple>${body.ldadStatus} != 'ACCEPTED'</simple>
+							<stop />
+						</filter>
+						<bean ref="practice_messageTransformer" method="processLdad" />
+						<split>
+							<simple>${body}</simple>
 							<bean ref="serializationUtil" method="transformToThrift" />
 							<to uri="jms-generic:queue:BMH.Practice.TTS" />
-						</when>
-					</choice>
-				</split>
+						</split>
+					</pipeline>
+				</multicast>
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR" />
