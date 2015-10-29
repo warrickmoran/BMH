@@ -51,7 +51,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MarkerFactory;
 
-import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.bmh.comms.broadcast.BroadcastStreamServer;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
@@ -71,6 +70,7 @@ import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.stats.StatisticsEvent;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
@@ -139,6 +139,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Aug 25, 2015  4775     bkowal      Notify the {@link BroadcastStreamServer} when remote dac
  *                                    transmits connect or disconnect.
  * Oct 22, 2015  5010     bkowal      Restart a dac transmit process that runs out of heap space.
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -793,8 +794,8 @@ public class CommsManager {
      * This method should be called when another cluster member would like to
      * take over a dac for load balancing.
      */
-    public void dacRequestedRemote(String transmitterGroup) {
-        transmitServer.dacRequested(transmitterGroup);
+    public void dacRequestedRemote(List<String> transmitterGroups) {
+        transmitServer.dacRequested(transmitterGroups);
     }
 
     /**

@@ -78,7 +78,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 04, 2015  4424     bkowal      Added {@link #getActiveDacTransmits()}.
  * Aug 11, 2015  4372     bkowal      Added {@link #lookupDacTransmitKeyByGroup(String)}.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- * 
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -299,17 +299,18 @@ public class DacTransmitServer extends AbstractServerThread {
 
     }
 
-    public void dacRequested(final String transmitterGroup) {
-        List<DacTransmitCommunicator> communicators = this.communicators
-                .get(transmitterGroup);
-        if (communicators != null) {
-            Iterator<DacTransmitCommunicator> it = communicators.iterator();
-            while (it.hasNext()) {
-                DacTransmitCommunicator communicator = it.next();
-                communicator.shutdown(false);
+    public void dacRequested(final List<String> transmitterGroups) {
+        for (String transmitterGroup : transmitterGroups) {
+            List<DacTransmitCommunicator> communicators = this.communicators
+                    .get(transmitterGroup);
+            if (communicators != null) {
+                Iterator<DacTransmitCommunicator> it = communicators.iterator();
+                while (it.hasNext()) {
+                    DacTransmitCommunicator communicator = it.next();
+                    communicator.shutdown(false);
+                }
             }
         }
-
     }
 
     /**

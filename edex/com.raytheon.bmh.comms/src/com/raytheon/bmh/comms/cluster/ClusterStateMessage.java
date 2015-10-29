@@ -20,6 +20,7 @@
 package com.raytheon.bmh.comms.cluster;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 17, 2015  4424     bkowal      Added {@link #setConnectedTransmitters(List)}.
  * Aug 19, 2015  4764     bkowal      Added a copy constructor.
  * Oct 23, 2015  5029     rjpeter     Fix NPE when state is null.
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -53,7 +55,7 @@ public class ClusterStateMessage {
     private List<String> connectedTransmitters = new ArrayList<>();
 
     @DynamicSerializeElement
-    private String requestedTransmitter = null;
+    private List<String> requestedTransmitters = null;
 
     public ClusterStateMessage() {
     }
@@ -62,7 +64,7 @@ public class ClusterStateMessage {
         if (state != null) {
             this.connectedTransmitters = new ArrayList<>(
                     state.getConnectedTransmitters());
-            this.requestedTransmitter = state.getRequestedTransmitter();
+            this.requestedTransmitters = state.getRequestedTransmitters();
         }
     }
 
@@ -79,12 +81,13 @@ public class ClusterStateMessage {
     }
 
     public boolean isRequestedTransmitter(String transmitterGroup) {
-        return this.requestedTransmitter != null
-                && this.requestedTransmitter.equals(transmitterGroup);
+        return this.requestedTransmitters != null
+                && this.requestedTransmitters.contains(transmitterGroup);
     }
 
     public boolean hasRequestedTransmitter() {
-        return this.requestedTransmitter != null;
+        return this.requestedTransmitters != null
+                && this.requestedTransmitters.isEmpty() == false;
     }
 
     /**
@@ -103,17 +106,42 @@ public class ClusterStateMessage {
     }
 
     /**
-     * @return the requestedTransmitter
+     * @return the requestedTransmitters
      */
-    public String getRequestedTransmitter() {
-        return requestedTransmitter;
+    public List<String> getRequestedTransmitters() {
+        return requestedTransmitters;
+    }
+
+    /**
+     * @param requestedTransmitters
+     *            the requestedTransmitters to set
+     */
+    public void setRequestedTransmitters(List<String> requestedTransmitters) {
+        this.requestedTransmitters = requestedTransmitters;
     }
 
     /**
      * @param requestedTransmitter
-     *            the requestedTransmitter to set
+     *            the requestedTransmitters to add
      */
-    public void setRequestedTransmitter(String requestedTransmitter) {
-        this.requestedTransmitter = requestedTransmitter;
+    public void addRequestedTransmitter(String requestedTransmitter) {
+        if (requestedTransmitters == null) {
+            requestedTransmitters = new LinkedList<>();
+        }
+
+        this.requestedTransmitters.add(requestedTransmitter);
+    }
+
+    /**
+     * @param requestedTransmitter
+     *            the requestedTransmitter to remove
+     */
+    public void removeRequestedTransmitter(String requestedTransmitter) {
+        if (requestedTransmitters != null) {
+            this.requestedTransmitters.remove(requestedTransmitter);
+            if (this.requestedTransmitters.isEmpty()) {
+                this.requestedTransmitters = null;
+            }
+        }
     }
 }
