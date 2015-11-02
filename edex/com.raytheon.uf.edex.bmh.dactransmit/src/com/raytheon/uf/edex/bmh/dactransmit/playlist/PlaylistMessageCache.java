@@ -122,6 +122,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jul 29, 2015 4686       bkowal       Set the broadcast id on the {@link DeliveryTimeEvent}.
  * Sep 22, 2015 4904       bkowal       Ensure that message metadata for replaced messages
  *                                      matches the db. Add additional logging for purging.
+ * Oct 06, 2015 4904       bkowal       Handle the case when the last purge time is not set.
  * 
  * </pre>
  * 
@@ -177,6 +178,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private final DacSession dacSession;
 
     private long lastPurgeTime;
+
+    private final Object purgeLock = new Object();
 
     public PlaylistMessageCache(DacSession dacSession,
             PlaylistScheduler playlistScheduler) {
@@ -760,10 +763,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void schedulePurge() {
-        if (lastPurgeTime + PURGE_JOB_INTERVAL > System.currentTimeMillis()) {
-            lastPurgeTime = System.currentTimeMillis();
-            logger.info("Scheduling a cache purge ...");
-            executorService.submit(new PurgeTask());
+        synchronized (purgeLock) {
+            if (lastPurgeTime + PURGE_JOB_INTERVAL < System.currentTimeMillis()) {
+                lastPurgeTime = System.currentTimeMillis();
+                logger.info("Scheduling a cache purge ... {}",
+                        this.lastPurgeTime);
+                executorService.submit(new PurgeTask());
+            }
         }
     }
 
