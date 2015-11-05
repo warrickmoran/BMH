@@ -114,6 +114,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
  * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * Jul 28, 2015  #4686     bkowal       Moved statistics to common.
  * Oct 26, 2015  #5034     bkowal       Added {@link #checkForActiveLiveBroadcast()}.
+ * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author dgilling
@@ -446,9 +447,9 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
                     this.eventBus, this.config.getDacAddress(),
                     this.config.getDataPort(), this.config.getTransmitters(),
                     startCommand.getBroadcastId(), this.dataThread,
-                    this.commsManager, config, this.config.getDbTarget(),
-                    this.config.getSameDbTarget(),
-                    this.config.getAlertDbTarget(), startCommand.getType(),
+                    this.commsManager, config, this.config.getAudioAmplitude(),
+                    this.config.getSameAmplitude(),
+                    this.config.getAlertAmplitude(), startCommand.getType(),
                     startCommand.getRequestTime(), true);
         } catch (IOException e) {
             logger.error("Failed to create a thread for broadcast "

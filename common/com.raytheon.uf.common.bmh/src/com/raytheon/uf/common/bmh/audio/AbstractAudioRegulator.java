@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * ------------ ---------- ----------- --------------------------
  * Aug 25, 2015 4771       bkowal      Initial creation
  * Oct 14, 2015 4984       rjpeter     Fix sign on clipping.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -51,14 +52,14 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
     private final List<byte[]> audioCollectionToRegulate;
 
     /**
-     * The peak decibel level across the entire audio {@link Collection}.
+     * The peak amplitude across the entire audio {@link Collection}.
      */
-    private Double maxDbRange = -Double.MAX_VALUE;
+    private short maxAmplitude = Short.MIN_VALUE;
 
     /**
-     * The minimum decibel level across the entire audio {@link Collection}.
+     * The minimum amplitude across the entire audio {@link Collection}.
      */
-    private Double minDbRange = Double.MAX_VALUE;
+    private short minAmplitude = Short.MAX_VALUE;
 
     private long duration;
 
@@ -118,14 +119,14 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
 
     @Override
     public byte[] regulateAudioVolume(final byte[] ulawData,
-            final double dbTarget, final int sampleSize)
+            final short amplitude, final int sampleSize)
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException {
         long start = System.currentTimeMillis();
 
         byte[] pcmData = new byte[sampleSize * 2];
         int length = sampleSize;
-        double maxValue = -Double.MAX_VALUE;
+        short maxValue = -Short.MAX_VALUE;
 
         for (int i = 0; i < ulawData.length; i += sampleSize) {
             if (i + length > ulawData.length) {
@@ -133,17 +134,12 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             }
 
             UlawToPCMAlgorithm.convert(ulawData, i, length, pcmData);
-            Range decRange = this.calculateBoundarySignals(pcmData, 0,
-                    length * 2);
-            if (decRange.getMaximumDouble() != Double.NEGATIVE_INFINITY) {
-                maxValue = Math.max(maxValue, decRange.getMaximumDouble());
-            }
+            Range range = this.calculateBoundarySignals(pcmData, 0, length * 2);
+            maxValue = (short) Math.max(maxValue, range.getMaximumNumber()
+                    .shortValue());
         }
 
-        double difference = dbTarget - maxValue;
-        double adjustmentRate = Math.pow(
-                BMHAudioConstants.DB_ALTERATION_CONSTANT,
-                (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
+        double adjustmentRate = amplitude / (double) maxValue;
         length = sampleSize;
         for (int i = 0; i < ulawData.length; i += sampleSize) {
             if (i + length > ulawData.length) {
@@ -160,7 +156,7 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
     }
 
     @Override
-    public List<byte[]> regulateAudioCollection(final double dbTarget)
+    public List<byte[]> regulateAudioCollection(final short amplitude)
             throws Exception {
         if (this.audioCollectionToRegulate == null) {
             throw new IllegalStateException(
@@ -168,7 +164,7 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
         }
 
         /*
-         * Determine the decibel ranges.
+         * Determine the amplitude ranges.
          */
         byte[] pcmAudio = new byte[this.audioCollectionToRegulate.get(0).length * 2];
         for (byte[] ulawAudio : this.audioCollectionToRegulate) {
@@ -186,32 +182,26 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             }
             UlawToPCMAlgorithm
                     .convert(ulawAudio, 0, ulawAudio.length, pcmAudio);
-            Range dbRange = this.calculateBoundarySignals(pcmAudio, 0,
+            Range range = this.calculateBoundarySignals(pcmAudio, 0,
                     pcmAudio.length);
-            if (dbRange.getMaximumDouble() != Double.NEGATIVE_INFINITY) {
-                this.maxDbRange = Math.max(dbRange.getMaximumDouble(),
-                        this.maxDbRange);
-            }
-            this.minDbRange = Math.min(dbRange.getMinimumDouble(),
-                    this.minDbRange);
+            this.maxAmplitude = (short) Math.max(range.getMaximumNumber()
+                    .shortValue(), this.maxAmplitude);
+            this.minAmplitude = (short) Math.min(range.getMinimumNumber()
+                    .shortValue(), this.minAmplitude);
         }
 
         /*
-         * TODO: Determine if the audio will need to be regulated based on the
-         * calculated decibel range?
+         * Determine if the audio will need to be regulated based on the
+         * amplitude range?
          */
-        if (this.skipAudio(this.minDbRange, this.maxDbRange)) {
+        if (this.skipAudio(this.minAmplitude, this.maxAmplitude)) {
             return this.audioCollectionToRegulate;
         }
 
         /*
          * Calculate the amount of adjustment required.
          */
-        double difference = dbTarget - this.maxDbRange;
-        double adjustmentRate = Math.pow(
-                BMHAudioConstants.DB_ALTERATION_CONSTANT,
-                (difference / BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT));
-
+        double adjustmentRate = amplitude / (double) this.maxAmplitude;
         /*
          * Alter the audio.
          */
@@ -230,28 +220,14 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
         return this.audioCollectionToRegulate;
     }
 
-    /**
-     * Converts the specified amplitude to decibels
-     * 
-     * @param amplitude
-     *            the specified amplitude
-     * @return the amplitude converted to decibels
-     */
-    protected static double calculateDecibels(double amplitude) {
-        amplitude = Math.abs(amplitude);
-        double amplitudeRatio = amplitude / BMHAudioConstants.MAX_AMPLITUDE;
-        return BMHAudioConstants.AMPLITUDE_TO_DB_CONSTANT
-                * Math.log10(amplitudeRatio);
-    }
-
     protected void adjustAudioSamplePCM(final byte[] sample,
             final double adjustmentRate, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
-        Range decibelRange = this.calculateBoundarySignals(sample, offset,
+        Range amplitudeRange = this.calculateBoundarySignals(sample, offset,
                 length);
-        if (this.skipAudio(decibelRange.getMinimumDouble(),
-                decibelRange.getMaximumDouble())) {
+        if (this.skipAudio(amplitudeRange.getMinimumNumber().shortValue(),
+                amplitudeRange.getMaximumNumber().shortValue())) {
             return;
         }
 
@@ -264,19 +240,19 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
     /**
      * Determines if a segment of audio should be skipped based on the
      * {@link AudioRegulationConfiguration} settings and the specified minimum
-     * decibel range and the specified maximum decibel range.
+     * amplitude and the specified maximum amplitude.
      * 
-     * @param minDbRange
-     *            the specified minimum decibel range.
-     * @param maxDbRange
-     *            the specified maximum decibel range.
+     * @param minAmplitude
+     *            the specified minimum amplitude.
+     * @param maxAmplitude
+     *            the specified maximum amplitude.
      * @return true, if the audio can be skipped; false, otherwise
      */
-    protected boolean skipAudio(final double minDbRange, final double maxDbRange) {
-        return (minDbRange == Double.NEGATIVE_INFINITY && maxDbRange == Double.NEGATIVE_INFINITY)
-                || (maxDbRange <= this.configuration.getDbSilenceLimit() && this.configuration
-                        .isDisableSilenceLimit() == false)
-                || (maxDbRange >= this.configuration.getDbMaxLimit() && this.configuration
+    protected boolean skipAudio(final double minAmplitude,
+            final double maxAmplitude) {
+        return (maxAmplitude <= this.configuration.getAmplitudeSilenceLimit() && this.configuration
+                .isDisableSilenceLimit() == false)
+                || (maxAmplitude >= this.configuration.getAmplitudeMaxLimit() && this.configuration
                         .isDisableMaxLimit() == false);
     }
 

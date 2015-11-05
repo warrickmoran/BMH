@@ -48,7 +48,8 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  *                                      dac modes.
  * Jul 08, 2015  #4636     bkowal       Support same and alert decibel levels.
  * Aug 12, 2015  #4424     bkowal       Eliminate Dac Transmit Key.
- * Oct 14, 2015 4984       rjpeter     Added {@link #setAlertDbTarget(double)} and {@link #setSameDbTarget(double)}
+ * Oct 14, 2015 4984       rjpeter     Added {@link #setAlertAmplitude(double)} and {@link #setSameAmplitude(double)}
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author dgilling
@@ -61,19 +62,19 @@ public final class DacSessionConfig extends AbstractDacConfig {
 
     private final TimeZone timezone;
 
-    private volatile double sameDbTarget;
+    private volatile short sameAmplitude;
 
-    private volatile double alertDbTarget;
+    private volatile short alertAmplitude;
 
     private final String transmitterGroup;
 
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
-            TimeZone timezone, double sameDbTarget, double alertDbTarget) {
+            TimeZone timezone, short sameDbTarget, short alertDbTarget) {
         super(DAC_MODE.OPERATIONAL, commonConfig);
         this.inputDirectory = inputDirectory;
         this.timezone = timezone;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
+        this.sameAmplitude = sameDbTarget;
+        this.alertAmplitude = alertDbTarget;
         /*
          * The name of directory that contains the playlists should always be
          * the same as the name of the {@link TransmitterGroup} the playlist was
@@ -109,33 +110,33 @@ public final class DacSessionConfig extends AbstractDacConfig {
     }
 
     /**
-     * @return the sameDbTarget
+     * @return the sameAmplitude
      */
-    public double getSameDbTarget() {
-        return sameDbTarget;
+    public short getSameAmplitude() {
+        return sameAmplitude;
     }
 
     /**
-     * @param sameDbTarget
-     *            the sameDbTarget to set
+     * @param sameAmplitude
+     *            the sameAmplitude to set
      */
-    public void setSameDbTarget(double sameDbTarget) {
-        this.sameDbTarget = sameDbTarget;
+    public void setSameAmplitude(short sameAmplitude) {
+        this.sameAmplitude = sameAmplitude;
     }
 
     /**
-     * @return the alertDbTarget
+     * @return the alertAmplitude
      */
-    public double getAlertDbTarget() {
-        return alertDbTarget;
+    public short getAlertAmplitude() {
+        return alertAmplitude;
     }
 
     /**
-     * @param alertDbTarget
-     *            the alertDbTarget to set
+     * @param alertAmplitude
+     *            the alertAmplitude to set
      */
-    public void setAlertDbTarget(double alertDbTarget) {
-        this.alertDbTarget = alertDbTarget;
+    public void setAlertAmplitude(short alertAmplitude) {
+        this.alertAmplitude = alertAmplitude;
     }
 
     /**

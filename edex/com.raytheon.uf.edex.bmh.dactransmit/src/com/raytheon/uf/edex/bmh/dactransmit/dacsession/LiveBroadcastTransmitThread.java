@@ -31,6 +31,7 @@ import com.google.common.eventbus.EventBus;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
 import com.raytheon.uf.common.bmh.audio.AudioPacketLogger;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
 import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
@@ -46,7 +47,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
-import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * Transmits audio from a live data source (rather than a pre-recorded data
@@ -96,6 +96,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Sep 01, 2015 4825       bkowal      Log Broadcast Live activity to the Message Activity log.
  * Sep 03, 2015 4825       bkowal      Only attempt to broadcast end tones when there are same tones.
  * Oct 26, 2015 5034       bkowal      Added {@link #getBroadcastId()}.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -126,11 +127,12 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             final DataTransmitThread dataThread,
             final CommsManagerCommunicator commsManager,
             final BroadcastTransmitterConfiguration config,
-            final double dbTarget, final double sameDbTarget,
-            final double alertDbTarget, final BROADCASTTYPE type,
+            final short audioAmplitude, final short sameAmplitude,
+            final short alertAmplitude, final BROADCASTTYPE type,
             final long requestTime, final boolean hasSync) throws IOException {
         super("LiveBroadcastTransmitThread", eventBus, address, port,
-                transmitters, dbTarget, sameDbTarget, alertDbTarget, hasSync);
+                transmitters, audioAmplitude, sameAmplitude, alertAmplitude,
+                hasSync);
         this.broadcastId = broadcastId;
         this.dataThread = dataThread;
         this.commsManager = commsManager;
@@ -162,7 +164,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                         "SAME Tones", getClass(), 30);
                 if (this.config.getToneAudio().getSameTones() != null) {
                     this.playTones(this.config.getToneAudio().getSameTones(),
-                            "SAME", this.sameDbTarget, packetLog);
+                            "SAME", this.sameAmplitude, packetLog);
                     DefaultMessageLogger.getInstance()
                             .logLiveBroadcastTonesActivity(
                                     this.config.getMessage(), TONE_TYPE.SAME,
@@ -170,15 +172,15 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 }
                 if (this.config.getToneAudio().getBeforeAlertTonePause() != null) {
                     this.playTones(this.config.getToneAudio()
-                            .getBeforeAlertTonePause(), "SAME", this.dbTarget,
-                            packetLog);
+                            .getBeforeAlertTonePause(), "SAME",
+                            this.audioAmplitude, packetLog);
                 }
                 packetLog.close();
 
                 packetLog = new AudioPacketLogger("Alert Tones", getClass(), 30);
                 if (this.config.getToneAudio().getAlertTones() != null) {
                     this.playTones(this.config.getToneAudio().getAlertTones(),
-                            "Alert", this.alertDbTarget, packetLog);
+                            "Alert", this.alertAmplitude, packetLog);
                     DefaultMessageLogger.getInstance()
                             .logLiveBroadcastTonesActivity(
                                     this.config.getMessage(), TONE_TYPE.ALERT,
@@ -186,8 +188,8 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 }
                 if (this.config.getToneAudio().getBeforeMessagePause() != null) {
                     this.playTones(this.config.getToneAudio()
-                            .getBeforeMessagePause(), "Alert", this.dbTarget,
-                            packetLog);
+                            .getBeforeMessagePause(), "Alert",
+                            this.audioAmplitude, packetLog);
                 }
                 packetLog.close();
             }
@@ -236,7 +238,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
                 AudioPacketLogger packetLog = new AudioPacketLogger(
                         "End of Message Tones", getClass(), 30);
                 this.playTones(this.config.getEndToneAudio(), "End of Message",
-                        this.sameDbTarget, packetLog);
+                        this.sameAmplitude, packetLog);
                 packetLog.close();
                 DefaultMessageLogger.getInstance()
                         .logLiveBroadcastTonesActivity(
@@ -264,7 +266,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             IAudioRegulator regulator = AudioRegulationFactory
                     .getAudioRegulator(LoadedAudioRegulationConfiguration
                             .getConfiguration(), data);
-            data = regulator.regulateAudioCollection(this.dbTarget);
+            data = regulator.regulateAudioCollection(this.audioAmplitude);
         } catch (Exception e) {
             logger.error("Failed to amplify/attenuate received audio.", e);
         }
@@ -273,7 +275,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
     }
 
     private void playTones(byte[] toneAudio, final String toneType,
-            final double dbTarget, AudioPacketLogger packetLog) {
+            final short amplitude, AudioPacketLogger packetLog) {
         /*
          * Attenuate / amplify all received data before it is added to the
          * buffer. Here we know that the audio db target will be used.
@@ -282,7 +284,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
             IAudioRegulator regulator = AudioRegulationFactory
                     .getAudioRegulator(LoadedAudioRegulationConfiguration
                             .getConfiguration());
-            toneAudio = regulator.regulateAudioVolume(toneAudio, dbTarget,
+            toneAudio = regulator.regulateAudioVolume(toneAudio, amplitude,
                     toneAudio.length);
         } catch (Exception e) {
             logger.error("Failed to amplify/attenuate the " + toneType
@@ -381,7 +383,7 @@ public class LiveBroadcastTransmitThread extends BroadcastTransmitThread {
 
         eventBus.post(notification);
     }
-    
+
     public String getBroadcastId() {
         return this.broadcastId;
     }

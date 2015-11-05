@@ -48,7 +48,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.stats.StatisticsEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.events.ShutdownRequestedEvent;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
@@ -107,6 +107,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
  * Oct 14, 2015  4984     rjpeter     Updated to set new transmitters and audio targets back to config.
  * Oct 26, 2015  5034     bkowal      Halt any active live broadcasts when communication is lost with
  *                                    the comms manager.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -195,9 +196,9 @@ public final class CommsManagerCommunicator extends Thread {
                                     config.getDataPort(),
                                     config.getDacHostname(),
                                     Ints.toArray(config.getTransmitters()),
-                                    config.getDbTarget(),
-                                    config.getSameDbTarget(),
-                                    config.getAlertDbTarget(),
+                                    config.getAudioAmplitude(),
+                                    config.getSameAmplitude(),
+                                    config.getAlertAmplitude(),
                                     config.getTransmitterGroup());
                             SerializationUtil.transformToThriftUsingStream(
                                     registration, outputStream);
@@ -281,11 +282,11 @@ public final class CommsManagerCommunicator extends Thread {
             config.setTransmitters(Ints.asList(((ChangeTransmitters) message)
                     .getTransmitters()));
             eventBus.post(message);
-        } else if (message instanceof ChangeDecibelTarget) {
-            ChangeDecibelTarget event = (ChangeDecibelTarget) message;
-            config.setAlertDbTarget(event.getAlertDbTarget());
-            config.setDbTarget(event.getAudioDbTarget());
-            config.setSameDbTarget(event.getSameDbTarget());
+        } else if (message instanceof ChangeAmplitudeTarget) {
+            ChangeAmplitudeTarget event = (ChangeAmplitudeTarget) message;
+            config.setAlertAmplitude(event.getAlertAmplitude());
+            config.setAudioAmplitude(event.getAudioAmplitude());
+            config.setSameAmplitude(event.getSameAmplitude());
             eventBus.post(message);
         } else if (message instanceof ILiveBroadcastMessage) {
             eventBus.post(message);

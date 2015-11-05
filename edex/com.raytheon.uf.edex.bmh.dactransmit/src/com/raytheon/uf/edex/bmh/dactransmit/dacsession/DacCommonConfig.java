@@ -31,6 +31,7 @@ package com.raytheon.uf.edex.bmh.dactransmit.dacsession;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 29, 2015 4394       bkowal      Added {@link #managerPort}.
  * Oct 14, 2015 4984       rjpeter     Added {@link #setDbTarget(double)} and {@link #setTransmitters(Collection)}
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -52,19 +53,19 @@ public class DacCommonConfig {
 
     protected volatile Collection<Integer> transmitters;
 
-    protected volatile double dbTarget;
+    protected volatile short audioAmplitude;
 
     private final int managerPort;
 
     public DacCommonConfig(String dacHostname, InetAddress dacAddress,
             int dataPort, int controlPort, Collection<Integer> transmitters,
-            double dbTarget, int managerPort) {
+            short audioAmplitude, int managerPort) {
         this.dacHostname = dacHostname;
         this.dacAddress = dacAddress;
         this.dataPort = dataPort;
         this.controlPort = controlPort;
         this.transmitters = transmitters;
-        this.dbTarget = dbTarget;
+        this.audioAmplitude = audioAmplitude;
         this.managerPort = managerPort;
     }
 
@@ -113,18 +114,18 @@ public class DacCommonConfig {
     }
 
     /**
-     * @return the dbTarget
+     * @return the audioAmplitude
      */
-    public double getDbTarget() {
-        return dbTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @param dbTarget
-     *            the dbTarget to set
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public void setDbTarget(double dbTarget) {
-        this.dbTarget = dbTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
@@ -149,8 +150,8 @@ public class DacCommonConfig {
         stringBuilder.append(this.controlPort);
         stringBuilder.append(", transmitters=");
         stringBuilder.append(this.transmitters);
-        stringBuilder.append(", dbTarget=");
-        stringBuilder.append(this.dbTarget);
+        stringBuilder.append(", audioAmplitude=");
+        stringBuilder.append(this.audioAmplitude);
 
         return stringBuilder.toString();
     }

@@ -79,6 +79,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 11, 2015  4372     bkowal      Added {@link #lookupDacTransmitKeyByGroup(String)}.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -175,10 +176,10 @@ public class DacTransmitServer extends AbstractServerThread {
             } else {
                 for (DacTransmitCommunicator communicator : entry.getValue()) {
                     communicator.setRadios(channel.getRadios());
-                    communicator.setTransmitterDBTarget(
-                            channel.getAudioDbTarget(),
-                            channel.getSameDbTarget(),
-                            channel.getAlertDbTarget());
+                    communicator.setTransmitterAudioAmplitudes(
+                            channel.getAudioAmplitude(),
+                            channel.getSameAmplitude(),
+                            channel.getAlertAmplitude());
                 }
             }
         }
@@ -390,8 +391,8 @@ public class DacTransmitServer extends AbstractServerThread {
         }
         DacTransmitCommunicator comms = new DacTransmitCommunicator(manager,
                 group, message.getTransmitters(), socket,
-                message.getAudioDbTarget(), message.getSameDbTarget(),
-                message.getAlertDbTarget());
+                message.getAudioAmplitude(), message.getSameAmplitude(),
+                message.getAlertAmplitude());
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(group);
         if (communicators == null) {
@@ -417,8 +418,8 @@ public class DacTransmitServer extends AbstractServerThread {
         comms.start();
         if (keep) {
             comms.setRadios(channel.getRadios());
-            comms.setTransmitterDBTarget(channel.getAudioDbTarget(),
-                    channel.getSameDbTarget(), channel.getAlertDbTarget());
+            comms.setTransmitterAudioAmplitudes(channel.getAudioAmplitude(),
+                    channel.getSameAmplitude(), channel.getAlertAmplitude());
         } else {
             comms.shutdown(true);
         }

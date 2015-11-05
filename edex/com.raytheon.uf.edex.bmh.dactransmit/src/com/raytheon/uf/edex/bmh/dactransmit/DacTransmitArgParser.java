@@ -21,8 +21,8 @@ package com.raytheon.uf.edex.bmh.dactransmit;
 
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.TimeZone;
 
 import org.apache.commons.cli.CommandLine;
@@ -58,8 +58,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
  * Nov 7, 2014   #3630     bkowal      Refactor for maintenance mode.
  * Apr 29, 2015  #4394     bkowal      No longer manages the management port argument.
  * Jul 08, 2015  #4636     bkowal      Support same and alert decibel levels.
- * 
- * 
+ * Nov 04, 2015  #5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author dgilling
@@ -72,10 +71,10 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
 
     public static final char TIMEZONE_KEY = 'z';
 
-    public static final String SAME_DB_TARGET_KEY = TRANSMISSION_DB_TARGET_KEY
+    public static final String SAME_AMPLITUDE_TARGET_KEY = TRANSMISSION_AMPLITUDE_TARGET_KEY
             + "s";
 
-    public static final String ALERT_DB_TARGET_KEY = TRANSMISSION_DB_TARGET_KEY
+    public static final String ALERT_AMPLITUDE_TARGET_KEY = TRANSMISSION_AMPLITUDE_TARGET_KEY
             + "a";
 
     public DacTransmitArgParser() {
@@ -97,13 +96,15 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
         timezone.setRequired(true);
         Option sameDbTarget = OptionBuilder
                 .withDescription(
-                        "The target maximum of the SAME Tones (in decibels) allowed by the transmitter.")
-                .hasArg().withArgName("same db").create(SAME_DB_TARGET_KEY);
+                        "The target maximum amplitude of the SAME Tones allowed by the transmitter.")
+                .hasArg().withArgName("same amplitude").withType(Short.class)
+                .create(SAME_AMPLITUDE_TARGET_KEY);
         sameDbTarget.setRequired(true);
         Option alertDbTarget = OptionBuilder
                 .withDescription(
-                        "The target maximum of the Alert Tones (in decibels) allowed by the transmitter.")
-                .hasArg().withArgName("alert db").create(ALERT_DB_TARGET_KEY);
+                        "The target maximum amplitude of the Alert Tones allowed by the transmitter.")
+                .hasArg().withArgName("alert amplitude").withType(Short.class)
+                .create(ALERT_AMPLITUDE_TARGET_KEY);
         alertDbTarget.setRequired(true);
 
         List<Option> options = new ArrayList<>();
@@ -139,13 +140,13 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                             + timezoneStr + ".");
         }
 
-        double sameDbTarget = Double.parseDouble(cmd
-                .getOptionValue(SAME_DB_TARGET_KEY));
+        short sameAmplitude = Short.parseShort(cmd
+                .getOptionValue(SAME_AMPLITUDE_TARGET_KEY));
 
-        double alertDbTarget = Double.parseDouble(cmd
-                .getOptionValue(ALERT_DB_TARGET_KEY));
+        short alertAmplitude = Short.parseShort(cmd
+                .getOptionValue(ALERT_AMPLITUDE_TARGET_KEY));
 
         return new DacSessionConfig(commonConfig, inputDirectory, timeZone,
-                sameDbTarget, alertDbTarget);
+                sameAmplitude, alertAmplitude);
     }
 }

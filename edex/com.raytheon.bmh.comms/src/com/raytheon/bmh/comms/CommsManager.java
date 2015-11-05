@@ -140,6 +140,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  *                                    transmits connect or disconnect.
  * Oct 22, 2015  5010     bkowal      Restart a dac transmit process that runs out of heap space.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -682,12 +683,12 @@ public class CommsManager {
         args.add(channel.getInputDirectory().toString());
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
         args.add(Integer.toString(config.getDacTransmitPort()));
-        args.add("-" + DacTransmitArgParser.TRANSMISSION_DB_TARGET_KEY);
-        args.add(Double.toString(channel.getAudioDbTarget()));
-        args.add("-" + DacTransmitArgParser.SAME_DB_TARGET_KEY);
-        args.add(Double.toString(channel.getSameDbTarget()));
-        args.add("-" + DacTransmitArgParser.ALERT_DB_TARGET_KEY);
-        args.add(Double.toString(channel.getAlertDbTarget()));
+        args.add("-" + DacTransmitArgParser.TRANSMISSION_AMPLITUDE_TARGET_KEY);
+        args.add(Short.toString(channel.getAudioAmplitude()));
+        args.add("-" + DacTransmitArgParser.SAME_AMPLITUDE_TARGET_KEY);
+        args.add(Short.toString(channel.getSameAmplitude()));
+        args.add("-" + DacTransmitArgParser.ALERT_AMPLITUDE_TARGET_KEY);
+        args.add(Short.toString(channel.getAlertAmplitude()));
         if (channel.getTimezone() != null) {
             args.add("-" + DacTransmitArgParser.TIMEZONE_KEY);
             args.add(channel.getTimezone());

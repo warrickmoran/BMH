@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 12, 2014 3603       bsteffen    Rename and add maintenanceDetails
  * Apr 09, 2015 4364       bkowal      Added {@link #broadcastTimeout}.
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -60,7 +61,7 @@ public class TransmitterMaintenanceCommand extends
     private int[] radios;
 
     @DynamicSerializeElement
-    private double decibelTarget;
+    private short audioAmplitude;
 
     @DynamicSerializeElement
     private String inputAudioFile;
@@ -128,18 +129,18 @@ public class TransmitterMaintenanceCommand extends
     }
 
     /**
-     * @return the decibelTarget
+     * @return the audioAmplitude
      */
-    public double getDecibelTarget() {
-        return decibelTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @param decibelTarget
-     *            the decibelTarget to set
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public void setDecibelTarget(double decibelTarget) {
-        this.decibelTarget = decibelTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
@@ -210,8 +211,8 @@ public class TransmitterMaintenanceCommand extends
         }
         radiosSB.append("}");
         stringBuilder.append(radiosSB.toString());
-        stringBuilder.append(", decibelTarget=");
-        stringBuilder.append(this.decibelTarget);
+        stringBuilder.append(", audioAmplitude=");
+        stringBuilder.append(this.audioAmplitude);
         stringBuilder.append(", inputAudioFile=");
         stringBuilder.append(this.inputAudioFile);
         stringBuilder.append(", broadcastDuration=");

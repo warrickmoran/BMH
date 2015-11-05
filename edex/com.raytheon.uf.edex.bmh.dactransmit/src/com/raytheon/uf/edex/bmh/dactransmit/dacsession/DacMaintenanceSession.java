@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.eventbus.AsyncEventBus;
 import com.google.common.eventbus.EventBus;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
 import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
@@ -57,7 +58,6 @@ import com.raytheon.uf.edex.bmh.dactransmit.events.handlers.IDacStatusUpdateEven
 import com.raytheon.uf.edex.bmh.dactransmit.util.NamedThreadFactory;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
-import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * A Dac Session in maintenance mode will stream audio bytes read from an input
@@ -88,6 +88,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -143,7 +144,8 @@ public class DacMaintenanceSession implements IDacSession,
         this.transmitThread = new MaintenanceBroadcastTransmitThread(
                 "MaintenanceBroadcastTransmitThread", this.eventBus,
                 this.config.getDacAddress(), this.config.getDataPort(),
-                this.config.getTransmitters(), this.config.getDbTarget(), true);
+                this.config.getTransmitters(), this.config.getAudioAmplitude(),
+                true);
         this.transmitThread.setListener(this);
         this.controlThread = new ControlStatusThread(this.transmitThread,
                 this.config.getDacAddress(), this.config.getControlPort());
@@ -236,11 +238,11 @@ public class DacMaintenanceSession implements IDacSession,
                  * either be at the end or the beginning. Default is correct for
                  * primary to secondary.
                  */
-                double seg1Db = this.config.getDbTarget();
-                double seg2Db = this.config.getTransferDb();
+                short seg1Amplitude = this.config.getAudioAmplitude();
+                short seg2Amplitude = this.config.getTransferAmplitude();
                 if (this.message.getTransferToneType() == TransferType.SECONDARY_TO_PRIMARY) {
-                    seg1Db = this.config.getTransferDb();
-                    seg2Db = this.config.getDbTarget();
+                    seg1Amplitude = this.config.getTransferAmplitude();
+                    seg2Amplitude = this.config.getAudioAmplitude();
                 }
 
                 /*
@@ -249,10 +251,10 @@ public class DacMaintenanceSession implements IDacSession,
                 final IAudioRegulator regulator = AudioRegulationFactory
                         .getAudioRegulator(LoadedAudioRegulationConfiguration
                                 .getConfiguration());
-                segment1 = regulator.regulateAudioVolume(segment1, seg1Db,
-                        segment1.length);
-                segment2 = regulator.regulateAudioVolume(segment2, seg2Db,
-                        segment2.length);
+                segment1 = regulator.regulateAudioVolume(segment1,
+                        seg1Amplitude, segment1.length);
+                segment2 = regulator.regulateAudioVolume(segment2,
+                        seg2Amplitude, segment2.length);
                 ByteBuffer regulatedAudio = ByteBuffer
                         .allocate(this.audio.length);
                 regulatedAudio.put(segment1);
@@ -267,7 +269,7 @@ public class DacMaintenanceSession implements IDacSession,
                     .getAudioRegulator(LoadedAudioRegulationConfiguration
                             .getConfiguration());
             this.audio = regulator.regulateAudioVolume(this.audio,
-                    this.config.getDbTarget(), this.audio.length);
+                    this.config.getAudioAmplitude(), this.audio.length);
         }
 
         this.commsManager = new CommsManagerMaintenanceCommunicator(this,

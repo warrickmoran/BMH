@@ -53,7 +53,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Feb 27, 2015 4149       rferrel     Add check for null audio clip in halt().
  * Sep 01, 2015 4771       bkowal      Utilize the {@link AudioRegulationConfiguration} to
  *                                     adjust the audio prior to playback.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -102,7 +102,7 @@ public class AudioPlaybackThread extends Thread implements LineListener {
         byte[] regulatedAudio;
         try {
             regulatedAudio = regulator.regulateAudioVolume(audio,
-                    regulationConfiguration.getAudioPlaybackVolume(), 1000);
+                    regulationConfiguration.getAudioPlaybackAmplitude(), 1000);
         } catch (Exception e) {
             throw new AudioException(
                     "Failed to adjust the audio for playback.", e);
