@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.List;
@@ -40,6 +39,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.PracticeModeConfigNotification;
@@ -71,6 +71,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 03, 2015  4056     bsteffen    Extract DEFAULT_RECEIVE_ADDRESS to Dac.
  * May 28, 2015  4429     rjpeter     Add ITraceable.
  * Jul 01, 2015  4602     rjpeter     Update DacPort collection type.
+ * Nov 05, 2015  5092     bkowal      Use {@link DacChannel}.
  * </pre>
  * 
  * @author bsteffen
@@ -201,8 +202,12 @@ public class PracticeManager {
                 int basePort = 30000 + ((Math.abs(address.hashCode()) % 1000) * 10);
 
                 dac.setReceivePort(basePort);
-                dac.setDataPorts(Arrays.<Integer> asList(basePort + 2,
-                        basePort + 4, basePort + 6, basePort + 8));
+                List<DacChannel> channels = new ArrayList<>(4);
+                for (int i = 2; i <= 8; i += 2) {
+                    DacChannel channel = new DacChannel();
+                    channel.setPort(basePort + i);
+                }
+                dac.setChannels(channels);
                 String name = address.getHostName();
                 if (name != null) {
                     int index = name.indexOf('.');
