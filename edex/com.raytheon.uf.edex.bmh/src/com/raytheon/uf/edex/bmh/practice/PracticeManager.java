@@ -72,6 +72,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 28, 2015  4429     rjpeter     Add ITraceable.
  * Jul 01, 2015  4602     rjpeter     Update DacPort collection type.
  * Nov 05, 2015  5092     bkowal      Use {@link DacChannel}.
+ * Nov 06, 2015  5092     bkowal      Add generated Dac Channel to the list.
  * </pre>
  * 
  * @author bsteffen
@@ -206,6 +207,7 @@ public class PracticeManager {
                 for (int i = 2; i <= 8; i += 2) {
                     DacChannel channel = new DacChannel();
                     channel.setPort(basePort + i);
+                    channels.add(channel);
                 }
                 dac.setChannels(channels);
                 String name = address.getHostName();
