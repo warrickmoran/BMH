@@ -69,12 +69,12 @@ public final class DacSessionConfig extends AbstractDacConfig {
     private final String transmitterGroup;
 
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
-            TimeZone timezone, short sameDbTarget, short alertDbTarget) {
+            TimeZone timezone, short sameAmplitude, short alertAmplitude) {
         super(DAC_MODE.OPERATIONAL, commonConfig);
         this.inputDirectory = inputDirectory;
         this.timezone = timezone;
-        this.sameAmplitude = sameDbTarget;
-        this.alertAmplitude = alertDbTarget;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
         /*
          * The name of directory that contains the playlists should always be
          * the same as the name of the {@link TransmitterGroup} the playlist was
