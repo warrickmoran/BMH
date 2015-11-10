@@ -23,7 +23,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Extension of the maintenance command used to provide additional decibel target level information.
+ * Extension of the maintenance command used to provide additional amplitude
+ * target level information.
  * 
  * <pre>
  * 
@@ -32,7 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 13, 2015 4636       bkowal      Initial creation
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -43,23 +44,23 @@ public class TrxTransferMaintenanceCommand extends
         TransmitterMaintenanceCommand {
 
     @DynamicSerializeElement
-    private double decibelTarget24;
+    private short transferAmplitude24;
 
     public TrxTransferMaintenanceCommand() {
     }
 
     /**
-     * @return the decibelTarget24
+     * @return the transferAmplitude24
      */
-    public double getDecibelTarget24() {
-        return decibelTarget24;
+    public short getTransferAmplitude24() {
+        return transferAmplitude24;
     }
 
     /**
-     * @param decibelTarget24
-     *            the decibelTarget24 to set
+     * @param transferAmplitude24
+     *            the transferAmplitude24 to set
      */
-    public void setDecibelTarget24(double decibelTarget24) {
-        this.decibelTarget24 = decibelTarget24;
+    public void setTransferAmplitude24(short transferAmplitude24) {
+        this.transferAmplitude24 = transferAmplitude24;
     }
 }

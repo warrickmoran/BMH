@@ -37,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 25, 2015 4771       bkowal      Added additional configurable options.
  * Sep 01, 2015 4771       bkowal      Added additional configurable options that
  *                                     are used for audio playback via weather messages.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -60,25 +60,25 @@ public class AudioRegulationConfiguration {
     }
 
     /*
-     * Do not alter audio with a decibel range below this field.
+     * Do not alter audio with a amplitude below this field.
      */
     @DynamicSerializeElement
-    private double dbSilenceLimit;
+    private short amplitudeSilenceLimit;
 
     /*
-     * Disables the use of the dbSilenceLimit field.
+     * Disables the use of the amplitdeSilenceLimit field.
      */
     @DynamicSerializeElement
     private boolean disableSilenceLimit;
 
     /*
-     * Do not alter audio with a decibel range above this field.
+     * Do not alter audio with a amplitude above this field.
      */
     @DynamicSerializeElement
-    private double dbMaxLimit;
+    private short amplitudeMaxLimit;
 
     /*
-     * Disables the use of the dbMaxLimit field.
+     * Disables the use of the amplitudeMaxLimit field.
      */
     @DynamicSerializeElement
     private boolean disableMaxLimit;
@@ -87,7 +87,7 @@ public class AudioRegulationConfiguration {
     private ALGORITHM regulationAlgorithm;
 
     @DynamicSerializeElement
-    private double audioPlaybackVolume;
+    private short audioPlaybackAmplitude;
 
     @DynamicSerializeElement
     private boolean disableRecordedPreAmplication;
@@ -110,18 +110,18 @@ public class AudioRegulationConfiguration {
     }
 
     /**
-     * @return the dbSilenceLimit
+     * @return the amplitudeSilenceLimit
      */
-    public double getDbSilenceLimit() {
-        return dbSilenceLimit;
+    public short getAmplitudeSilenceLimit() {
+        return amplitudeSilenceLimit;
     }
 
     /**
-     * @param dbSilenceLimit
-     *            the dbSilenceLimit to set
+     * @param amplitudeSilenceLimit
+     *            the amplitudeSilenceLimit to set
      */
-    public void setDbSilenceLimit(double dbSilenceLimit) {
-        this.dbSilenceLimit = dbSilenceLimit;
+    public void setAmplitudeSilenceLimit(short amplitudeSilenceLimit) {
+        this.amplitudeSilenceLimit = amplitudeSilenceLimit;
     }
 
     /**
@@ -140,18 +140,18 @@ public class AudioRegulationConfiguration {
     }
 
     /**
-     * @return the dbMaxLimit
+     * @return the amplitudeMaxLimit
      */
-    public double getDbMaxLimit() {
-        return dbMaxLimit;
+    public short getAmplitudeMaxLimit() {
+        return amplitudeMaxLimit;
     }
 
     /**
-     * @param dbMaxLimit
-     *            the dbMaxLimit to set
+     * @param amplitudeMaxLimit
+     *            the amplitudeMaxLimit to set
      */
-    public void setDbMaxLimit(double dbMaxLimit) {
-        this.dbMaxLimit = dbMaxLimit;
+    public void setAmplitudeMaxLimit(short amplitudeMaxLimit) {
+        this.amplitudeMaxLimit = amplitudeMaxLimit;
     }
 
     /**
@@ -185,18 +185,18 @@ public class AudioRegulationConfiguration {
     }
 
     /**
-     * @return the audioPlaybackVolume
+     * @return the audioPlaybackAmplitude
      */
-    public double getAudioPlaybackVolume() {
-        return audioPlaybackVolume;
+    public short getAudioPlaybackAmplitude() {
+        return audioPlaybackAmplitude;
     }
 
     /**
-     * @param audioPlaybackVolume
-     *            the audioPlaybackVolume to set
+     * @param audioPlaybackAmplitude
+     *            the audioPlaybackAmplitude to set
      */
-    public void setAudioPlaybackVolume(double audioPlaybackVolume) {
-        this.audioPlaybackVolume = audioPlaybackVolume;
+    public void setAudioPlaybackAmplitude(short audioPlaybackAmplitude) {
+        this.audioPlaybackAmplitude = audioPlaybackAmplitude;
     }
 
     /**
@@ -248,14 +248,14 @@ public class AudioRegulationConfiguration {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder(
-                "AudioRegulationConfiguration [dbSilenceLimit=");
-        sb.append(this.dbSilenceLimit).append(", disableSilenceLimit=");
-        sb.append(this.disableSilenceLimit).append(", dbMaxLimit=");
-        sb.append(this.dbMaxLimit).append(", disableMaxLimit=");
+                "AudioRegulationConfiguration [amplitudeSilenceLimit=");
+        sb.append(this.amplitudeSilenceLimit).append(", disableSilenceLimit=");
+        sb.append(this.disableSilenceLimit).append(", amplitudeMaxLimit=");
+        sb.append(this.amplitudeMaxLimit).append(", disableMaxLimit=");
         sb.append(this.disableMaxLimit).append(", regulationAlgorithm=");
         sb.append(this.regulationAlgorithm.name()).append(
-                ", audioPlaybackVolume=");
-        sb.append(this.audioPlaybackVolume).append(
+                ", audioPlaybackAmplitude=");
+        sb.append(this.audioPlaybackAmplitude).append(
                 ", disableRecordedPreAmplication=");
         sb.append(this.disableRecordedPreAmplication).append(
                 ", initialBufferDelay=");

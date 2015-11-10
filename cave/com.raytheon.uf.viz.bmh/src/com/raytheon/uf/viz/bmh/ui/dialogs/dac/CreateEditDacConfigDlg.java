@@ -24,7 +24,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
@@ -41,6 +41,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -63,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 03, 2015  4056      bsteffen     Auto populate new dac and validate all fields for duplicates.
  * Mar 09, 2015  4235      rferrel      Check for duplicate channel numbers.
  * Jul 01, 2015  4602      rjpeter      Port order now matters.
+ * Nov 05, 2015  5092      bkowal       Use {@link DacChannel}.
  * </pre>
  * 
  * @author lvenable
@@ -441,6 +443,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             isValid = false;
         }
 
+        // TODO: Optimize
         for (Dac d : dacs) {
             if (name.equals(d.getName()) && dac.getId() != d.getId()) {
                 isValid = false;
@@ -484,27 +487,24 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             }
         }
 
-        Set<Integer> ports = new LinkedHashSet<Integer>();
+        Set<Integer> ports = Collections.emptySet();
+        List<DacChannel> channels = new LinkedList<>();
 
         int portNum = 1;
         try {
             for (int i = 0; i < dacPortTxtFldList.size(); i++) {
                 String text = this.dacPortTxtFldList.get(i).getText().trim();
                 if (text.length() > 0) {
-                    ports.add(Integer.valueOf(text));
+                    channels.add(new DacChannel(Integer.valueOf(text)));
                 }
                 portNum++;
-            }
-
-            if (ports.size() != 4) {
-                isValid = false;
-                errMsg.append("Channels must have unique integer values.\n");
             }
         } catch (NumberFormatException e) {
             isValid = false;
             errMsg.append("Channel " + portNum + " must be an integer value.\n");
         }
 
+        // TODO: Optimize
         for (Integer port : ports) {
             for (Dac d : dacs) {
                 if (d.getDataPorts().contains(port) && dac.getId() != d.getId()) {
@@ -522,7 +522,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setName(name);
             dac.setReceiveAddress(receiveAddress);
             dac.setReceivePort(receivePortInt);
-            dac.setDataPorts(new ArrayList<Integer>(ports));
+            dac.setChannels(channels);
 
             try {
                 dac = dataManager.saveDac(dac);

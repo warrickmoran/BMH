@@ -106,6 +106,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Jul 17, 2015 4636       bkowal      Added {@link #GET_TRANSMITTER_GROUPS_FOR_IDS}.
  * Aug 05, 2015 4685       bkowal      Removed unused and incorrectly implemented status changing
  *                                     methods.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author rjpeter
@@ -178,20 +179,37 @@ public class TransmitterGroup implements PositionOrdered {
     @Column(nullable = false)
     private int position;
 
-    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double audioDBTarget = -10.0;
+    /**
+     * Target amplitude for TTS audio. Default amplitude is between -4 dB.
+     * 
+     * dB = 20 * log (amplitude / 32767)
+     */
+    @Column(nullable = false)
+    private short audioAmplitude = 20676;
 
-    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double sameDBTarget = -10.0;
+    /**
+     * Target amplitude for SAME tone. Default amplitude is between -13.16 dB.
+     */
+    @Column(nullable = false)
+    private short sameAmplitude = 7198;
 
-    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double alertDBTarget = -10.0;
+    /**
+     * Target amplitude for Alert tone. Default amplitude is -8.59 db.
+     */
+    @Column(nullable = false)
+    private short alertAmplitude = 12183;
 
-    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double transferLowDBTarget = -10.0;
+    /**
+     * Target amplitude for transfer high tone. Default amplitude is -8.85 db.
+     */
+    @Column(nullable = false)
+    private short transferLowAmplitude = 11829;
 
-    @Column(nullable = false, columnDefinition = "Decimal (3,1)")
-    private double transferHighDBTarget = -10.0;
+    /**
+     * Target amplitude for transfer high tone. Default amplitude is -9.25 db.
+     */
+    @Column(nullable = false)
+    private short transferHighAmplitude = 11298;
 
     @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "transmitterGroup")
     @Fetch(FetchMode.SUBSELECT)
@@ -213,7 +231,12 @@ public class TransmitterGroup implements PositionOrdered {
         timeZone = tg.timeZone;
         deadAirAlarm = tg.deadAirAlarm;
         position = tg.position;
-        audioDBTarget = tg.audioDBTarget;
+        audioAmplitude = tg.audioAmplitude;
+        sameAmplitude = tg.sameAmplitude;
+        alertAmplitude = tg.alertAmplitude;
+        transferLowAmplitude = tg.transferLowAmplitude;
+        transferHighAmplitude = tg.transferHighAmplitude;
+
         if (tg.transmitters != null) {
             transmitters = new HashSet<>(tg.transmitters);
         }
@@ -285,78 +308,78 @@ public class TransmitterGroup implements PositionOrdered {
     }
 
     /**
-     * @return the audioDBTarget
+     * @return the audioAmplitude
      */
-    public double getAudioDBTarget() {
-        return audioDBTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @param audioDBTarget
-     *            the audioDBTarget to set
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public void setAudioDBTarget(double audioDBTarget) {
-        this.audioDBTarget = audioDBTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
-     * @return the sameDBTarget
+     * @return the sameAmplitude
      */
-    public double getSameDBTarget() {
-        return sameDBTarget;
+    public short getSameAmplitude() {
+        return sameAmplitude;
     }
 
     /**
-     * @param sameDBTarget
-     *            the sameDBTarget to set
+     * @param sameAmplitude
+     *            the sameAmplitude to set
      */
-    public void setSameDBTarget(double sameDBTarget) {
-        this.sameDBTarget = sameDBTarget;
+    public void setSameAmplitude(short sameAmplitude) {
+        this.sameAmplitude = sameAmplitude;
     }
 
     /**
-     * @return the alertDBTarget
+     * @return the alertAmplitude
      */
-    public double getAlertDBTarget() {
-        return alertDBTarget;
+    public short getAlertAmplitude() {
+        return alertAmplitude;
     }
 
     /**
-     * @param alertDBTarget
-     *            the alertDBTarget to set
+     * @param alertAmplitude
+     *            the alertAmplitude to set
      */
-    public void setAlertDBTarget(double alertDBTarget) {
-        this.alertDBTarget = alertDBTarget;
+    public void setAlertAmplitude(short alertAmplitude) {
+        this.alertAmplitude = alertAmplitude;
     }
 
     /**
-     * @return the transferDBTarget
+     * @return the transferLowAmplitude
      */
-    public double getTransferLowDBTarget() {
-        return transferLowDBTarget;
+    public short getTransferLowAmplitude() {
+        return transferLowAmplitude;
     }
 
     /**
-     * @param transferDBTarget
-     *            the transferDBTarget to set
+     * @param transferLowAmplitude
+     *            the transferLowAmplitude to set
      */
-    public void setTransferLowDBTarget(double transferLowDBTarget) {
-        this.transferLowDBTarget = transferLowDBTarget;
+    public void setTransferLowAmplitude(short transferLowAmplitude) {
+        this.transferLowAmplitude = transferLowAmplitude;
     }
 
     /**
-     * @return the transferHighDBTarget
+     * @return the transferHighAmplitude
      */
-    public double getTransferHighDBTarget() {
-        return transferHighDBTarget;
+    public short getTransferHighAmplitude() {
+        return transferHighAmplitude;
     }
 
     /**
-     * @param transferHighDBTarget
-     *            the transferHighDBTarget to set
+     * @param transferHighAmplitude
+     *            the transferHighAmplitude to set
      */
-    public void setTransferHighDBTarget(double transferHighDBTarget) {
-        this.transferHighDBTarget = transferHighDBTarget;
+    public void setTransferHighAmplitude(short transferHighAmplitude) {
+        this.transferHighAmplitude = transferHighAmplitude;
     }
 
     public Set<Transmitter> getTransmitters() {
@@ -567,8 +590,16 @@ public class TransmitterGroup implements PositionOrdered {
         stringBuilder.append(this.deadAirAlarm);
         stringBuilder.append(", position=");
         stringBuilder.append(this.position);
-        stringBuilder.append(", audioDBTarget=");
-        stringBuilder.append(this.audioDBTarget);
+        stringBuilder.append(", audioAmplitude=");
+        stringBuilder.append(this.audioAmplitude);
+        stringBuilder.append(", sameAmplitude=");
+        stringBuilder.append(this.sameAmplitude);
+        stringBuilder.append(", alertAmplitude=");
+        stringBuilder.append(this.alertAmplitude);
+        stringBuilder.append(", transferHighAmplitude=");
+        stringBuilder.append(this.transferHighAmplitude);
+        stringBuilder.append(", transferLowAmplitude=");
+        stringBuilder.append(this.transferLowAmplitude);
         stringBuilder.append(", program=");
         stringBuilder.append(this.programSummary);
         stringBuilder.append(", transmitters=[");

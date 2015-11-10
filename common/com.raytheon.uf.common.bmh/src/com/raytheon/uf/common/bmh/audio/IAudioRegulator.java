@@ -31,7 +31,7 @@ import java.util.List;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 25, 2015 4771       bkowal      Initial creation
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -41,11 +41,11 @@ import java.util.List;
 public interface IAudioRegulator {
 
     public byte[] regulateAudioVolume(final byte[] ulawData,
-            final double dbTarget, final int sampleSize)
+            final short amplitude, final int sampleSize)
             throws AudioOverflowException, UnsupportedAudioFormatException,
             AudioConversionException;
 
-    public List<byte[]> regulateAudioCollection(final double dbTarget)
+    public List<byte[]> regulateAudioCollection(final short amplitude)
             throws Exception;
 
     public long getDuration();

@@ -57,7 +57,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacSessionConfig;
 import com.raytheon.uf.edex.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.uf.edex.bmh.dactransmit.exceptions.NoSoundFileException;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
@@ -122,7 +122,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jul 29, 2015 4686       bkowal       Set the broadcast id on the {@link DeliveryTimeEvent}.
  * Sep 22, 2015 4904       bkowal       Ensure that message metadata for replaced messages
  *                                      matches the db. Add additional logging for purging.
- * 
+ * Oct 06, 2015 4904       bkowal       Handle the case when the last purge time is not set.
+ * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author dgilling
@@ -164,11 +165,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private final EventBus eventBus;
 
-    private double dbTarget;
+    private short audioAmplitude;
 
-    private double sameDbTarget;
+    private short sameAmplitude;
 
-    private double alertDbTarget;
+    private short alertAmplitude;
 
     private volatile TimeZone timezone;
 
@@ -177,6 +178,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private final DacSession dacSession;
 
     private long lastPurgeTime;
+
+    private final Object purgeLock = new Object();
 
     public PlaylistMessageCache(DacSession dacSession,
             PlaylistScheduler playlistScheduler) {
@@ -188,9 +191,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cacheStatus = new ConcurrentHashMap<>();
         this.cachedRetrievalTasks = new ConcurrentHashMap<>();
         this.eventBus = dacSession.getEventBus();
-        this.dbTarget = config.getDbTarget();
-        this.sameDbTarget = config.getSameDbTarget();
-        this.alertDbTarget = config.getAlertDbTarget();
+        this.audioAmplitude = config.getAudioAmplitude();
+        this.sameAmplitude = config.getSameAmplitude();
+        this.alertAmplitude = config.getAlertAmplitude();
         this.timezone = config.getTimezone();
         this.scheduler = playlistScheduler;
         this.executorService = dacSession.getAsyncExecutor();
@@ -385,8 +388,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     private Future<IAudioFileBuffer> scheduleFileRetrieval(final int priority,
             final DacPlaylistMessageId id, final String taskId) {
         Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
-                priority, this.dbTarget, this.sameDbTarget, this.alertDbTarget,
-                this.getMessage(id), this, taskId);
+                priority, this.audioAmplitude, this.sameAmplitude,
+                this.alertAmplitude, this.getMessage(id), this, taskId);
         return executorService.submit(retrieveAudioJob);
     }
 
@@ -658,16 +661,16 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     /**
-     * Listens for changes to the decibel target
+     * Listens for changes to the amplitude target
      * 
      * @param changeEvent
-     *            a notification including the updated decibel target
+     *            a notification including the updated amplitude target
      */
     @Subscribe
-    public void changeDecibelRange(ChangeDecibelTarget changeEvent) {
-        this.dbTarget = changeEvent.getAudioDbTarget();
-        this.sameDbTarget = changeEvent.getSameDbTarget();
-        this.alertDbTarget = changeEvent.getAlertDbTarget();
+    public void changeAmplitude(ChangeAmplitudeTarget changeEvent) {
+        this.audioAmplitude = changeEvent.getAudioAmplitude();
+        this.sameAmplitude = changeEvent.getSameAmplitude();
+        this.alertAmplitude = changeEvent.getAlertAmplitude();
 
         CachedAudioRetrievalTask task = new CachedAudioRetrievalTask(
                 new HashSet<DacPlaylistMessage>(cachedFiles.keySet()));
@@ -684,8 +687,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
 
         logger.info(
-                "Updated transmitter decibel targets to: audio={}, same={}, alert={}.",
-                this.dbTarget, this.sameDbTarget, this.alertDbTarget);
+                "Updated transmitter amplitude targets to: audio={}, same={}, alert={}.",
+                this.audioAmplitude, this.sameAmplitude, this.alertAmplitude);
     }
 
     /**
@@ -760,10 +763,13 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void schedulePurge() {
-        if (lastPurgeTime + PURGE_JOB_INTERVAL > System.currentTimeMillis()) {
-            lastPurgeTime = System.currentTimeMillis();
-            logger.info("Scheduling a cache purge ...");
-            executorService.submit(new PurgeTask());
+        synchronized (purgeLock) {
+            if (lastPurgeTime + PURGE_JOB_INTERVAL < System.currentTimeMillis()) {
+                lastPurgeTime = System.currentTimeMillis();
+                logger.info("Scheduling a cache purge ... {}",
+                        this.lastPurgeTime);
+                executorService.submit(new PurgeTask());
+            }
         }
     }
 

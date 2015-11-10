@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
 import com.raytheon.uf.common.bmh.schemas.ssml.SayAs;
 import com.raytheon.uf.common.bmh.schemas.ssml.SpeechRateFormatter;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
+import com.raytheon.uf.edex.bmh.tts.NeoSpeechConstants;
 
 /**
  * Used to generate and store the SSML that is used to generate the time message
@@ -46,6 +47,7 @@ import com.raytheon.uf.edex.bmh.BMHConfigurationException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 26, 2015 4314       bkowal      Initial creation
+ * Oct 06, 2015 4904       bkowal      Set the neospeech volume in the SSML.
  * 
  * </pre>
  * 
@@ -203,6 +205,7 @@ public class SSMLTimeCache {
         SSMLDocument ssmlDocument = new SSMLDocument(this.language);
         Prosody prosody = ssmlDocument.getFactory().createProsody();
         prosody.setRate(prosodyRate);
+        prosody.setVolume(NeoSpeechConstants.getVolume());
         SayAs sayAsTag = ssmlDocument.getFactory().createSayAs();
         sayAsTag.setInterpretAs(SAY_AS_INTERPRET_AS);
         sayAsTag.setFormat(SAY_AS_FORMAT);
@@ -219,6 +222,7 @@ public class SSMLTimeCache {
 
         Prosody prosody = ssmlDocument.getFactory().createProsody();
         prosody.setRate(prosodyRate);
+        prosody.setVolume(NeoSpeechConstants.getVolume());
         prosody.getContent().add(text);
         ssmlDocument.getRootTag().getContent().add(prosody);
 

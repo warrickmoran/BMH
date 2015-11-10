@@ -43,6 +43,7 @@ import com.google.common.eventbus.EventBus;
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 15, 2015 4636       bkowal      Remove packet-level audio alteration information.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -53,9 +54,9 @@ public class MaintenanceBroadcastTransmitThread extends BroadcastTransmitThread 
 
     public MaintenanceBroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
-            double dbTarget, boolean hasSync) throws SocketException {
-        super(name, eventBus, address, port, transmitters, dbTarget, -999,
-                -999, hasSync);
+            short audioAmplitude, boolean hasSync) throws SocketException {
+        super(name, eventBus, address, port, transmitters, audioAmplitude,
+                (short) -999, (short) -999, hasSync);
     }
 
     /**
