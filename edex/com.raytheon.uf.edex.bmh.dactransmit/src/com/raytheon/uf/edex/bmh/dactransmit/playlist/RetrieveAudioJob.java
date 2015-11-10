@@ -44,7 +44,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
 
 /**
  * Allows for the asynchronous retrieval of audio data. Will adjust the audio
- * data according to a specified decibel range after successfully retrieving it.
+ * data according to a specified amplitude after successfully retrieving it.
  * 
  * <pre>
  * 
@@ -68,7 +68,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jun 29, 2015 4602       bkowal      Provide the buffer when notifying listeners that
  *                                     the audio retrieval attempt is complete.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -86,20 +86,20 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      * @param priority
      *            the priority; the higher the number, the higher the associated
      *            priority will be.
-     * @param dbTarget
-     *            the target audio decibel. No portion of the audio should
+     * @param audioAmplitude
+     *            the target audio amplitude. No portion of the audio should
      *            exceed the target.
-     * @param sameDbTarget
-     *            the target audio decibel for SAME Tones.
-     * @param alertDbTarget
-     *            the target audio decibel for Alert Tones.
+     * @param sameAmplitude
+     *            the target audio amplitude for SAME Tones.
+     * @param alertAmplitude
+     *            the target audio amplitude for Alert Tones.
      * @param message
      *            identifying information
      */
-    public RetrieveAudioJob(final int priority, final double dbTarget,
-            final double sameDbTarget, final double alertDbTarget,
+    public RetrieveAudioJob(final int priority, final short audioAmplitude,
+            final short sameAmplitude, final short alertAmplitude,
             final DacPlaylistMessage message) {
-        super(priority, dbTarget, sameDbTarget, alertDbTarget, message);
+        super(priority, audioAmplitude, sameAmplitude, alertAmplitude, message);
     }
 
     /**
@@ -108,13 +108,13 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      * @param priority
      *            the priority; the higher the number, the higher the associated
      *            priority will be.
-     * @param dbTarget
-     *            the target audio decibel. No portion of the audio should
-     *            exceed the target.
-     * @param sameDbTarget
-     *            the target audio decibel for SAME Tones.
-     * @param alertDbTarget
-     *            the target audio decibel for Alert Tones.
+     * @param audioAmplitude
+     *            the target audio amplitude for voice. No portion of the audio
+     *            should exceed the target.
+     * @param sameAmplitude
+     *            the target audio amplitude for SAME Tones.
+     * @param alertAmplitude
+     *            the target audio amplitude for Alert Tones.
      * @param message
      *            identifying information
      * @param listener
@@ -124,11 +124,11 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      *            identifier associated with a retrieval job for tracking
      *            purposes (optional)
      */
-    public RetrieveAudioJob(final int priority, final double dbTarget,
-            final double sameDbTarget, final double alertDbTarget,
+    public RetrieveAudioJob(final int priority, final short audioAmplitude,
+            final short sameAmplitude, final short alertAmplitude,
             final DacPlaylistMessage message, final IAudioJobListener listener,
             final String taskId) {
-        this(priority, dbTarget, sameDbTarget, alertDbTarget, message);
+        this(priority, audioAmplitude, sameAmplitude, alertAmplitude, message);
         this.listener = listener;
         this.taskId = taskId;
     }
@@ -181,7 +181,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 byte[] rawData = Files.readAllBytes(filePath);
                 concatenatedSize += rawData.length;
                 byte[] regulatedRawData = this.adjustAudio(rawData,
-                        "Body (segment " + i + ")", this.dbTarget);
+                        "Body (segment " + i + ")", this.audioAmplitude);
                 rawDataArrays.add(regulatedRawData);
                 /*
                  * Not dynamic data. So, no lookup key.
@@ -246,13 +246,13 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 if (generatedTones.getSameTones() != null) {
                     byte[] regulatedTones = adjustAudio(
                             generatedTones.getSameTones(), "Same Tones",
-                            this.sameDbTarget);
+                            this.sameAmplitude);
                     generatedTones.setSameTones(regulatedTones);
                 }
                 if (generatedTones.getAlertTones() != null) {
                     byte[] regulatedTones = adjustAudio(
                             generatedTones.getAlertTones(), "Alert Tones",
-                            this.alertDbTarget);
+                            this.alertAmplitude);
                     generatedTones.setAlertTones(regulatedTones);
                 }
             } catch (AudioRetrievalException e) {
@@ -264,7 +264,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             try {
                 byte[] regulatedEndOfMessage = adjustAudio(
                         endOfMessage.array(), "End of Message",
-                        this.sameDbTarget);
+                        this.sameAmplitude);
                 endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
             } catch (AudioRetrievalException e) {
                 this.notifyAttemptComplete(null);
@@ -302,7 +302,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         columnKey,
                         super.adjustAudio(timeCell.getValue(), "Time Cache: { "
                                 + rowKey + ", " + columnKey + " }",
-                                this.dbTarget));
+                                this.audioAmplitude));
             }
             timeCacheAdjustTimer.stop();
             logger.info("Successfully finished audio attenuation/amplification in "

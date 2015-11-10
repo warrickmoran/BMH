@@ -21,7 +21,7 @@ package com.raytheon.uf.common.bmh.audio;
 
 import java.util.List;
 
-import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang.math.Range;
 
 /**
@@ -52,6 +52,7 @@ import org.apache.commons.lang.math.Range;
  * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
  * Aug 24, 2015 4770       bkowal      The decibel silence limit is now configurable.
  * Aug 25, 2015 4771       bkowal      Re-factored to support additional audio regulators.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -72,8 +73,8 @@ public class LinearAudioRegulator extends AbstractAudioRegulator {
     }
 
     /**
-     * Determines the minimum and maximum amplitudes to calculate the min and
-     * max decibels respectively associated with the managed audio data.
+     * Determines the minimum and maximum amplitudes associated with the managed
+     * audio data.
      * 
      * @param audio
      *            the managed audio data
@@ -83,12 +84,13 @@ public class LinearAudioRegulator extends AbstractAudioRegulator {
      * @param length
      *            the number of bytes from the offset to use when calculating
      *            the boundary signals
-     * @return the calculated decibel range
+     * @return the amplitude range
      */
+    @Override
     protected Range calculateBoundarySignals(final byte[] audio, int offset,
             int length) {
-        double runningMinAmplitude = 0.0;
-        double runningMaxAmplitude = 0.0;
+        short runningMinAmplitude = 0;
+        short runningMaxAmplitude = 0;
 
         for (int i = offset; i < (offset + length); i += 2) {
             short amplitude = (short) (((audio[i + 1] & 0xff) << 8) | (audio[i] & 0xff));
@@ -114,7 +116,6 @@ public class LinearAudioRegulator extends AbstractAudioRegulator {
             }
         }
 
-        return new DoubleRange(calculateDecibels(runningMinAmplitude),
-                calculateDecibels(runningMaxAmplitude));
+        return new IntRange(runningMinAmplitude, runningMaxAmplitude);
     }
 }

@@ -1,0 +1,189 @@
+#!/bin/bash
+#
+# neospeech_tts  This shell script takes care of starting and stopping
+#                the NeoSpeech TTS Server.
+#
+# chkconfig: - 99 10
+# description: BMH NeoSpeech TTS 
+# processname: ttssrv
+##############################################################################
+# BMH NeoSpeech TTS Service Script.
+#
+#     SOFTWARE HISTORY
+#    
+#    Date            Ticket#       Engineer       Description
+#    ------------    ----------    -----------    --------------------------
+#    10/15/15        4976          bkowal         Initial Creation.
+##############################################################################
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+# Source networking configuration.
+. /etc/sysconfig/network
+
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+
+RETVAL=0
+START_SCRIPT="ttssrv_start"
+STOP_SCRIPT="ttssrv_stop"
+PROG="NeoSpeech TTS"
+NEOSPEECH_HOME=/awips2/bmh/neospeech
+NEOSPEECH_BIN=${NEOSPEECH_HOME}/bin
+NEOSPEECH_LOGS=${NEOSPEECH_HOME}/log
+
+
+TODAY=`/bin/date +%Y%m%d`
+NEOSPEECH_LOG=${NEOSPEECH_LOGS}/tts-start-${TODAY}.log
+
+getTtsPid() {
+	neospeech_pid=`pgrep -f "ttssrv"`
+	neospeech_pid_found=$?
+}
+
+handleStatus() {
+	local status_target=$1
+	local status_code=$2
+	local status_pid=$3
+
+	case ${status_code} in
+		0)
+			echo "${status_target} (pid ${status_pid}) is running ..."
+			;;
+		1)
+			echo "${status_target} is not running."
+			;;
+		4)
+			echo "${status_target} status uknown due to insufficient privileges."
+			;;
+		*)
+			echo "${status_target} status unknown!"
+			;;
+	esac
+}
+
+start() {
+	getTtsPid
+	if [ ${neospeech_pid_found} -eq 0 ]; then
+		echo -ne "${PROG} (pid ${neospeech_pid}) is already running."
+		failure
+		echo
+		return
+	fi
+	
+	# Start NeoSpeech TTS
+	local now=`date`
+	echo "Starting ${PROG} @ ${now} ..." >> ${NEOSPEECH_LOG}
+	echo -ne "Starting ${PROG} ..."
+	/bin/bash ${NEOSPEECH_BIN}/${START_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1 
+	if [ $? -ne 0 ]; then
+		failure
+		echo
+		echo "Failed to start ${PROG}!" >> ${NEOSPEECH_LOG}
+		return
+	fi
+	
+	local attempt_max=10
+	local attempt_count=0
+	# Verify that NeoSpeech TTS has started
+	while [ ${neospeech_pid_found} -ne 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} ]; then
+			failure
+			echo
+			# the assumption is that there will be stacktraces in the log
+			# at this point to differentiate between this failure and
+			# the previous potential failure.
+			echo "Failed to start ${PROG}!" >> ${NEOSPEECH_LOG}
+			return
+		fi
+		sleep 2
+		getTtsPid
+	done
+	
+	success
+	echo
+}
+
+stop() {
+	# get the pids
+	getTtsPid
+	if [ ${neospeech_pid_found} -ne 0 ]; then
+		echo -ne "${PROG} is not running."
+		failure
+		echo
+		return
+	fi
+	
+	local attempt_max=10
+	local force_kill_neospeech=0
+	
+	local now=`date`
+	echo "Stopping ${PROG} @ ${now} ..." >> ${NEOSPEECH_LOG}
+	echo -ne "Stopping ${PROG} ..."
+	local save_neospeech_pid=${neospeech_pid}
+	/bin/bash ${NEOSPEECH_BIN}/${STOP_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1
+	# wait for neospeech to stop
+	local attempt_count=0
+	
+	# wait for neospeech to stop
+	local attempt_count=0
+	while [ ${neospeech_pid_found} -eq 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech} -eq 0 ]; then
+			force_kill_neospeech=1
+			attempt_count=0
+			kill -9 ${neospeech_pid} > /dev/null 2>&1
+		elif [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech} -eq 1 ]; then
+			failure
+			echo
+			echo "Failed to stop ${PROG} (pid ${neospeech_pid})"
+			echo "Failed to stop ${PROG} (pid ${neospeech_pid})" >> ${NEOSPEECH_LOG}
+			return
+		fi
+		
+		getTtsPid
+	done
+	
+	success
+	echo
+	if [ ${force_kill_neospeech} -eq 1 ]; then
+		echo "Force killed ${PROG} (pid ${save_neospeech_pid})."
+		echo "Force killed ${PROG} (pid ${save_neospeech_pid})." >> ${NEOSPEECH_LOG}
+	fi
+
+	return
+}
+
+status() {
+	getTtsPid
+	
+	handleStatus "${PROG}" ${neospeech_pid_found} ${neospeech_pid}
+}
+
+usage() {
+	echo "Usage: $0 {start|stop|status|restart}"
+}
+
+func=$1
+
+case $func in
+	start)
+		${func}
+		;;
+	stop)
+		${func}
+		;;
+	status)
+		${func}
+		;;
+	restart)
+		stop
+		sleep 1
+		start
+		;;
+	*)
+		usage
+		;;
+	esac

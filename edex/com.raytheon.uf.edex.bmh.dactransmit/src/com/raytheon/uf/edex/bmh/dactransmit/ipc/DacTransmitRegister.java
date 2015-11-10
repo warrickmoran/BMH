@@ -40,7 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 29, 2015  4394     bkowal      Extend {@link AbstractDacRegistration}.
  * Jul 08, 2015 4636      bkowal      Support same and alert decibel levels.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- * 
+ * Nov 04, 2015 5068      rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -56,14 +56,14 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     private int[] transmitters;
 
     @DynamicSerializeElement
-    private double audioDbTarget;
-    
+    private short audioAmplitude;
+
     @DynamicSerializeElement
-    private double sameDbTarget;
-    
+    private short sameAmplitude;
+
     @DynamicSerializeElement
-    private double alertDbTarget;
-    
+    private short alertAmplitude;
+
     @DynamicSerializeElement
     private String transmitterGroup;
 
@@ -71,14 +71,14 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     }
 
     public DacTransmitRegister(String inputDirectory, int dataPort,
-            String dacAddress, int[] transmitters, double audioDbTarget,
-            double sameDbTarget, double alertDbTarget, String transmitterGroup) {
+            String dacAddress, int[] transmitters, short audioAmplitude,
+            short sameAmplitude, short alertAmplitude, String transmitterGroup) {
         super(dataPort, dacAddress, transmitters);
         this.inputDirectory = inputDirectory;
         this.transmitters = transmitters;
-        this.audioDbTarget = audioDbTarget;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
+        this.audioAmplitude = audioAmplitude;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
         this.transmitterGroup = transmitterGroup;
     }
 
@@ -90,55 +90,59 @@ public class DacTransmitRegister extends AbstractDacRegistration {
         this.inputDirectory = inputDirectory;
     }
 
+    @Override
     public int[] getTransmitters() {
         return transmitters;
     }
 
+    @Override
     public void setTransmitters(int[] transmitters) {
         this.transmitters = transmitters;
     }
 
     /**
-     * @return the dbTarget
+     * @return the audioAmplitude
      */
-    public double getAudioDbTarget() {
-        return audioDbTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @param audioDbTarget
-     *            the dbTarget to set
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public void setAudioDbTarget(double audioDbTarget) {
-        this.audioDbTarget = audioDbTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
-     * @return the sameDbTarget
+     * @return the sameAmplitude
      */
-    public double getSameDbTarget() {
-        return sameDbTarget;
+    public short getSameAmplitude() {
+        return sameAmplitude;
     }
 
     /**
-     * @param sameDbTarget the sameDbTarget to set
+     * @param sameAmplitude
+     *            the sameAmplitude to set
      */
-    public void setSameDbTarget(double sameDbTarget) {
-        this.sameDbTarget = sameDbTarget;
+    public void setSameAmplitude(short sameAmplitude) {
+        this.sameAmplitude = sameAmplitude;
     }
 
     /**
-     * @return the alertDbTarget
+     * @return the alertAmplitude
      */
-    public double getAlertDbTarget() {
-        return alertDbTarget;
+    public short getAlertAmplitude() {
+        return alertAmplitude;
     }
 
     /**
-     * @param alertDbTarget the alertDbTarget to set
+     * @param alertAmplitude
+     *            the alertAmplitude to set
      */
-    public void setAlertDbTarget(double alertDbTarget) {
-        this.alertDbTarget = alertDbTarget;
+    public void setAlertAmplitude(short alertAmplitude) {
+        this.alertAmplitude = alertAmplitude;
     }
 
     /**
@@ -149,7 +153,8 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     }
 
     /**
-     * @param transmitterGroup the transmitterGroup to set
+     * @param transmitterGroup
+     *            the transmitterGroup to set
      */
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;

@@ -77,6 +77,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Dec 1, 2014  3797       bkowal      Support broadcast clustering.
  * Jun 19, 2015 4482       rjpeter     Always call stopBroadcast.
  * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
+ * Oct 26, 2015 5034       bkowal      Halt any resources that are managed by this
+ *                                     task when this task halts due to error.
  * </pre>
  * 
  * @author bkowal
@@ -292,6 +294,8 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                         "Failed to read data from the socket connection.", e,
                         this.command.getTransmitterGroups());
                 this.state = STATE.ERROR;
+
+                this.shutdownBroadcastOnError();
             }
             if (object instanceof ILiveBroadcastMessage) {
                 this.handleMessageInternal((ILiveBroadcastMessage) object);
@@ -457,13 +461,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
              * will only initiate the shutdown if an error occurs at any point
              * after a successful initialization.
              */
-            // build and submit a stop command.
-            LiveBroadcastCommand command = new LiveBroadcastCommand();
-            command.setAction(ACTION.STOP);
-            command.setBroadcastId(this.getName());
-            command.setMsgSource(MSGSOURCE.COMMS);
-            this.handleStopCommand(command);
-
+            this.shutdownBroadcastOnError();
             return;
         }
 
@@ -798,7 +796,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
                     this.notifyShareholdersProblem(status);
 
-                    this.shutdownDacLiveBroadcasts();
+                    this.shutdownBroadcastOnError();
                 }
             } else {
                 /* message unexpected. */
@@ -853,6 +851,15 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             }
             this.dacServer.sendToDac(transmitterGroup.getName(), command);
         }
+    }
+
+    private void shutdownBroadcastOnError() {
+        // build and submit a stop command.
+        LiveBroadcastCommand command = new LiveBroadcastCommand();
+        command.setAction(ACTION.STOP);
+        command.setBroadcastId(this.getName());
+        command.setMsgSource(MSGSOURCE.COMMS);
+        this.handleStopCommand(command);
     }
 
     private void notifyShareholdersProblem(final String message) {

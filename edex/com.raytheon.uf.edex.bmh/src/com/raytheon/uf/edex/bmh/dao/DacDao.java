@@ -19,7 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import org.hibernate.Session;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 
 /**
  * 
@@ -33,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
  * ------------- -------- ----------- --------------------------
  * Aug 04, 2014  3486     bsteffen    Initial creation
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
+ * Nov 06, 2015  5092     bkowal      Update dac updates / delete for {@link DacChannel}.
  * 
  * </pre>
  * 
@@ -49,4 +55,44 @@ public class DacDao extends AbstractBMHDao<Dac, String> {
         super(operational, Dac.class);
     }
 
+    @Override
+    public void saveOrUpdate(final Object object) {
+        if (object instanceof Dac) {
+            txTemplate.execute(new TransactionCallbackWithoutResult() {
+                @Override
+                protected void doInTransactionWithoutResult(
+                        TransactionStatus status) {
+                    removeDacChannels(getCurrentSession(), (Dac) object);
+                    getCurrentSession().saveOrUpdate(object);
+                }
+            });
+        } else {
+            super.saveOrUpdate(object);
+        }
+    }
+
+    @Override
+    public void delete(final Object object) {
+        if (object instanceof Dac) {
+            txTemplate.execute(new TransactionCallbackWithoutResult() {
+                @Override
+                protected void doInTransactionWithoutResult(
+                        TransactionStatus status) {
+                    removeDacChannels(getCurrentSession(), (Dac) object);
+                    getCurrentSession().delete(object);
+                }
+            });
+        } else {
+            super.delete(object);
+        }
+    }
+
+    private void removeDacChannels(final Session session, final Dac dac) {
+        if (dac.getId() == 0) {
+            return;
+        }
+
+        session.createQuery("DELETE FROM DacChannel WHERE dac_id = ?")
+                .setParameter(0, dac.getId()).executeUpdate();
+    }
 }

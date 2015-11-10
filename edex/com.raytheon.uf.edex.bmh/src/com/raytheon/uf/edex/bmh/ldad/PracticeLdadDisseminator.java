@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.edex.bmh.ldad;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
@@ -38,7 +39,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * ------------ ---------- ----------- --------------------------
  * Nov 20, 2014 3385       bkowal      Initial creation
  * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
- * 
+ * Oct 30, 2015 5069       rjpeter     Update outgoing file name to be afosId plus extension.
  * </pre>
  * 
  * @author bkowal
@@ -98,6 +99,10 @@ public class PracticeLdadDisseminator extends LdadDisseminator {
         stringBuilder.append(CONSTANT_SPACE);
         stringBuilder.append(ldadConfig.getDirectory().replaceAll(
                 CONSTANT_SPACE, ESCAPE_CP_SPACE));
+        stringBuilder.append(File.separatorChar);
+        stringBuilder.append(message.getAfosid().trim()
+                .replaceAll(CONSTANT_SPACE, ESCAPE_CP_SPACE));
+        stringBuilder.append(message.getEncoding().getExtension());
 
         return stringBuilder.toString();
     }

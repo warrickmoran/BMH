@@ -23,7 +23,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Message sent from comms manager to dac transmit to indicate the decibel
+ * Message sent from comms manager to dac transmit to indicate the amplitude
  * target has been altered for a transmitter.
  * 
  * <pre>
@@ -35,82 +35,82 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 18, 2014 3532       bkowal      Initial creation
  * Sep 4, 2014  3532       bkowal      Change to support a single decibel target
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class ChangeDecibelTarget {
+public class ChangeAmplitudeTarget {
 
     /*
-     * The new decibel range to use.
+     * The new amplitude to use.
      */
     @DynamicSerializeElement
-    private double audioDbTarget;
+    private short audioAmplitude;
 
     @DynamicSerializeElement
-    private double sameDbTarget;
+    private short sameAmplitude;
 
     @DynamicSerializeElement
-    private double alertDbTarget;
+    private short alertAmplitude;
 
     /**
      * Constructor.
      */
-    public ChangeDecibelTarget() {
+    public ChangeAmplitudeTarget() {
     }
 
-    public ChangeDecibelTarget(double audioDbTarget, double sameDbTarget,
-            double alertDbTarget) {
-        this.audioDbTarget = audioDbTarget;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
-    }
-
-    /**
-     * @return the dbTarget
-     */
-    public double getAudioDbTarget() {
-        return audioDbTarget;
+    public ChangeAmplitudeTarget(short audioAmplitude, short sameAmplitude,
+            short alertAmplitude) {
+        this.audioAmplitude = audioAmplitude;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
     }
 
     /**
-     * @param audioDbTarget
-     *            the dbTarget to set
+     * @return the audioAmplitude
      */
-    public void setAudioDbTarget(double audioDbTarget) {
-        this.audioDbTarget = audioDbTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @return the sameDbTarget
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public double getSameDbTarget() {
-        return sameDbTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
-     * @param sameDbTarget
-     *            the sameDbTarget to set
+     * @return the sameAmplitude
      */
-    public void setSameDbTarget(double sameDbTarget) {
-        this.sameDbTarget = sameDbTarget;
+    public short getSameAmplitude() {
+        return sameAmplitude;
     }
 
     /**
-     * @return the alertDbTarget
+     * @param sameAmplitude
+     *            the sameAmplitude to set
      */
-    public double getAlertDbTarget() {
-        return alertDbTarget;
+    public void setSameAmplitude(short sameAmplitude) {
+        this.sameAmplitude = sameAmplitude;
     }
 
     /**
-     * @param alertDbTarget
-     *            the alertDbTarget to set
+     * @return the alertAmplitude
      */
-    public void setAlertDbTarget(double alertDbTarget) {
-        this.alertDbTarget = alertDbTarget;
+    public short getAlertAmplitude() {
+        return alertAmplitude;
+    }
+
+    /**
+     * @param alertAmplitude
+     *            the alertAmplitude to set
+     */
+    public void setAlertAmplitude(short alertAmplitude) {
+        this.alertAmplitude = alertAmplitude;
     }
 }
