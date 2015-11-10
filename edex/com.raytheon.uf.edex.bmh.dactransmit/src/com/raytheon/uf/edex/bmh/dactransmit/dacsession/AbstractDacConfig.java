@@ -38,7 +38,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
  * Apr 24, 2015 4394       bkowal      {@link #buildDacSession()} may now throw an
  *                                     {@link Exception}.
  * Apr 29, 2015 4394       bkowal      Added {@link #getManagerPort()}.
- * 
+ * Oct 14, 2015 4984       rjpeter     Added {@link #setAudioAmplitude(double)} and {@link #setTransmitters(Collection)}
  * </pre>
  * 
  * @author bkowal
@@ -102,11 +102,19 @@ public abstract class AbstractDacConfig {
         return this.commonConfig.getTransmitters();
     }
 
+    public void setTransmitters(Collection<Integer> transmitters) {
+        this.commonConfig.setTransmitters(transmitters);
+    }
+
     /**
-     * @return the dbTarget
+     * @return the audioAmplitude
      */
-    public double getDbTarget() {
-        return this.commonConfig.getDbTarget();
+    public short getAudioAmplitude() {
+        return this.commonConfig.getAudioAmplitude();
+    }
+
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.commonConfig.setAudioAmplitude(audioAmplitude);
     }
 
     public int getManagerPort() {

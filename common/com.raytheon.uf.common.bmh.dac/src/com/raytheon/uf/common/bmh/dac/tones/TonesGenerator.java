@@ -45,7 +45,7 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
  * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
  * Jul 08, 2015  #4636     bkowal       Updated to use {@link GeneratedTonesBuffer}.
- * 
+ * Nov 06, 2015  5068      rjpeter      Fix preambleHeader length.
  * </pre>
  * 
  * @author dgilling
@@ -101,7 +101,7 @@ public final class TonesGenerator {
                 SAME_PADDING);
 
         int bufferSize = (3 * (preambleHeader.length))
-                + (2 * betweenPause.length) + beforeMessagePause.length;
+                + (2 * betweenPause.length);
 
         ByteBuffer retVal = ByteBuffer.allocate(bufferSize);
         retVal.put(preambleHeader).put(betweenPause);

@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
  * Jul 01, 2015 4602       rjpeter     Use specific dataport.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 22, 2015 4676       bkowal      Improved results reporting.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -229,12 +230,14 @@ public class MaintenanceTask extends AbstractBroadcastingTask {
             radios.append(radio);
         }
         args.add(radios.toString());
-        args.add("-" + DacMaintenanceArgParser.TRANSMISSION_DB_TARGET_KEY);
-        args.add(Double.toString(this.command.getDecibelTarget()));
+        args.add("-"
+                + DacMaintenanceArgParser.TRANSMISSION_AMPLITUDE_TARGET_KEY);
+        args.add(Short.toString(this.command.getAudioAmplitude()));
         if (command instanceof TrxTransferMaintenanceCommand) {
-            args.add("-" + DacMaintenanceArgParser.MAINT_TRANSFER_DB_TARGET);
-            args.add(Double.toString(((TrxTransferMaintenanceCommand) command)
-                    .getDecibelTarget24()));
+            args.add("-"
+                    + DacMaintenanceArgParser.MAINT_TRANSFER_AMPLITUDE_TARGET);
+            args.add(Short.toString(((TrxTransferMaintenanceCommand) command)
+                    .getTransferAmplitude24()));
         }
         args.add("-" + DacMaintenanceArgParser.MAINT_AUDIO_LENGTH_KEY);
         args.add(Integer.toString(this.command.getBroadcastDuration()));

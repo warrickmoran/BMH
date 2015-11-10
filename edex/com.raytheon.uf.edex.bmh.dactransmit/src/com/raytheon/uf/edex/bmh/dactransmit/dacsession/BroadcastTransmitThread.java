@@ -51,6 +51,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Jul 15, 2015 4636       bkowal      No longer alter audio packet-by-packet.
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -59,11 +60,11 @@ import com.raytheon.uf.edex.bmh.dactransmit.rtp.RtpPacketIn;
 
 public class BroadcastTransmitThread extends AbstractTransmitThread {
 
-    protected final double dbTarget;
+    protected final short audioAmplitude;
 
-    protected final double sameDbTarget;
+    protected final short sameAmplitude;
 
-    protected final double alertDbTarget;
+    protected final short alertAmplitude;
 
     protected LinkedBlockingQueue<byte[]> audioBuffer = new LinkedBlockingQueue<>();
 
@@ -83,12 +84,12 @@ public class BroadcastTransmitThread extends AbstractTransmitThread {
      */
     public BroadcastTransmitThread(String name, EventBus eventBus,
             InetAddress address, int port, Collection<Integer> transmitters,
-            final double dbTarget, final double sameDbTarget,
-            final double alertDbTarget, boolean hasSync) throws SocketException {
+            final short audioAmplitude, final short sameAmplitude,
+            final short alertAmplitude, boolean hasSync) throws SocketException {
         super(name, eventBus, address, port, transmitters, hasSync);
-        this.dbTarget = dbTarget;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
+        this.audioAmplitude = audioAmplitude;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
     }
 
     @Override

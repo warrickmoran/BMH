@@ -45,6 +45,7 @@ import javax.xml.bind.annotation.XmlAttribute;
  * Nov 26, 2014  3821     bsteffen    Add deadAirAlarm
  * Apr 07, 2015  4370     rjpeter     Added toString.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -60,13 +61,13 @@ public class DacChannelConfig {
     private String playlistDirectory;
 
     @XmlAttribute
-    private double audioDbTarget;
+    private short audioAmplitude;
 
     @XmlAttribute
-    private double sameDbTarget;
+    private short sameAmplitude;
 
     @XmlAttribute
-    private double alertDbTarget;
+    private short alertAmplitude;
 
     @XmlAttribute
     private String timezone;
@@ -108,48 +109,48 @@ public class DacChannelConfig {
     }
 
     /**
-     * @return the dbTarget
+     * @return the audioAmplitude
      */
-    public double getAudioDbTarget() {
-        return audioDbTarget;
+    public short getAudioAmplitude() {
+        return audioAmplitude;
     }
 
     /**
-     * @param audioDbTarget
-     *            the dbTarget to set
+     * @param audioAmplitude
+     *            the audioAmplitude to set
      */
-    public void setAudioDbTarget(double audioDbTarget) {
-        this.audioDbTarget = audioDbTarget;
+    public void setAudioAmplitude(short audioAmplitude) {
+        this.audioAmplitude = audioAmplitude;
     }
 
     /**
-     * @return the sameDbTarget
+     * @return the sameAmplitude
      */
-    public double getSameDbTarget() {
-        return sameDbTarget;
+    public short getSameAmplitude() {
+        return sameAmplitude;
     }
 
     /**
-     * @param sameDbTarget
-     *            the sameDbTarget to set
+     * @param sameAmplitude
+     *            the sameAmplitude to set
      */
-    public void setSameDbTarget(double sameDbTarget) {
-        this.sameDbTarget = sameDbTarget;
+    public void setSameAmplitude(short sameAmplitude) {
+        this.sameAmplitude = sameAmplitude;
     }
 
     /**
-     * @return the alertDbTarget
+     * @return the alertAmplitude
      */
-    public double getAlertDbTarget() {
-        return alertDbTarget;
+    public short getAlertAmplitude() {
+        return alertAmplitude;
     }
 
     /**
-     * @param alertDbTarget
-     *            the alertDbTarget to set
+     * @param alertAmplitude
+     *            the alertAmplitude to set
      */
-    public void setAlertDbTarget(double alertDbTarget) {
-        this.alertDbTarget = alertDbTarget;
+    public void setAlertAmplitude(short alertAmplitude) {
+        this.alertAmplitude = alertAmplitude;
     }
 
     public String getTimezone() {
@@ -199,13 +200,9 @@ public class DacChannelConfig {
         result = (prime * result)
                 + ((controlPort == null) ? 0 : controlPort.hashCode());
         result = (prime * result) + dataPort;
-        long temp;
-        temp = Double.doubleToLongBits(audioDbTarget);
-        result = (prime * result) + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(sameDbTarget);
-        result = (prime * result) + (int) (temp ^ (temp >>> 32));
-        temp = Double.doubleToLongBits(alertDbTarget);
-        result = (prime * result) + (int) (temp ^ (temp >>> 32));
+        result = (prime * result) + audioAmplitude;
+        result = (prime * result) + sameAmplitude;
+        result = (prime * result) + alertAmplitude;
         result = (prime * result)
                 + ((playlistDirectory == null) ? 0 : playlistDirectory
                         .hashCode());
@@ -240,16 +237,13 @@ public class DacChannelConfig {
         if (dataPort != other.dataPort) {
             return false;
         }
-        if (Double.doubleToLongBits(audioDbTarget) != Double
-                .doubleToLongBits(other.audioDbTarget)) {
+        if (audioAmplitude != other.audioAmplitude) {
             return false;
         }
-        if (Double.doubleToLongBits(sameDbTarget) != Double
-                .doubleToLongBits(other.sameDbTarget)) {
+        if (sameAmplitude != other.sameAmplitude) {
             return false;
         }
-        if (Double.doubleToLongBits(alertDbTarget) != Double
-                .doubleToLongBits(other.alertDbTarget)) {
+        if (alertAmplitude != other.alertAmplitude) {
             return false;
         }
         if (playlistDirectory == null) {
@@ -286,8 +280,8 @@ public class DacChannelConfig {
     public String toString() {
         return "DacChannelConfig [transmitterGroup=" + transmitterGroup
                 + ", playlistDirectory=" + playlistDirectory
-                + ", audioDbTarget=" + audioDbTarget + ", sameDbTarget="
-                + sameDbTarget + ", alertDbTarget=" + alertDbTarget
+                + ", audioDbTarget=" + audioAmplitude + ", sameDbTarget="
+                + sameAmplitude + ", alertDbTarget=" + alertAmplitude
                 + ", timezone=" + timezone + ", radios="
                 + Arrays.toString(radios) + ", dataPort=" + dataPort
                 + ", controlPort=" + controlPort + ", deadAirAlarm="

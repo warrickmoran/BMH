@@ -153,6 +153,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jun 08, 2015 4403       bkowal      Updated to make dictionary substitution reusable.
  * Aug 10, 2015 4723       bkowal      Separated the ldad processing route from the main processing route.
  * Oct 06, 2015 4904       bkowal      Set the neospeech volume in the SSML.
+ * Oct 29, 2015 5065       bkowal      Update paragraph cleanup to maintain
+ *                                     message boundaries.
  * </pre>
  * 
  * @author bkowal
@@ -1012,7 +1014,7 @@ public class MessageTransformer implements IContextStateProcessor {
         String[] paragraphs = content.split(BLOCK_PARAGRAPH_NEWLINE);
         for (String paragraph : paragraphs) {
             paragraph = paragraph.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                    StringUtils.EMPTY);
+                    " ").trim();
 
             /*
              * Analyze one paragraph worth of text at a time.

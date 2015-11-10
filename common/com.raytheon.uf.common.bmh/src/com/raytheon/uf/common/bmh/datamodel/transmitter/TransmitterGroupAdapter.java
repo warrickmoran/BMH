@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Jan 08, 2015   3821     bsteffen    Rename silenceAlarm to deadAirAlarm
  * Jul 08, 2015   4636     bkowal      Encode/decode additional decibel levels.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author mpduff
@@ -107,11 +107,11 @@ public class TransmitterGroupAdapter implements
         serializer.writeObject(group.getPosition());
         serializer.writeBool(group.getDeadAirAlarm());
         serializer.writeObject(group.getTimeZone());
-        serializer.writeDouble(group.getAudioDBTarget());
-        serializer.writeDouble(group.getSameDBTarget());
-        serializer.writeDouble(group.getAlertDBTarget());
-        serializer.writeDouble(group.getTransferLowDBTarget());
-        serializer.writeDouble(group.getTransferHighDBTarget());
+        serializer.writeI16(group.getAudioAmplitude());
+        serializer.writeI16(group.getSameAmplitude());
+        serializer.writeI16(group.getAlertAmplitude());
+        serializer.writeI16(group.getTransferLowAmplitude());
+        serializer.writeI16(group.getTransferHighAmplitude());
         serializer.writeObject(group.getProgramSummary());
     }
 
@@ -132,11 +132,11 @@ public class TransmitterGroupAdapter implements
         tg.setPosition((int) deserializer.readObject());
         tg.setDeadAirAlarm(deserializer.readBool());
         tg.setTimeZone((String) deserializer.readObject());
-        tg.setAudioDBTarget(deserializer.readDouble());
-        tg.setSameDBTarget(deserializer.readDouble());
-        tg.setAlertDBTarget(deserializer.readDouble());
-        tg.setTransferLowDBTarget(deserializer.readDouble());
-        tg.setTransferHighDBTarget(deserializer.readDouble());
+        tg.setAudioAmplitude(deserializer.readI16());
+        tg.setSameAmplitude(deserializer.readI16());
+        tg.setAlertAmplitude(deserializer.readI16());
+        tg.setTransferLowAmplitude(deserializer.readI16());
+        tg.setTransferHighAmplitude(deserializer.readI16());
         tg.setProgramSummary((ProgramSummary) deserializer.readObject());
 
         return tg;

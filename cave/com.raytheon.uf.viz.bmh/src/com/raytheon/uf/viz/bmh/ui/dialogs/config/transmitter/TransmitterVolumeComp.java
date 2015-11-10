@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NavigableMap;
+import java.util.TreeMap;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -34,11 +36,8 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Scale;
 
 /**
- * Slider supporting a scaled volume setting from -20 dB to 0 dB.
- * 
- * -20 is 0 and 0 is 200.
- * 
- * -20 + (x * 0.1) = dB (dB + 20) / 0.1 = Scaled Volume
+ * Slider supporting a scaled volume setting from -20 dB to 0 dB. In amplitude
+ * this is 3276 to 32767.
  * 
  * <pre>
  * 
@@ -48,7 +47,8 @@ import org.eclipse.swt.widgets.Scale;
  * ------------ ---------- ----------- --------------------------
  * Jul 16, 2015 4636       bkowal      Initial creation
  * Jul 17, 2015 4636       bkowal      Added {@link #enable()} and {@link #disable()}.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude, increase
+ *                                     resolution from 200 to 1000.
  * </pre>
  * 
  * @author bkowal
@@ -59,9 +59,12 @@ public class TransmitterVolumeComp {
 
     private static final DecimalFormat displayFormat = new DecimalFormat("#.#");
 
-    private static final double MIN_VOLUME_DB = -20.0;
+    /*
+     * Roughly -20db
+     */
+    private static final short MIN_VOLUME_AMPLITUDE = 3276;
 
-    private static final int MAX_SCALED = 200;
+    private static final int MAX_SCALED = 1000;
 
     private final Composite parent;
 
@@ -149,7 +152,7 @@ public class TransmitterVolumeComp {
     }
 
     public void disable() {
-        this.setCurrentDecibelVolume(MIN_VOLUME_DB);
+        this.setCurrentAmplitudeVolume(MIN_VOLUME_AMPLITUDE);
         this.volumeScale.setEnabled(false);
         this.incrementButton.setEnabled(false);
         this.decrementButton.setEnabled(false);
@@ -176,14 +179,14 @@ public class TransmitterVolumeComp {
         }
     }
 
-    public void setCurrentDecibelVolume(double volumeDb) {
-        this.setVolume = ScaledDecimalMapping.getInstance().getScaledMapping(
-                volumeDb);
+    public void setCurrentAmplitudeVolume(short amplitude) {
+        this.setVolume = ScaledAmplitudeMapping.getInstance().getScaledMapping(
+                amplitude);
         this.updateVolumeLevel(setVolume);
     }
 
-    public double getCurrentDecibelValue() {
-        return ScaledDecimalMapping.getInstance().getDecibelMapping(
+    public short getCurrentAmplitudeValue() {
+        return ScaledAmplitudeMapping.getInstance().getAmplitudeMapping(
                 this.volumeScale.getSelection());
     }
 
@@ -211,37 +214,46 @@ public class TransmitterVolumeComp {
         this.listener = listener;
     }
 
-    private static final class ScaledDecimalMapping {
+    private static final class ScaledAmplitudeMapping {
 
-        private static final ScaledDecimalMapping instance = new ScaledDecimalMapping();
+        private static final ScaledAmplitudeMapping instance = new ScaledAmplitudeMapping();
 
-        private static final double INTERVAL_DB = 0.1;
+        private static final double INTERVAL_AMPLITUDE = (Short.MAX_VALUE - MIN_VOLUME_AMPLITUDE)
+                / (double) MAX_SCALED;
 
-        private final Map<Double, Integer> decibelToScaledMapping = new HashMap<>(
+        /*
+         * Utilize a navigableMap so that if scaling amount changes we find the
+         * closest value in the new paradigm.
+         */
+        private final NavigableMap<Short, Integer> amplitudeToScaledMapping = new TreeMap<>();
+
+        private final Map<Integer, Short> scaledToAmplitudeMapping = new HashMap<>(
                 MAX_SCALED + 1, 1.0f);
 
-        private final Map<Integer, Double> scaledToDecibelMapping = new HashMap<>(
-                MAX_SCALED + 1, 1.0f);
-
-        public static ScaledDecimalMapping getInstance() {
+        public static ScaledAmplitudeMapping getInstance() {
             return instance;
         }
 
-        protected ScaledDecimalMapping() {
+        protected ScaledAmplitudeMapping() {
             for (int i = 0; i <= MAX_SCALED; i++) {
-                double calculatedValue = Double.valueOf(displayFormat
-                        .format(MIN_VOLUME_DB + ((double) i * INTERVAL_DB)));
-                decibelToScaledMapping.put(calculatedValue, i);
-                scaledToDecibelMapping.put(i, calculatedValue);
+                short calculatedValue = (short) (Short.MAX_VALUE - ((MAX_SCALED - i) * INTERVAL_AMPLITUDE));
+                amplitudeToScaledMapping.put(calculatedValue, i);
+                scaledToAmplitudeMapping.put(i, calculatedValue);
             }
         }
 
-        public double getDecibelMapping(int scaledValue) {
-            return scaledToDecibelMapping.get(scaledValue);
+        public short getAmplitudeMapping(int scaledValue) {
+            return scaledToAmplitudeMapping.get(scaledValue);
         }
 
-        public int getScaledMapping(double decibelValue) {
-            return decibelToScaledMapping.get(decibelValue);
+        public int getScaledMapping(short amplitude) {
+            Short floor = amplitudeToScaledMapping.floorKey(amplitude);
+            Short closest = amplitudeToScaledMapping.ceilingKey(amplitude);
+            if (floor != null && ((amplitude - floor) < (closest - amplitude))) {
+                closest = floor;
+            }
+
+            return amplitudeToScaledMapping.get(closest);
         }
     }
 }
