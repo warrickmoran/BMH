@@ -39,6 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Sep 5, 2014   3532     bkowal      Use a decibel target instead of a range.
  * Apr 29, 2015  4394     bkowal      Extend {@link AbstractDacRegistration}.
  * Jul 08, 2015 4636      bkowal      Support same and alert decibel levels.
+ * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * 
  * </pre>
  * 
@@ -62,19 +63,23 @@ public class DacTransmitRegister extends AbstractDacRegistration {
     
     @DynamicSerializeElement
     private double alertDbTarget;
+    
+    @DynamicSerializeElement
+    private String transmitterGroup;
 
     public DacTransmitRegister() {
     }
 
     public DacTransmitRegister(String inputDirectory, int dataPort,
             String dacAddress, int[] transmitters, double audioDbTarget,
-            double sameDbTarget, double alertDbTarget) {
+            double sameDbTarget, double alertDbTarget, String transmitterGroup) {
         super(dataPort, dacAddress, transmitters);
         this.inputDirectory = inputDirectory;
         this.transmitters = transmitters;
         this.audioDbTarget = audioDbTarget;
         this.sameDbTarget = sameDbTarget;
         this.alertDbTarget = alertDbTarget;
+        this.transmitterGroup = transmitterGroup;
     }
 
     public String getInputDirectory() {
@@ -134,5 +139,19 @@ public class DacTransmitRegister extends AbstractDacRegistration {
      */
     public void setAlertDbTarget(double alertDbTarget) {
         this.alertDbTarget = alertDbTarget;
+    }
+
+    /**
+     * @return the transmitterGroup
+     */
+    public String getTransmitterGroup() {
+        return transmitterGroup;
+    }
+
+    /**
+     * @param transmitterGroup the transmitterGroup to set
+     */
+    public void setTransmitterGroup(String transmitterGroup) {
+        this.transmitterGroup = transmitterGroup;
     }
 }

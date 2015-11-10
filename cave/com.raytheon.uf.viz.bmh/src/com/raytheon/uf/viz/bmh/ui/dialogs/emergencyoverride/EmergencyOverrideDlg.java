@@ -111,6 +111,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 27, 2015  4397      bkowal       Set the {@link InputMessage} update date.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Jun 18, 2015  4490      bkowal      {@link RecordedByUtils} relocated to common.
+ * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
  * </pre>
  * 
  * @author lvenable
@@ -540,8 +541,15 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             return;
         }
 
-        LiveBroadcastRecordPlaybackDlg dlg = new LiveBroadcastRecordPlaybackDlg(
-                this.shell, 120, settingsBuilder);
+        LiveBroadcastRecordPlaybackDlg dlg = null;
+        try {
+            dlg = new LiveBroadcastRecordPlaybackDlg(this.shell, 120,
+                    settingsBuilder);
+        } catch (Exception e) {
+            statusHandler.error("Failed to start the audio recording session.",
+                    e);
+            return;
+        }
         dlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

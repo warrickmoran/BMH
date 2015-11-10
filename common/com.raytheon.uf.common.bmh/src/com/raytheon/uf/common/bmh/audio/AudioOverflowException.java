@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.common.bmh.audio;
 
 /**
  * Indicates that an invalid audio sample has been generated.
@@ -29,6 +29,7 @@ package com.raytheon.uf.edex.bmh.audio;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 23, 2014 3424       bkowal      Initial creation
+ * Aug 17, 2015 4757       bkowal      Relocated to BMH common.
  * 
  * </pre>
  * 

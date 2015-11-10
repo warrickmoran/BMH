@@ -79,6 +79,7 @@ rm -rf ${RPM_BUILD_ROOT}
 /awips2/bmh/conf/*
 %config(noreplace) /awips2/bmh/conf/comms.xml
 %config(noreplace) /awips2/bmh/conf/comms-practice.xml
+%config(noreplace) /awips2/bmh/conf/regulationConfiguration.xml
 %config(noreplace) /awips2/bmh/conf/notification.properties
 %config(noreplace) /awips2/bmh/conf/unacceptableWords.eng.txt
 %config(noreplace) /awips2/bmh/conf/unacceptableWords.spa.txt

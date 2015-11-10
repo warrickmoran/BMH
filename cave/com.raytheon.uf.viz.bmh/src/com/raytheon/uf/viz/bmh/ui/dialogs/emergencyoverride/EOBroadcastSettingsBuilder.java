@@ -33,6 +33,7 @@ import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.bmh.datamodel.playlist.LiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -75,6 +76,8 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                     {@link MessageType}.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jul 08, 2015 4636       bkowal      Updated to use {@link GeneratedTonesBuffer}.
+ * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
+ * Sep 1, 2015  4825       bkowal      Updated to create a {@link LiveBroadcastMessage}.
  * </pre>
  * 
  * @author bkowal
@@ -113,7 +116,7 @@ public class EOBroadcastSettingsBuilder extends
     /*
      * Used to store SAME tones mapped to a {@link TransmitterGroup}.
      */
-    private Map<TransmitterGroup, GeneratedTonesBuffer> transmitterGroupToneMap;
+    private Map<TransmitterGroup, EOTones> transmitterGroupToneMap;
 
     /*
      * Groups that whose entry in transmitterGroupToneMap contains SAME tones,
@@ -229,22 +232,25 @@ public class EOBroadcastSettingsBuilder extends
                 .getSelectedTransmitterGroups().size(), 1.0f);
         for (TransmitterGroup tg : this.getSelectedTransmitterGroups()) {
             Set<Area> areas = transmitterGroupAreaMap.get(tg);
-            GeneratedTonesBuffer tones;
+            EOTones eoTones;
             if (areas.isEmpty()) {
                 if (playAlertTones) {
-                    tones = TonesGenerator.getOnlyAlertTones();
+                    eoTones = new EOTones(TonesGenerator.getOnlyAlertTones(),
+                            null);
                 } else {
-                    tones = null;
+                    eoTones = null;
                 }
             } else {
-                tones = this.constructSAMEAlertTones(areas);
+                eoTones = this.constructSAMEAlertTones(areas);
                 sameGroups.add(tg);
             }
-            long tonesDuration = tones.length() / 160L * 20L;
-            if (tonesDuration > this.longestDuration) {
-                this.longestDuration = tonesDuration;
+            if (eoTones != null) {
+                long tonesDuration = eoTones.getTonesBuffer().length() / 160L * 20L;
+                if (tonesDuration > this.longestDuration) {
+                    this.longestDuration = tonesDuration;
+                }
             }
-            this.transmitterGroupToneMap.put(tg, tones);
+            this.transmitterGroupToneMap.put(tg, eoTones);
         }
 
         /*
@@ -268,7 +274,7 @@ public class EOBroadcastSettingsBuilder extends
         }
     }
 
-    private GeneratedTonesBuffer constructSAMEAlertTones(Collection<Area> areas)
+    private EOTones constructSAMEAlertTones(Collection<Area> areas)
             throws ToneGenerationException {
         SAMEToneTextBuilder toneBuilder = new SAMEToneTextBuilder();
         List<String> ugcs = new ArrayList<>(areas.size());
@@ -292,8 +298,8 @@ public class EOBroadcastSettingsBuilder extends
         final String sameTone = toneBuilder.build().toString();
 
         // build the SAME tone
-        return TonesGenerator.getSAMEAlertTones(sameTone, this.playAlertTones,
-                true);
+        return new EOTones(TonesGenerator.getSAMEAlertTones(sameTone,
+                this.playAlertTones, true), sameTone);
     }
 
     @Override
@@ -307,17 +313,32 @@ public class EOBroadcastSettingsBuilder extends
         config.setAlert((this.playAlertTones) ? INonStandardBroadcast.TONE_SENT
                 : INonStandardBroadcast.TONE_NONE);
         config.setSame(INonStandardBroadcast.TONE_SENT);
-        config.setToneAudio(this.transmitterGroupToneMap.get(tg));
+        GeneratedTonesBuffer tonesAudio = (this.transmitterGroupToneMap.get(tg) != null) ? this.transmitterGroupToneMap
+                .get(tg).getTonesBuffer() : null;
+        config.setToneAudio(tonesAudio);
         /*
          * calculate audio duration. calculate delay based on audio duration.
          */
-        long tonesDuration = config.getToneAudio().length() / 160L * 20L;
+        long tonesDuration = (config.getToneAudio() == null) ? 0 : config
+                .getToneAudio().length() / 160L * 20L;
         config.setDelayMilliseconds(this.longestDuration - tonesDuration);
         if (sameGroups.contains(tg)) {
             config.setEndToneAudio(this.endTonesAudio);
         } else {
             config.setEndToneAudio(new byte[0]);
         }
+
+        LiveBroadcastMessage message = new LiveBroadcastMessage();
+        message.setUser(this.user);
+        message.setMessageType(this.messageType.getAfosid());
+        if (this.transmitterGroupToneMap.get(tg) != null) {
+            message.setSAMEtone(this.transmitterGroupToneMap.get(tg)
+                    .getSameText());
+        }
+        message.setTraceId(BROADCASTTYPE.EO.name() + "_"
+                + this.messageType.getAfosid() + "_" + this.user + "_"
+                + Long.toString(System.currentTimeMillis()));
+        config.setMessage(message);
 
         return config;
     }

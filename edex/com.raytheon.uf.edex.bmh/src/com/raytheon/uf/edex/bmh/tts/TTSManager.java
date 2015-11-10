@@ -126,6 +126,10 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jul 27, 2015 4679       bkowal      Do not prevent EDEX startup if the TTS Server is not
  *                                     running. Broadcast TTS connect errors to AlertViz.
  * Jul 28, 2015 3383       bkowal      Ensure wave file headers are written.
+ * Aug 07, 2015 4424       bkowal      Convert audio to wav format before converting to mp3.
+ * Aug 10, 2015 4723       bkowal      Made the message processing and ldad processing methods
+ *                                     easily distinguishable.
+ * Oct 06, 2015 4904       bkowal      Verify the NeoSpeech volume.                                    
  * </pre>
  * 
  * @author bkowal
@@ -325,6 +329,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
                     this.ttsHeartbeat, TimeUnit.MILLISECONDS);
         }
+
+        NeoSpeechConstants.verify();
+        statusHandler.info("NeoSpeech Volume is: " + NeoSpeechConstants.getVolume());
+
         statusHandler.info("Initialization Successful!");
 
         this.edexHost = SystemUtil.getHostName();
@@ -515,7 +523,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *         file location when synthesis is successful
      * @throws Exception
      */
-    public LdadMsg process(LdadMsg message) throws Exception {
+    public LdadMsg processLdad(LdadMsg message) throws Exception {
         statusHandler
                 .info("Performing Text-to-Speech Transformation for ldad configuration: "
                         + message.getLdadId());
@@ -554,12 +562,20 @@ public class TTSManager implements IContextStateProcessor, Runnable {
              */
             byte[] audioData = ttsReturn.getVoiceData();
             if (DEFAULT_OUTPUT_FORMAT != message.getEncoding()) {
+                BMHAudioFormat inputFormat = DEFAULT_OUTPUT_FORMAT;
+                if (message.getEncoding() == BMHAudioFormat.MP3) {
+                    audioData = EdexAudioConverterManager.getInstance()
+                            .convertAudio(audioData, DEFAULT_OUTPUT_FORMAT,
+                                    BMHAudioFormat.WAV);
+                    inputFormat = BMHAudioFormat.WAV;
+                }
+
                 /*
                  * need the audio to be in a format other than the default.
                  */
                 try {
                     audioData = EdexAudioConverterManager.getInstance()
-                            .convertAudio(audioData, DEFAULT_OUTPUT_FORMAT,
+                            .convertAudio(audioData, inputFormat,
                                     message.getEncoding());
                 } catch (UnsupportedAudioFormatException
                         | AudioConversionException e) {
@@ -583,9 +599,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             /* Write the output file. */
             boolean writeSuccess = true;
             try {
-                this.writeSynthesizedAudio(ttsReturn.getVoiceData(),
-                        outputPath, logIdentifier.toString(),
-                        message.getEncoding());
+                this.writeSynthesizedAudio(audioData, outputPath,
+                        logIdentifier.toString(), message.getEncoding());
             } catch (IOException e) {
                 writeSuccess = false;
                 this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,

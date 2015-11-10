@@ -34,6 +34,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacMaintenanceMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.datamodel.playlist.LiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
@@ -68,6 +69,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * May 07, 2015  4466      bkowal      Added {@link #logPlaylistError(BMH_COMPONENT, BMH_ACTIVITY, String, Throwable)}.
  * May 13, 2015  4429      rferrel     Changes for traceId.
  * May 21, 2015  4429      rjpeter     Added additional logging methods.
+ * Sep 01, 2015  4825      bkowal      Added methods to log live broadcast activity.
  * </pre>
  * 
  * @author bkowal
@@ -137,6 +139,21 @@ public class DefaultMessageLogger implements IMessageLogger {
             DacPlaylistMessage msg) {
         final String expire = this.getExpirationDate(msg.getExpire());
         Object[] logDetails = new Object[] { this.getMsgId(msg), expire };
+        this.logActivity(traceable, MESSAGE_ACTIVITY.BROADCAST, logDetails);
+    }
+
+    /**
+     * Logs that the specified {@link LiveBroadcastMessage} has just been
+     * broadcast.
+     * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
+     * @param msg
+     *            the specified {@link LiveBroadcastMessage}
+     */
+    public void logLiveBroadcastActivity(ITraceable traceable,
+            LiveBroadcastMessage msg) {
+        Object[] logDetails = new Object[] { this.getMsgId(msg), NO_EXPIRATION };
         this.logActivity(traceable, MESSAGE_ACTIVITY.BROADCAST, logDetails);
     }
 
@@ -222,6 +239,8 @@ public class DefaultMessageLogger implements IMessageLogger {
      * specified {@link DacMaintenanceMessage}. This method is only used by DAC
      * maintenance sessions.
      * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
      * @param toneType
      *            the specified {@link TONE_TYPE}
      * @param msg
@@ -229,6 +248,34 @@ public class DefaultMessageLogger implements IMessageLogger {
      */
     public void logMaintenanceTonesActivity(ITraceable traceable,
             TONE_TYPE toneType, DacMaintenanceMessage msg) {
+        MESSAGE_ACTIVITY activity = null;
+        Object[] logDetails = null;
+        if (toneType == TONE_TYPE.SAME) {
+            activity = MESSAGE_ACTIVITY.SAME_TONE;
+            logDetails = new Object[] { toneType.toString(),
+                    this.getMsgId(msg), msg.getSAMEtone(), NO_EXPIRATION };
+        } else {
+            activity = MESSAGE_ACTIVITY.TONE;
+            logDetails = new Object[] { toneType.toString(),
+                    this.getMsgId(msg), NO_EXPIRATION };
+        }
+        this.logActivity(traceable, activity, logDetails);
+    }
+
+    /**
+     * Logs that the specified {@link TONE_TYPE} has just been broadcast for the
+     * specified {@link LiveBroadcastMessage}. This method is only used by live
+     * broadcast sessions.
+     * 
+     * @param traceable
+     *            the {@link ITraceable} to place at the head of the message.
+     * @param toneType
+     *            the specified {@link TONE_TYPE}
+     * @param msg
+     *            the specified {@link LiveBroadcastMessage}
+     */
+    public void logLiveBroadcastTonesActivity(ITraceable traceable,
+            TONE_TYPE toneType, LiveBroadcastMessage msg) {
         MESSAGE_ACTIVITY activity = null;
         Object[] logDetails = null;
         if (toneType == TONE_TYPE.SAME) {
@@ -683,13 +730,16 @@ public class DefaultMessageLogger implements IMessageLogger {
             return getMsgId((ValidatedMessage) msg);
         } else if (msg instanceof LdadMsg) {
             return getMsgId((LdadMsg) msg);
+        } else if (msg instanceof LiveBroadcastMessage) {
+            return getMsgId((LiveBroadcastMessage) msg);
         } else {
             if (msg == null) {
                 throw new IllegalArgumentException(
                         "Required argument msg can not be NULL.");
-            }
+            } else {
 
-            return msg.toString();
+                return msg.toString();
+            }
         }
     }
 
@@ -800,6 +850,21 @@ public class DefaultMessageLogger implements IMessageLogger {
             sb.append(", name=");
             sb.append(bMsg.getInputMessage().getName());
         }
+        sb.append("]");
+
+        return sb.toString();
+    }
+
+    private String getMsgId(LiveBroadcastMessage msg) {
+        if (msg == null) {
+            throw new IllegalArgumentException(
+                    "Required argument msg can not be NULL.");
+        }
+
+        StringBuilder sb = new StringBuilder("LiveBroadcastMessage [afosid=");
+        sb.append(msg.getMessageType());
+        sb.append(", user=");
+        sb.append(msg.getUser());
         sb.append("]");
 
         return sb.toString();

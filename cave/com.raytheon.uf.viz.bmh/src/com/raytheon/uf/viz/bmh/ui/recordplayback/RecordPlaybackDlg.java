@@ -42,8 +42,10 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.ProgressBar;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.RecordImages;
@@ -86,7 +88,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      playback or recording has concluded.
  * Jun 18, 2015  #4490     bkowal       Disseminate a {@link AudioPlaybackCompleteNotification} a
  *                                      after the playback of recorded audio concludes.
- * 
+ * Aug 17, 2015  #4757     bkowal       Recorded audio retrieval can now trigger an unlikely Exception.
+ * Aug 24, 2015  #4770     bkowal       Handle {@link Exception} from the {@link AudioRecorderThread}.
+ * Aug 25, 2015  #4771     bkowal       Updated to retrieve and use {@link AudioRegulationConfiguration}.
+ * Sep 01, 2015  #4771     bkowal       {@link AudioRegulationConfiguration} retrieval has been relocated
+ *                                      to {@link BmhUtils}.
  * 
  * </pre>
  * 
@@ -190,6 +196,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
 
     private DecibelPlotsComp decibelPlotsComp;
 
+    protected final AudioRegulationConfiguration configuration;
+
     /**
      * Constructor.
      * 
@@ -198,10 +206,11 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
      * @param maxRecordingSeconds
      *            Maximum seconds to record.
      */
-    public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds) {
+    public RecordPlaybackDlg(Shell parentShell, int maxRecordingSeconds)
+            throws Exception {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.PRIMARY_MODAL,
                 CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
-
+        configuration = BmhUtils.retrieveRegulationConfiguration();
         this.maxRecordingSeconds = maxRecordingSeconds;
     }
 
@@ -508,8 +517,8 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
         this.decibelPlotsComp.resetPlots();
         try {
             this.recorderThread = new AudioRecorderThread(SAMPLE_COUNT,
-                    this.decibelPlotsComp);
-        } catch (AudioException e) {
+                    this.decibelPlotsComp, this.configuration);
+        } catch (Exception e) {
             statusHandler.error("Audio recording has failed.", e);
             return;
         }
@@ -543,7 +552,12 @@ public class RecordPlaybackDlg extends CaveSWTDialog implements
             } catch (InterruptedException e) {
                 // Ignore.
             }
-            this.recordedAudio = this.recorderThread.getAudioSamples();
+            try {
+                this.recordedAudio = this.recorderThread.getAudioSamples();
+            } catch (Exception e) {
+                statusHandler.error("Failed to retrieve recorded audio.", e);
+                this.recordedAudio = null;
+            }
         } else if (this.recordPlayStatus == RecordPlayStatus.PLAY) {
             this.playbackThread.halt();
             try {

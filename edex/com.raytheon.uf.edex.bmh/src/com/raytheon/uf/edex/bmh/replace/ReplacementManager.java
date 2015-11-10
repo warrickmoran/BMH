@@ -99,7 +99,7 @@ public class ReplacementManager {
             Calendar replaceTime) {
         /*
          * Query for all messages that expire in the future and that start with
-         * an mrd that is in the list of mrds this mesage replaces.
+         * an mrd that is in the list of mrds this message replaces.
          */
         Set<InputMessage> replacements = new HashSet<>();
         for (int mrd : inputMessage.getMrdReplacements()) {

@@ -27,6 +27,7 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTT
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybackDlg;
+import com.raytheon.uf.viz.core.VizApp;
 
 /**
  * Common broadcast settings provided to the
@@ -41,6 +42,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * ------------ ---------- ----------- --------------------------
  * Nov 19, 2014 3845       bkowal      Initial creation
  * Dec 1, 2014  3797       bkowal      Added abstract getTonesDuration
+ * Sep 1, 2015  4825       bkowal      Added {@link #user}.
  * 
  * </pre>
  * 
@@ -51,6 +53,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
 public abstract class AbstractBroadcastSettingsBuilder {
 
     private final BROADCASTTYPE type;
+
+    protected final String user = VizApp.getWsId().getUserName();
 
     private Collection<TransmitterGroup> selectedTransmitterGroups;
 

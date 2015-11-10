@@ -55,7 +55,7 @@
 						<to uri="jms-generic:queue:BMH.Practice.Schedule" />
 					</when>
 					<otherwise>
-						<bean ref="practice_ttsManager" method="process" />
+						<bean ref="practice_ttsManager" method="processLdad" />
 						<filter>
 							<simple>${body.isSuccess} == false</simple>
 							<stop />

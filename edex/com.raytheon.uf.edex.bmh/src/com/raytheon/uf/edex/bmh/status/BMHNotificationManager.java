@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Jun 16, 2014 3291       bkowal      Initial creation
  * Aug 01, 2014 3283       bsteffen    Change conf dir
  * Sep 29, 2014 3291       bkowal      Use the conf dir in BMH_HOME
+ * Aug 24, 2015 4770       bkowal      Use the BMH Constant conf dir.
  * 
  * </pre>
  * 
@@ -68,12 +69,6 @@ public class BMHNotificationManager {
      */
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(BMHNotificationManager.class);
-
-    /*
-     * This should be relocated to BMHConstants if other components use the
-     * configuration directory.
-     */
-    private static final String CONFIGURATION_DIRECTORY = "conf";
 
     private static final String NOTIFICATION_PROPERTIES_FILE = "notification.properties";
 
@@ -125,8 +120,7 @@ public class BMHNotificationManager {
          * Determine where the custom configuration should be loaded based on
          * BMH_DATA.
          */
-        String notificationProperties = BMHConstants.getBmhHomeDirectory()
-                + File.separatorChar + CONFIGURATION_DIRECTORY
+        String notificationProperties = BMHConstants.getBmhConfDirectory()
                 + File.separatorChar + NOTIFICATION_PROPERTIES_FILE;
         /*
          * There is a possibility that BMH_DATA may not be set. However, the

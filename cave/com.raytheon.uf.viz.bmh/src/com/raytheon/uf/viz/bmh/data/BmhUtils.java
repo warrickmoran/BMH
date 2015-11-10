@@ -22,6 +22,9 @@ package com.raytheon.uf.viz.bmh.data;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -47,8 +50,11 @@ import com.raytheon.uf.common.auth.exception.AuthorizationException;
 import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.auth.user.IUser;
 import com.raytheon.uf.common.bmh.BMHVoice;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.broadcast.AudioRegulationSettingsCommand;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
+import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
@@ -56,6 +62,7 @@ import com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest;
 import com.raytheon.uf.common.bmh.request.BmhAuthorizationRequest;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
 import com.raytheon.uf.common.bmh.schemas.ssml.Phoneme;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.serialization.comm.IServerRequest;
 import com.raytheon.uf.common.serialization.comm.RequestRouter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -63,6 +70,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.BMHConfigStatisticsGenerator;
 import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
@@ -111,6 +119,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 08, 2015   4403      bkowal      Added {@link #textToAudio(String, int, boolean)}.
  * Jun 11, 2015   4552      bkowal      Phonemes can now be generated for both the English and
  *                                      Spanish languages.
+ * Aug 05, 2015   4685      bkowal      Added {@link #containsGeneralSuite(ProgramSummary)}.
+ * Sep 01, 2015   4771      bkowal      Added {@link #retrieveRegulationConfiguration()}.
  * </pre>
  * 
  * @author mpduff
@@ -633,6 +643,22 @@ public class BmhUtils {
     }
 
     /**
+     * Determine if a program contains a suite of type GENERAL.
+     * 
+     * @param ps
+     * @return false if no program or program does not contain a GENERAL suite.
+     */
+    public static boolean containsGeneralSuite(ProgramSummary ps)
+            throws Exception {
+        if (ps == null) {
+            return false;
+        }
+        Program program = new Program();
+        program.setId(ps.getId());
+        return containsGeneralSuite(program);
+    }
+
+    /**
      * Determine if the program's suites contains a GENERAL type suite.
      * 
      * @param program
@@ -642,8 +668,7 @@ public class BmhUtils {
      */
     public static boolean containsGeneralSuite(Program program)
             throws Exception {
-        ProgramDataManager pdm = new ProgramDataManager();
-        return pdm.getProgramGeneralSuite(program) != null;
+        return getProgramGeneralSuite(program) != null;
     }
 
     /**
@@ -656,6 +681,9 @@ public class BmhUtils {
      */
     public static Suite getProgramGeneralSuite(Program program)
             throws Exception {
+        if (program == null) {
+            return null;
+        }
         ProgramDataManager pdm = new ProgramDataManager();
         return pdm.getProgramGeneralSuite(program);
     }
@@ -712,5 +740,48 @@ public class BmhUtils {
     private static BMHVoice getVoiceForLanguage(final Language language) {
         return (language == Language.ENGLISH) ? BMHVoice.PAUL
                 : BMHVoice.VIOLETA;
+    }
+
+    /**
+     * Retrieves the latest version of the currently defined
+     * {@link AudioRegulationConfiguration} stored on the server by requesting
+     * the information from Comms Manager.
+     * 
+     * @return the current {@link AudioRegulationConfiguration}
+     * @throws Exception
+     */
+    public static AudioRegulationConfiguration retrieveRegulationConfiguration()
+            throws Exception {
+        String commsLoc = BMHServers.getBroadcastServer();
+        if (commsLoc == null) {
+            throw new CommsCommunicationException(
+                    "No address has been specified for comms manager "
+                            + BMHServers.getBroadcastServerKey() + ".");
+        }
+        URI commsURI = null;
+        try {
+            commsURI = new URI(commsLoc);
+        } catch (URISyntaxException e) {
+            throw new CommsCommunicationException(
+                    "Invalid Comms Manager Location.", e);
+        }
+        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
+            socket.setTcpNoDelay(true);
+            SerializationUtil.transformToThriftUsingStream(
+                    new AudioRegulationSettingsCommand(),
+                    socket.getOutputStream());
+            Object message = SerializationUtil.transformFromThrift(
+                    Object.class, socket.getInputStream());
+            if (message == null) {
+                throw new NullPointerException(
+                        "Unexpected null response from comms manager.");
+            } else if (message instanceof AudioRegulationConfiguration) {
+                return (AudioRegulationConfiguration) message;
+            } else {
+                throw new IllegalStateException(
+                        "Unexpected response from comms manager of type: "
+                                + message.getClass().getSimpleName());
+            }
+        }
     }
 }

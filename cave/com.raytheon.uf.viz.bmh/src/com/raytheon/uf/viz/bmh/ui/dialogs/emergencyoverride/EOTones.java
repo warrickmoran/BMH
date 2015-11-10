@@ -17,10 +17,14 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.audio;
+package com.raytheon.uf.viz.bmh.ui.dialogs.emergencyoverride;
+
+import com.raytheon.uf.common.bmh.tones.GeneratedTonesBuffer;
 
 /**
- * Defines an Audio Regulatory Listener.
+ * POJO used by the {@link EOBroadcastSettingsBuilder} to store the generated
+ * {@link GeneratedTonesBuffer} as well as the SAME String that was used to
+ * generate the tones.
  * 
  * <pre>
  * 
@@ -28,9 +32,7 @@ package com.raytheon.uf.edex.bmh.audio;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 31, 2014 3424       bkowal      Initial creation
- * Sep 4, 2014  3532       bkowal      Multiple threads will never use the same
- *                                     audio regulator.
+ * Sep 1, 2015  4825       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -38,15 +40,28 @@ package com.raytheon.uf.edex.bmh.audio;
  * @version 1.0
  */
 
-public interface IAudioRegulatoryListener {
+public class EOTones {
+
+    private final GeneratedTonesBuffer tonesBuffer;
+
+    private final String sameText;
+
+    public EOTones(GeneratedTonesBuffer tonesBuffer, String sameText) {
+        this.tonesBuffer = tonesBuffer;
+        this.sameText = sameText;
+    }
+
     /**
-     * Notifies the listener that an audio adjustment has been completed.
-     * 
-     * @param id
-     *            the generic identifier associated with the adjustment rules
-     *            that were applied.
-     * @param audioData
-     *            the adjusted audio data.
+     * @return the tonesBuffer
      */
-    public void notifyAudioAdjusted(final byte[] audioData);
+    public GeneratedTonesBuffer getTonesBuffer() {
+        return tonesBuffer;
+    }
+
+    /**
+     * @return the sameText
+     */
+    public String getSameText() {
+        return sameText;
+    }
 }

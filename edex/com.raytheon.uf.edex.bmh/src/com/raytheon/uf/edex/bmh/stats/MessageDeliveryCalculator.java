@@ -65,6 +65,11 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * Jul 29, 2015 4686       bkowal      Initial creation
  * Aug 04, 2015 4424       bkowal      Retain the line separators in the
  *                                     statistics sql.
+ * Aug 07, 2015 4424       bkowal      Fix aggregate end date.
+ * Aug 10, 2015 4723       bkowal      Statistics calculation end time is now an
+ *                                     hour ago instead of five minutes ago.
+ * Aug 11, 2015 4715       bkowal      Stats are only calculated for as long as the
+ *                                     start date is less than the end date now.
  * 
  * </pre>
  * 
@@ -195,9 +200,9 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
         }
 
         /*
-         * The end time will be five minutes ago.
+         * The end time will be one hour ago.
          */
-        Date endDate = DateUtils.addMinutes(currentRunTime.getTime(), -5);
+        Date endDate = DateUtils.addHours(currentRunTime.getTime(), -1);
         Date startDate = null;
 
         /*
@@ -227,7 +232,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
             startDate = DateUtils.addMinutes(endDate, -5);
         }
 
-        while (DateUtils.isSameInstant(startDate, endDate) == false) {
+        while (startDate.before(endDate)) {
             Calendar startTime = TimeUtil.newGmtCalendar(startDate);
             Calendar endTime = TimeUtil.newGmtCalendar(DateUtils.addMinutes(
                     startDate, 5));
@@ -249,7 +254,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
                  */
                 AggregateRecord record = new AggregateRecord(
                         DeliveryPercentFiller.class.getName(), startTime,
-                        currentRunTime, this.groupingXml, "pctSuccess");
+                        endTime, this.groupingXml, "pctSuccess");
                 record.setSum(stats.getActualCount());
                 record.setMin(stats.getPercentage());
                 record.setMax(stats.getPercentage());

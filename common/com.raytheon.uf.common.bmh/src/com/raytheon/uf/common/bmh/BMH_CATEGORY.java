@@ -49,6 +49,7 @@ import java.util.Map;
  * May 20, 2015 4430       rjpeter     Added alertVizCategory.
  * Jun 01, 2015 4490       bkowal      Added {@link #SAME_AREA_TRUNCATION}, {@link #SAME_DURATION_TRUNCATION},
  *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
+ * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
  * </pre>
  * 
  * @author bkowal
@@ -173,10 +174,44 @@ public enum BMH_CATEGORY {
      */
     SAME_AREA_TRUNCATION(26, "PLAYLIST_MANAGER"),
     /*
-     * indicates that a watch or warning message has exired before it could be
+     * indicates that a watch or warning message has expired before it could be
      * broadcast.
      */
     WTCH_OR_WRN_NOT_BROADCAST(27, "DAC_TRANSMIT"),
+    /*
+     * indicates that a message failed validation because it was already expired
+     * upon arrival.
+     */
+    MESSAGE_VALIDATION_EXPIRED(28, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that a message failed validation because it was not eligible
+     * for playback on any of the existing transmitter groups due to the fact
+     * that it was not found in any of the geographical areas recognized by the
+     * existing transmitter groups.
+     */
+    MESSAGE_VALIDATION_UNPLAYABLE(29, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that a message failed validation because an associated message
+     * type was not found in the system.
+     */
+    MESSAGE_VALIDATION_UNDEFINED(30, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that the message failed validation because the associated
+     * message type is not in any suites associated with the transmitter groups
+     * eligible for playback indicated by the geographical areas associated with
+     * the message.
+     */
+    MESSAGE_VALIDATION_UNASSIGNED(31, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that a message failed validation because it was a duplicate of
+     * a message that had been previously processed.
+     */
+    MESSAGE_VALIDATION_DUPLICATE(32, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that a message failed validation because it contained
+     * unacceptable words.
+     */
+    MESSAGE_VALIDATION_UNACCEPTABLE(33, "MESSAGE_VALIDATION"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
