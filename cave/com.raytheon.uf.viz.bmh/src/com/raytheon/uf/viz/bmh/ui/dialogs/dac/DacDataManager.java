@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Oct 18, 2014     3699   mpduff      Initial creation
  * Oct 23, 2014     3687   bsteffen    add methods to get name and id.
  * Nov 7, 2014      3630   bkowal      add method to get entire dac object by id.
+ * Nov 09, 2015     5113   bkowal      Added {@link #validateDacUniqueness(Dac)}.
  * 
  * </pre>
  * 
@@ -121,5 +122,13 @@ public class DacDataManager {
         request.setAction(DacRequestAction.DeleteDac);
         request.setDac(dac);
         BmhUtils.sendRequest(request);
+    }
+
+    public List<Dac> validateDacUniqueness(final Dac dac) throws Exception {
+        DacRequest request = new DacRequest();
+        request.setAction(DacRequestAction.ValidateUnique);
+        request.setDac(dac);
+        DacResponse response = (DacResponse) BmhUtils.sendRequest(request);
+        return response.getDacList();
     }
 }

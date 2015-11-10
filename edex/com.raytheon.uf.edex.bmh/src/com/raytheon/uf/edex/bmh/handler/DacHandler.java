@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
@@ -27,6 +30,7 @@ import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.DacChannelDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 
 /**
@@ -44,6 +48,7 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * Oct 19, 2014  3699     mpduff      Added save and delete actions
  * Oct 22, 2014  3687     bsteffen    Send notifications.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Nov 09, 2015  5113     bkowal      Added {@link #validateUnique(DacRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -71,6 +76,9 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
             BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
                     ConfigChangeType.Delete, request.getDac(), request),
                     request.isOperational());
+            break;
+        case ValidateUnique:
+            response = validateUnique(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -104,5 +112,26 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
     private void deleteDac(DacRequest request) {
         DacDao dao = new DacDao(request.isOperational());
         dao.delete(request.getDac());
+    }
+
+    private DacResponse validateUnique(DacRequest request) {
+        DacResponse response = new DacResponse();
+
+        final Dac dac = request.getDac();
+        DacDao dacDao = new DacDao(request.isOperational());
+        DacChannelDao dacChannelDao = new DacChannelDao(request.isOperational());
+
+        Set<Dac> conflictDacs = new HashSet<>();
+        Dac conflictDac = dacDao.validateDacUniqueness(dac.getId(),
+                dac.getName(), dac.getAddress(), dac.getReceiveAddress(),
+                dac.getReceivePort());
+        if (conflictDac != null) {
+            conflictDacs.add(conflictDac);
+        }
+        conflictDacs.addAll(dacChannelDao.validateChannelsUniqueness(
+                dac.getId(), new HashSet<Integer>(dac.getDataPorts())));
+        response.setDacList(new ArrayList<>(conflictDacs));
+
+        return response;
     }
 }
