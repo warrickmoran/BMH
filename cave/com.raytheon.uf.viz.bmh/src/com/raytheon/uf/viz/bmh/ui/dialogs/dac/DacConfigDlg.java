@@ -67,6 +67,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Sep 24, 2015  4922      bkowal       Prevent editing / adding / deleting dacs when not
  *                                      in operational mode.
+ * Nov 11, 2015  5113      bkowal       Preparing dialog to support auto-configuration of DACs.
  * </pre>
  * 
  * @author lvenable
@@ -90,6 +91,12 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     /** Delete button. */
     private Button deleteBtn;
+
+    /** Reboot button. */
+    private Button rebootBtn;
+
+    /** Failover button. */
+    private Button failoverBtn;
 
     /** Data access manager */
     private DacDataManager dataManager;
@@ -166,7 +173,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
          * Action buttons.
          */
         Composite buttonComp = new Composite(dacGrp, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(3, false));
+        buttonComp.setLayout(new GridLayout(5, false));
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
@@ -225,7 +232,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
+        gd = new GridData();
         gd.widthHint = buttonWidth;
         deleteBtn = new Button(buttonComp, SWT.PUSH);
         deleteBtn.setText("Delete");
@@ -237,6 +244,30 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             }
         });
 
+        gd = new GridData();
+        gd.widthHint = buttonWidth;
+        rebootBtn = new Button(buttonComp, SWT.PUSH);
+        rebootBtn.setText("Reboot...");
+        rebootBtn.setLayoutData(gd);
+        rebootBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleRebootAction();
+            }
+        });
+
+        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
+        gd.widthHint = buttonWidth;
+        failoverBtn = new Button(buttonComp, SWT.PUSH);
+        failoverBtn.setText("Failover...");
+        failoverBtn.setLayoutData(gd);
+        failoverBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleFailoverAction();
+            }
+        });
+
         /*
          * Disable the {@link Button}s if in practice mode.
          */
@@ -244,6 +275,8 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             newBtn.setEnabled(false);
             editBtn.setEnabled(false);
             deleteBtn.setEnabled(false);
+            rebootBtn.setEnabled(false);
+            failoverBtn.setEnabled(false);
         }
     }
 
@@ -387,5 +420,13 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
                 }
             }
         }
+    }
+
+    private void handleRebootAction() {
+        // TODO: implement
+    }
+
+    private void handleFailoverAction() {
+        // TODO: implement
     }
 }
