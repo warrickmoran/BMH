@@ -20,15 +20,16 @@
 package com.raytheon.bmh.comms;
 
 import java.io.IOException;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketException;
+import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.thrift.transport.TTransportException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.raytheon.uf.common.serialization.SerializationException;
 
 /**
  * 
@@ -44,6 +45,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
  * Aug 15, 2014  3486     bsteffen    Initial Creation
  * Sep 24, 2014  3485     bsteffen    Better logging and smoother shutdown.
  * Jun 05, 2015  4482     rjpeter     Ignore IPVS port checks.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -51,116 +53,133 @@ import com.raytheon.uf.common.serialization.SerializationException;
  */
 public abstract class AbstractServerThread extends Thread {
 
-    private static final Logger logger = LoggerFactory
-            .getLogger(AbstractServerThread.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
-    private ServerSocket server;
+    protected final AtomicBoolean shutdown = new AtomicBoolean(false);
+
+    protected final SocketListener socketListener;
+
+    private final BlockingQueue<ConnectionPair> queue;
+
+    private class ConnectionPair {
+        final Socket socket;
+
+        final Object obj;
+
+        final long createTime = System.currentTimeMillis();
+
+        public ConnectionPair(Socket socket, Object obj) {
+            this.socket = socket;
+            this.obj = obj;
+        }
+
+        /**
+         * @return the socket
+         */
+        public Socket getSocket() {
+            return socket;
+        }
+
+        /**
+         * @return the obj
+         */
+        public Object getObj() {
+            return obj;
+        }
+
+        public long getCreateTime() {
+            return createTime;
+        }
+    }
 
     /**
-     * Create a server for listening to dac transmit applications.
+     * Create a server for listening to an external connection.
      * 
-     * @param config
-     *            the config to use for this server.
+     * @param socketListener
+     *            the SocketListener to register with
+     * @param queueSize
+     *            The size of the queue for waiting connections. Value of zero
+     *            or less utilizing a synchronous queue.
      * @throws IOException
      */
-    public AbstractServerThread(int port) throws IOException {
+    public AbstractServerThread(SocketListener socketListener, int queueSize)
+            throws IOException {
         super();
         this.setName(getClass().getSimpleName());
-        server = new ServerSocket(port);
-    }
-
-    public void shutdown() {
-        ServerSocket server = this.server;
-        this.server = null;
-        if (server != null) {
-            try {
-                server.close();
-            } catch (IOException e) {
-                logger.error("Failed to close server socket for {}", getName(),
-                        e);
-            }
+        this.socketListener = socketListener;
+        if (queueSize > 0) {
+            queue = new ArrayBlockingQueue<>(queueSize);
+        } else {
+            queue = new SynchronousQueue<>();
         }
-    }
 
-    public void changePort(int port) throws IOException {
-        ServerSocket server = new ServerSocket(port);
-        ServerSocket old = this.server;
-        this.server = server;
-        if (old != null) {
-            try {
-                old.close();
-            } catch (IOException e) {
-                logger.error("Failed to close server socket for {}", getName(),
-                        e);
-            }
-        }
     }
 
     @Override
     public void run() {
+        for (Class<?> clazz : getTypesHandled()) {
+            socketListener.registerListener(clazz, this);
+        }
+
         logger.info("{} is now handling connections ", this.getClass()
                 .getSimpleName());
-        while (server != null && !server.isClosed()) {
-            ServerSocket server = this.server;
-            Socket socket = null;
+        while (shutdown.get() == false) {
             try {
-                socket = server.accept();
-                socket.setTcpNoDelay(true);
+                ConnectionPair pair = null;
+                try {
+                    pair = queue.take();
+                } catch (InterruptedException e) {
+                    // ignore
+                }
+                if (pair != null) {
+                    Object obj = pair.getObj();
+                    logger.info("Handling {} request.", obj.getClass()
+                            .getName());
 
-                if (socket.getInputStream() == null) {
-
-                    continue;
+                    handleConnectionInternal(pair.getSocket(), obj);
                 }
             } catch (Throwable e) {
-                /*
-                 * do not log if this is the exact exception we are expecting
-                 * for closing the connection(either from port change or
-                 * shutdown)
-                 */
-                if (server == this.server || !(e instanceof SocketException)
-                        || !"Socket closed".equals(e.getMessage())) {
-                    logger.error("Unexpected error accepting a connection", e);
-                }
-                continue;
-            }
-            try {
-                handleConnection(socket);
-            } catch (SerializationException e) {
-
-                /*
-                 * IPVS creates a connection on the port and then closes it to
-                 * validate process is available. Ignore them since it will
-                 * happen every second.
-                 */
-                boolean printError = true;
-                if (e.getCause() instanceof TTransportException) {
-                    if (((TTransportException) e.getCause()).getType() == TTransportException.END_OF_FILE) {
-                        printError = false;
-                    }
-                }
-
-                if (printError) {
-                    logger.error("Error accepting client", e);
-                }
-
-                try {
-                    socket.close();
-                } catch (IOException e2) {
-                    logger.error("Error closing socket", e2);
-                }
-            } catch (Throwable e) {
-                try {
-                    socket.close();
-                } catch (IOException e2) {
-                    logger.error("Error closing socket", e2);
-                }
-                logger.error("Error accepting client", e);
+                logger.error("Error occurred accepting connection", e);
             }
         }
+
+        for (Class<?> clazz : getTypesHandled()) {
+            socketListener.removeListener(clazz, this);
+        }
+
         logger.info("{} is no longer handling connections ", this.getClass()
                 .getSimpleName());
     }
 
-    protected abstract void handleConnection(Socket socket) throws Exception;
+    public void handleConnection(Socket socket, Object initialObj,
+            long timeoutMillis) throws InterruptedException {
+        ConnectionPair head = queue.peek();
+        if ((head != null)
+                && ((System.currentTimeMillis() - head.getCreateTime()) > timeoutMillis)) {
+            logger.error("Connection has been waiting for longer than timeout.  Interrupting Server Thread");
+            this.interrupt();
+        }
 
+        if (queue.offer(new ConnectionPair(socket, initialObj), timeoutMillis,
+                TimeUnit.MILLISECONDS) == false) {
+            logger.error(
+                    "Timed out waiting to accept socket for {}.  Interrupting Server Thread",
+                    initialObj.getClass());
+            this.interrupt();
+        }
+    }
+
+    protected abstract void handleConnectionInternal(Socket socket,
+            Object initialObj) throws Exception;
+
+    protected abstract Set<Class<?>> getTypesHandled();
+
+    public synchronized void shutdown() {
+        if (shutdown.compareAndSet(false, true)) {
+            this.shutdownInternal();
+            this.interrupt();
+        }
+    }
+
+    protected abstract void shutdownInternal();
 }

@@ -22,6 +22,7 @@ package com.raytheon.bmh.comms.dactransmit;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -40,7 +41,6 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -115,7 +116,7 @@ public class DacTransmitServer extends AbstractServerThread {
      */
     public DacTransmitServer(CommsManager manager, CommsConfig config)
             throws IOException {
-        super(config.getDacTransmitPort());
+        super(manager.getSocketListener(), 4);
         int mapSize = 0;
         if (config.getDacs() != null) {
             mapSize = config.getDacs().size() * 4;
@@ -193,7 +194,7 @@ public class DacTransmitServer extends AbstractServerThread {
      */
     public void changeTimeZone(String timeZone, String transmitterGroup) {
         DacChannelConfig toUpdate = this.channels.get(transmitterGroup);
-        if (toUpdate == null || timeZone.equals(toUpdate.getTimezone())) {
+        if ((toUpdate == null) || timeZone.equals(toUpdate.getTimezone())) {
             return;
         }
 
@@ -230,7 +231,7 @@ public class DacTransmitServer extends AbstractServerThread {
     public boolean isConnectedToDac(final String transmitterGroup) {
         List<DacTransmitCommunicator> communicators = this.communicators
                 .get(transmitterGroup);
-        if (communicators != null && !communicators.isEmpty()) {
+        if ((communicators != null) && !communicators.isEmpty()) {
             for (DacTransmitCommunicator communicator : communicators) {
                 if (communicator.isConnectedToDac()) {
                     return true;
@@ -349,8 +350,7 @@ public class DacTransmitServer extends AbstractServerThread {
      * should only be called for cluster failover.
      */
     @Override
-    public void shutdown() {
-        super.shutdown();
+    protected void shutdownInternal() {
         for (List<DacTransmitCommunicator> communicators : this.communicators
                 .values()) {
             for (DacTransmitCommunicator communicator : communicators) {
@@ -360,10 +360,9 @@ public class DacTransmitServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnection(Socket socket)
-            throws SerializationException, IOException {
-        Object registrationMessage = SerializationUtil.transformFromThrift(
-                Object.class, socket.getInputStream());
+    protected void handleConnectionInternal(Socket socket,
+            Object registrationMessage) throws SerializationException,
+            IOException {
         if (registrationMessage instanceof DacTransmitRegister) {
             this.handleDacTransmitConnection(
                     (DacTransmitRegister) registrationMessage, socket);
@@ -431,4 +430,13 @@ public class DacTransmitServer extends AbstractServerThread {
                 this.manager, message.getTransmitterGroup(), socket);
         comms.start();
     }
+
+    @Override
+    protected Set<Class<?>> getTypesHandled() {
+        Set<Class<?>> rval = new HashSet<>(2, 1);
+        rval.add(DacTransmitRegister.class);
+        rval.add(DacMaintenanceRegister.class);
+        return Collections.unmodifiableSet(rval);
+    }
+
 }

@@ -22,6 +22,7 @@ package com.raytheon.bmh.comms.broadcast;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,7 +50,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
-import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
 /**
  * Listens for and handles @{link StartLiveBroadcastRequest}. Creates a
@@ -74,7 +74,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Aug 24, 2015 4770       bkowal      Handle {@link AudioRegulationSettingsCommand}.
  * Aug 25, 2015 4775       bkowal      Added {@link #remoteDacConnections} to track remote
  *                                     dac transmit connections.
- * 
+ * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bkowal
@@ -107,27 +107,17 @@ public class BroadcastStreamServer extends AbstractServerThread {
      * @throws IOException
      */
     public BroadcastStreamServer(ClusterServer clusterServer,
-            final DacTransmitServer transmitServer, CommsConfig config,
+            final DacTransmitServer transmitServer,
             final CommsManager commsManager) throws IOException {
-        super(config.getBroadcastLivePort());
+        super(commsManager.getSocketListener(), 0);
         this.clusterServer = clusterServer;
         this.transmitServer = transmitServer;
         this.commsManager = commsManager;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.bmh.comms.AbstractServerThread#handleConnection(java.net
-     * .Socket)
-     */
     @Override
-    protected void handleConnection(Socket socket) throws Exception {
-        Object obj = SerializationUtil.transformFromThrift(Object.class,
-                socket.getInputStream());
-        logger.info("Handling {} request.", obj.getClass().getName());
-
+    protected void handleConnectionInternal(Socket socket, Object obj)
+            throws Exception {
         if (obj instanceof LiveBroadcastListGroupsCommand) {
             List<String> availableDacs = new ArrayList<>();
             synchronized (this.availableDacConnections) {
@@ -138,15 +128,24 @@ public class BroadcastStreamServer extends AbstractServerThread {
             }
 
             SerializationUtil.transformToThriftUsingStream(
-                    new LiveBroadcastGroupsMessage(availableDacs),
-                    socket.getOutputStream());
+                    new LiveBroadcastGroupsMessage(commsManager
+                            .getOperational(), availableDacs), socket
+                            .getOutputStream());
             socket.close();
             return;
         }
+
         if (obj instanceof AudioRegulationSettingsCommand) {
             SerializationUtil.transformToThriftUsingStream(
                     LoadedAudioRegulationConfiguration.getConfiguration(),
                     socket.getOutputStream());
+            socket.close();
+            return;
+        }
+
+        if (!(obj instanceof IOnDemandBroadcastMsg)) {
+            logger.warn("Received unexpected message with type: "
+                    + obj.getClass().getName() + ". Disconnecting ...");
             socket.close();
             return;
         }
@@ -273,8 +272,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
     }
 
     @Override
-    public void shutdown() {
-        super.shutdown();
+    protected void shutdownInternal() {
         for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
             task.shutdown();
@@ -407,12 +405,21 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
             return null;
         }
-        if (task instanceof BroadcastStreamTask == false) {
+        if ((task instanceof BroadcastStreamTask) == false) {
             // unlikely scenario
             logger.warn("Ignoring dac live broadcast {} msg. Broadcast {} is not a live streamed broadcast.");
             return null;
         }
 
         return (BroadcastStreamTask) task;
+    }
+
+    @Override
+    protected Set<Class<?>> getTypesHandled() {
+        Set<Class<?>> rval = new HashSet<>(4, 1);
+        rval.add(LiveBroadcastListGroupsCommand.class);
+        rval.add(AudioRegulationSettingsCommand.class);
+        rval.add(IOnDemandBroadcastMsg.class);
+        return Collections.unmodifiableSet(rval);
     }
 }

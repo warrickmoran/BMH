@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 05, 2015  5092      bkowal       Use {@link DacChannel}.
  * Nov 09, 2015  5113      bkowal       Updated to support the new {@link Dac} fields as well
  *                                      as {@link DacChannel}s.
+ * Nov 11, 2015  5114      rjpeter      Update port numbering scheme.
  * </pre>
  * 
  * @author lvenable
@@ -523,7 +524,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
                 this.dacGatewayTF.setText(Dac.DEFAULT_GATEWAY);
                 this.dacBroadcastBufferTF.setText(String
                         .valueOf(Dac.DEFAULT_BROADCAST_BUFFER));
-                int basePort = 20000 + 1000 * i;
+                int basePort = 18000 + (10 * i);
                 if (!recievePorts.contains(basePort)) {
                     this.receiveAddressTF.setText(Dac.DEFAULT_RECEIVE_ADDRESS);
                     this.receivePortTF.setText(String.valueOf(basePort));
@@ -610,8 +611,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         int broadcastBufferInt = 0;
         try {
             broadcastBufferInt = Integer.parseInt(broadcastBuffer);
-            if (broadcastBufferInt < Dac.BROADCAST_BUFFER_MIN
-                    || broadcastBufferInt > Dac.BROADCAST_BUFFER_MAX) {
+            if ((broadcastBufferInt < Dac.BROADCAST_BUFFER_MIN)
+                    || (broadcastBufferInt > Dac.BROADCAST_BUFFER_MAX)) {
                 isValid = false;
                 errMsg.append("The dac broadcast buffer size must be in the range: "
                         + Dac.BROADCAST_BUFFER_MIN
@@ -661,8 +662,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             for (int i = 0; i < dacLevelTxtFldList.size(); i++) {
                 String text = this.dacLevelTxtFldList.get(i).getText().trim();
                 double setLevel = Double.valueOf(text);
-                if (setLevel < DacChannel.LEVEL_MIN
-                        || setLevel > DacChannel.LEVEL_MAX) {
+                if ((setLevel < DacChannel.LEVEL_MIN)
+                        || (setLevel > DacChannel.LEVEL_MAX)) {
                     isValid = false;
                     errMsg.append("The channel " + levelNum
                             + " level must be in the range: "
@@ -718,8 +719,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
                     }
                     if (validateDac.getReceiveAddress().equals(
                             conflictDac.getReceiveAddress())
-                            && validateDac.getReceivePort() == conflictDac
-                                    .getReceivePort()) {
+                            && (validateDac.getReceivePort() == conflictDac
+                                    .getReceivePort())) {
                         errMsg.append("DAC receive address/port ")
                                 .append(receiveAddress).append(":")
                                 .append(receivePort)
