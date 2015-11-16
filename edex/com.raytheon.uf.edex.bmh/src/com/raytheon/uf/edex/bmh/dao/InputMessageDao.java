@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.springframework.util.CollectionUtils;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
@@ -241,9 +242,9 @@ public class InputMessageDao extends
     }
 
     public List<InputMessage> getActiveWithAfosidAndAreaCodes(String afosid,
-            String areaCodes, Calendar expireAfter) {
-        String[] names = { "afosid", "areaCodes", "expireAfter" };
-        Object[] values = { afosid, areaCodes, expireAfter };
+            String areaCodes, Calendar expireAfter, Language language) {
+        String[] names = { "afosid", "areaCodes", "expireAfter", "language" };
+        Object[] values = { afosid, areaCodes, expireAfter, language };
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
                 InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME,
@@ -252,9 +253,10 @@ public class InputMessageDao extends
     }
 
     public List<InputMessage> getActiveWithAfosidAndAreaCodesAndNoMrd(
-            String afosid, String areaCodes, Calendar expireAfter) {
-        String[] names = { "afosid", "areaCodes", "expireAfter" };
-        Object[] values = { afosid, areaCodes, expireAfter };
+            String afosid, String areaCodes, Calendar expireAfter,
+            Language language) {
+        String[] names = { "afosid", "areaCodes", "expireAfter", "language" };
+        Object[] values = { afosid, areaCodes, expireAfter, language };
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
                 InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME,
@@ -263,9 +265,9 @@ public class InputMessageDao extends
     }
 
     public List<InputMessage> getActiveWithMrdLike(String mrdLike,
-            Calendar expireAfter) {
-        String[] names = { "mrdLike", "expireAfter" };
-        Object[] values = { mrdLike, expireAfter };
+            Calendar expireAfter, Language language) {
+        String[] names = { "mrdLike", "expireAfter", "language" };
+        Object[] values = { mrdLike, expireAfter, language };
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
                 InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, names, values);

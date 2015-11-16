@@ -159,7 +159,7 @@ public class InputMessage {
      */
     public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodes";
 
-    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.expirationTime >= :expireAfter and m.active = true";
+    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
 
     /**
      * Named query to retrieve messages that have a specific afosid and
@@ -167,7 +167,7 @@ public class InputMessage {
      */
     public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd";
 
-    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true";
+    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
 
     public static final String ALL_UNEXPIRED_QUERY_NAME = "getALLNonExpiredMessages";
 
@@ -179,7 +179,7 @@ public class InputMessage {
      */
     public static final String ACTIVE_WITH_MRD_LIKE_QUERY_NAME = "getActiveInputMessagesWithMrdLike";
 
-    protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true";
+    protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
 
     /**
      * Used to retrieve all {@link InputMessage}s with the specified Afos Id and
