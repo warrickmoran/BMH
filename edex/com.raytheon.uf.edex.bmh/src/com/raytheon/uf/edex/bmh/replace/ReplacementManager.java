@@ -107,7 +107,8 @@ public class ReplacementManager {
         for (int mrd : inputMessage.getMrdReplacements()) {
             String mrdLike = mrdFormat.format(mrd) + "%";
             List<InputMessage> replacees = inputMessageDao
-                    .getActiveWithMrdLike(mrdLike, replaceTime);
+                    .getActiveWithMrdLike(mrdLike, replaceTime,
+                            inputMessage.getLanguage());
             for (InputMessage replacee : replacees) {
                 replacee.setExpirationTime(replaceTime);
                 inputMessageDao.saveOrUpdate(replacee);
@@ -135,7 +136,7 @@ public class ReplacementManager {
         int mrd = inputMessage.getMrdId();
         String mrdLike = "%" + mrdFormat.format(mrd) + "%";
         List<InputMessage> replacers = inputMessageDao.getActiveWithMrdLike(
-                mrdLike, replaceTime);
+                mrdLike, replaceTime, inputMessage.getLanguage());
         Calendar earliestReplacementTime = inputMessage.getExpirationTime();
         InputMessage firstReplacer = null;
         for (InputMessage replacer : replacers) {
@@ -178,7 +179,8 @@ public class ReplacementManager {
         Set<InputMessage> replacements = new HashSet<>();
         List<InputMessage> queryResults = inputMessageDao
                 .getActiveWithAfosidAndAreaCodes(inputMessage.getAfosid(),
-                        inputMessage.getAreaCodes(), replaceTime);
+                        inputMessage.getAreaCodes(), replaceTime,
+                        inputMessage.getLanguage());
         for (InputMessage replacement : queryResults) {
             if ((replacement.getId() == inputMessage.getId())
                     || (replacement.getMrdId() != inputMessage.getMrdId())) {
@@ -216,7 +218,8 @@ public class ReplacementManager {
         for (String afosid : replacementAfosids) {
             List<InputMessage> replacees = inputMessageDao
                     .getActiveWithAfosidAndAreaCodesAndNoMrd(afosid,
-                            inputMessage.getAreaCodes(), replaceTime);
+                            inputMessage.getAreaCodes(), replaceTime,
+                            inputMessage.getLanguage());
             for (InputMessage replacee : replacees) {
                 if (replacee.getEffectiveTime().before(
                         inputMessage.getExpirationTime())) {
@@ -251,7 +254,8 @@ public class ReplacementManager {
         for (String afosid : replacementAfosids) {
             List<InputMessage> replacers = inputMessageDao
                     .getActiveWithAfosidAndAreaCodesAndNoMrd(afosid,
-                            inputMessage.getAreaCodes(), replaceTime);
+                            inputMessage.getAreaCodes(), replaceTime,
+                            inputMessage.getLanguage());
             for (InputMessage replacer : replacers) {
                 Calendar replacerEffectiveTime = replacer.getEffectiveTime();
                 if (replacerEffectiveTime.after(replaceTime)
