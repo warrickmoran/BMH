@@ -27,6 +27,7 @@ import java.util.List;
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
@@ -51,7 +52,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Apr 16, 2015  4395     rferrel     Added {@link #getAllUnexpiredInputMessages(Calendar)}.
  * May 11, 2015  4476     bkowal      Added {@link #getAllWithAfosIdAndName(String, String)}.
  * May 18, 2015  4483     bkowal      Contents are now used in {@link #checkDuplicate(InputMessage)}.
- * 
+ * Nov 16, 2015  5127     rjpeter     Added getActiveWithAfosidAndAreaCodesAndNoMrd, overrode saveOrUpdate
+ *                                    to set lastUpdateTime.
  * </pre>
  * 
  * @author bsteffen
@@ -67,6 +69,23 @@ public class InputMessageDao extends
     public InputMessageDao(boolean operational,
             final IMessageLogger messageLogger) {
         super(operational, InputMessage.class, messageLogger);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.dao.AbstractBMHPersistenceLoggingDao#saveOrUpdate
+     * (java.lang.Object)
+     */
+    @Override
+    public void saveOrUpdate(Object obj) {
+        if (obj instanceof InputMessage) {
+            InputMessage msg = (InputMessage) obj;
+            msg.setLastUpdateTime(TimeUtil.newDate());
+        }
+
+        super.saveOrUpdate(obj);
     }
 
     /**
@@ -228,6 +247,17 @@ public class InputMessageDao extends
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
                 InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME,
+                names, values);
+        return result;
+    }
+
+    public List<InputMessage> getActiveWithAfosidAndAreaCodesAndNoMrd(
+            String afosid, String areaCodes, Calendar expireAfter) {
+        String[] names = { "afosid", "areaCodes", "expireAfter" };
+        Object[] values = { afosid, areaCodes, expireAfter };
+        @SuppressWarnings("unchecked")
+        List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
+                InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME,
                 names, values);
         return result;
     }

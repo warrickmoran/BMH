@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * May 13, 2015  4429      rferrel     Changes for traceId.
  * May 21, 2015  4429      rjpeter     Added additional logging methods.
  * Sep 01, 2015  4825      bkowal      Added methods to log live broadcast activity.
+ * Nov 16, 2015  5127      rjpeter     Added logParseHeader.
  * </pre>
  * 
  * @author bkowal
@@ -687,6 +688,19 @@ public class DefaultMessageLogger implements IMessageLogger {
                 msg.getName()));
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger#logParseHeader(com
+     * .raytheon.uf.common.bmh.datamodel.msg.InputMessage, java.lang.String)
+     */
+    @Override
+    public void logParseHeader(InputMessage msg, String header) {
+        this.activityLogger.info(String.format(
+                "Parsing file %s:, message header: %s", msg.getName(), header));
+    }
+
     private void logError(ITraceable traceable, BMH_COMPONENT component,
             BMH_ACTIVITY activity, String msgId, Throwable e) {
         String msg = createLogMsg(traceable, component, activity, msgId);
@@ -959,5 +973,4 @@ public class DefaultMessageLogger implements IMessageLogger {
 
         return sb.toString();
     }
-
 }

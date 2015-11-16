@@ -47,8 +47,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * ------------- -------- ----------- --------------------------
  * Mar 24, 2015  4290     bsteffen    Initial creation
  * May 18, 2015  4483     bkowal      Added {@link #handleMrdIdentityReplace(InputMessage, Calendar, Set)}.
- * May 19, 2015 4429      rferrel     Changes to logs for traceId.
- * 
+ * May 19, 2015  4429     rferrel     Changes to logs for traceId.
+ * Nov 16, 2015  5127     rjpeter     Fix MRD Identity Replace to only replace with same LAC and MessageType.
  * </pre>
  * 
  * @author bsteffen
@@ -77,21 +77,23 @@ public class ReplacementManager {
                 || currentTime.after(inputMessage.getExpirationTime())) {
             return Collections.emptySet();
         }
+
         Calendar replaceTime = inputMessage.getEffectiveTime();
         if (currentTime.after(replaceTime)) {
             replaceTime = currentTime;
         }
+
         Set<InputMessage> replacements = new HashSet<>();
+        replacements.addAll(handleIdentityReplace(inputMessage, replaceTime));
+
         if (inputMessage.getMrd() != null) {
             replacements.addAll(handleMrdReplace(inputMessage, replaceTime));
             handleReverseMrdReplace(inputMessage, replaceTime);
-            handleMrdIdentityReplace(inputMessage, replaceTime, replacements);
         } else {
-            replacements
-                    .addAll(handleIdentityReplace(inputMessage, replaceTime));
             replacements.addAll(handleMatReplace(inputMessage, replaceTime));
             handleReverseMatReplace(inputMessage, replaceTime);
         }
+
         return replacements;
     }
 
@@ -159,53 +161,30 @@ public class ReplacementManager {
         }
     }
 
-    private void handleMrdIdentityReplace(InputMessage inputMessage,
-            Calendar replaceTime, Set<InputMessage> replacements) {
-        /*
-         * Find all active {@link InputMessage}s with the same afos id and mrd
-         * id.
-         */
-        String mrdLike = mrdFormat.format(inputMessage.getMrdId());
-        List<InputMessage> replacees = inputMessageDao.getActiveWithMrdLike(
-                mrdLike, replaceTime);
-        for (InputMessage replacee : replacees) {
-            if (replacee.getId() == inputMessage.getId()) {
-                continue;
-            }
-            if (replacee.getMrdId() != inputMessage.getMrdId()) {
-                continue;
-            }
-
-            if (inputMessage.getUpdateDate().after(replacee.getUpdateDate())) {
-                replacee.setExpirationTime(replaceTime);
-                inputMessageDao.saveOrUpdate(replacee);
-                logReplacement(inputMessage, replacee);
-                replacements.add(replacee);
-            }
-        }
-    }
-
     private Set<InputMessage> handleIdentityReplace(InputMessage inputMessage,
             Calendar replaceTime) {
         /*
          * Query for all messages that expire in the future and have matching
          * area codes and afosids. This query will also return the current
-         * message so discard that result. Compare the time period of all
-         * potential replacements with the time period of the input message. If
-         * the replacement is effective in the future then it can replace the
-         * new message, if the replacement was effective in the past then the
-         * new message will replace it, if the replacement is too far in the
-         * future so there is no overlap in the time periods for the message
-         * then no replacement is performed.
+         * message so discard that result. Compare the MRDs, ensure same MRD
+         * number (or lack of MRD). Compare the time period of all potential
+         * replacements with the time period of the input message. If the
+         * replacement is effective in the future then it can replace the new
+         * message, if the replacement was effective in the past then the new
+         * message will replace it, if the replacement is too far in the future
+         * so there is no overlap in the time periods for the message then no
+         * replacement is performed.
          */
         Set<InputMessage> replacements = new HashSet<>();
         List<InputMessage> queryResults = inputMessageDao
                 .getActiveWithAfosidAndAreaCodes(inputMessage.getAfosid(),
                         inputMessage.getAreaCodes(), replaceTime);
         for (InputMessage replacement : queryResults) {
-            if (replacement.getId() == inputMessage.getId()) {
+            if ((replacement.getId() == inputMessage.getId())
+                    || (replacement.getMrdId() != inputMessage.getMrdId())) {
                 continue;
             }
+
             Calendar replacementEffectiveTime = replacement.getEffectiveTime();
             if (replacementEffectiveTime.before(replaceTime)) {
                 replacement.setExpirationTime(replaceTime);
@@ -236,7 +215,7 @@ public class ReplacementManager {
         Set<InputMessage> replacements = new HashSet<>();
         for (String afosid : replacementAfosids) {
             List<InputMessage> replacees = inputMessageDao
-                    .getActiveWithAfosidAndAreaCodes(afosid,
+                    .getActiveWithAfosidAndAreaCodesAndNoMrd(afosid,
                             inputMessage.getAreaCodes(), replaceTime);
             for (InputMessage replacee : replacees) {
                 if (replacee.getEffectiveTime().before(
@@ -271,7 +250,7 @@ public class ReplacementManager {
         InputMessage firstReplacer = null;
         for (String afosid : replacementAfosids) {
             List<InputMessage> replacers = inputMessageDao
-                    .getActiveWithAfosidAndAreaCodes(afosid,
+                    .getActiveWithAfosidAndAreaCodesAndNoMrd(afosid,
                             inputMessage.getAreaCodes(), replaceTime);
             for (InputMessage replacer : replacers) {
                 Calendar replacerEffectiveTime = replacer.getEffectiveTime();

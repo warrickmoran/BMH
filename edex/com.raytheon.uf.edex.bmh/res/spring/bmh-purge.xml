@@ -4,12 +4,17 @@
                       http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
                       http://camel.apache.org/schema/spring
                       http://camel.apache.org/schema/spring/camel-spring.xsd">
-
   <bean id="bmhMessagePurger" class="com.raytheon.uf.edex.bmh.purge.MessagePurger">
     <constructor-arg value="${bmh.purge.days}"/>
     <constructor-arg ref="inputMessageDao" />
     <constructor-arg ref="broadcastMsgDao" />
     <constructor-arg value="true" />
+    <constructor-arg>
+      <list>
+        <ref bean="rejectFileManager"/>
+        <ref bean="archiveFileManager"/>
+      </list>
+    </constructor-arg>
   </bean>
 
   <bean id="practice_bmhMessagePurger" class="com.raytheon.uf.edex.bmh.purge.MessagePurger">
@@ -55,5 +60,5 @@
 
   <bean factory-bean="contextManager" factory-method="registerClusteredContext">
     <constructor-arg ref="bmhClusteredPurgeRoutes" />
- </bean>
+  </bean>
 </beans>

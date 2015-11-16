@@ -28,8 +28,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
-import com.raytheon.uf.edex.bmh.BMHRejectionDataManager;
-import com.raytheon.uf.edex.bmh.BMHRejectionException;
+import com.raytheon.uf.edex.bmh.BMHFileProcessException;
+import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
@@ -51,7 +51,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 18, 2015 4136       bkowal      Initial creation
- * 
+ * Nov 16, 2015 5127       rjpeter     Renamed BMHRejectionDataManager to FileManager.
  * </pre>
  * 
  * @author bkowal
@@ -75,12 +75,12 @@ public class BMHLargeFileFilter<T> implements GenericFileFilter<T> {
 
     private final long sizeLimit;
 
-    private final BMHRejectionDataManager rejectionManager;
+    private final FileManager rejectionManager;
 
     /**
      * Constructor.
      */
-    public BMHLargeFileFilter(final BMHRejectionDataManager rejectionManager) {
+    public BMHLargeFileFilter(final FileManager rejectionManager) {
         this.rejectionManager = rejectionManager;
         String maxSize = System.getProperty(FILE_SIZE_LIMIT, null);
         if (maxSize == null) {
@@ -127,9 +127,9 @@ public class BMHLargeFileFilter<T> implements GenericFileFilter<T> {
 
             Path discardedFilePath = Paths.get(file.getAbsoluteFilePath());
             try {
-                this.rejectionManager.rejectFile(discardedFilePath,
-                        BMH_CATEGORY.EXCESSIVE_FILE_SIZE);
-            } catch (BMHRejectionException e) {
+                this.rejectionManager.processFile(discardedFilePath,
+                        BMH_CATEGORY.EXCESSIVE_FILE_SIZE, false);
+            } catch (BMHFileProcessException e) {
                 statusHandler.error(BMH_CATEGORY.EXCESSIVE_FILE_SIZE,
                         "Unsuccessfully rejected large file: "
                                 + discardedFilePath.toString() + ".", e);
