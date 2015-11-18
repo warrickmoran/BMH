@@ -63,10 +63,10 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     public static final char MAINT_EXEC_TIMEOUT = 'o';
 
     /*
-     * This decibel target, when specified, will be applied to the 2400 Hz
+     * This amplitude target, when specified, will be applied to the 2400 Hz
      * portion of the transfer tone audio.
      */
-    public static final String MAINT_TRANSFER_DB_TARGET = TRANSMISSION_DB_TARGET_KEY
+    public static final String MAINT_TRANSFER_AMPLITUDE_TARGET = TRANSMISSION_AMPLITUDE_TARGET_KEY
             + "t";
 
     public DacMaintenanceArgParser() {
@@ -104,9 +104,9 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
 
         Option transferDbTarget = OptionBuilder
                 .withDescription(
-                        "Decibel target applied to the 2400 Hz portion of a transfer tone.")
+                        "Amplitude target applied to the 2400 Hz portion of a transfer tone.")
                 .hasArg().withArgName("transfer db range")
-                .withType(Double.class).create(MAINT_TRANSFER_DB_TARGET);
+                .withType(Short.class).create(MAINT_TRANSFER_AMPLITUDE_TARGET);
         transferDbTarget.setRequired(false);
 
         List<Option> options = new ArrayList<>();
@@ -134,13 +134,13 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
         Integer timeout = Integer.parseInt(cmd
                 .getOptionValue(MAINT_EXEC_TIMEOUT));
 
-        Double transferDb = null;
-        if (cmd.hasOption(MAINT_TRANSFER_DB_TARGET)) {
-            transferDb = Double.parseDouble(cmd
-                    .getOptionValue(MAINT_TRANSFER_DB_TARGET));
+        short transferAmplitude = -999;
+        if (cmd.hasOption(MAINT_TRANSFER_AMPLITUDE_TARGET)) {
+            transferAmplitude = Short.parseShort(cmd
+                    .getOptionValue(MAINT_TRANSFER_AMPLITUDE_TARGET));
         }
 
         return new DacMaintenanceConfig(commonConfig, messageFilePath,
-                duration, timeout, transferDb);
+                duration, timeout, transferAmplitude);
     }
 }

@@ -134,6 +134,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 21, 2015 4424       bkowal      Added rename menu options for transmitters and transmitter groups.
  * Jul 22, 2015 4424       bkowal      Transmitter naming validation improvements.
  * Aug 10, 2015 4424       bkowal      Finish Transmitter rename.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author mpduff
@@ -1269,10 +1270,10 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                     command.setDataPort(dac.getDataPorts().get(
                             radios.get(0) - 1));
                     command.setRadios(new int[] { port });
-                    command.setDecibelTarget(transmitterGroup
-                            .getTransferLowDBTarget());
-                    command.setDecibelTarget24(transmitterGroup
-                            .getTransferHighDBTarget());
+                    command.setAudioAmplitude(transmitterGroup
+                            .getTransferLowAmplitude());
+                    command.setTransferAmplitude24(transmitterGroup
+                            .getTransferHighAmplitude());
                     command.setInputAudioFile(inputAudioFile);
                     command.setBroadcastDuration(-1);
                     command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));

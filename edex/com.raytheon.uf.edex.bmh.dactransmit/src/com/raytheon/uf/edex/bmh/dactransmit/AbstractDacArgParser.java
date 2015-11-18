@@ -50,7 +50,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.dacsession.DacCommonConfig;
  * Nov 6, 2014  3630       bkowal      Initial creation
  * Apr 09, 2015 4364       bkowal      Fix the usage output.
  * Apr 29, 2015 4394       bkowal      Now handles the management port argument.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -79,7 +79,7 @@ public abstract class AbstractDacArgParser {
 
     public static final char TRANSMITTER_OPTION_KEY = 't';
 
-    public static final char TRANSMISSION_DB_TARGET_KEY = 'r';
+    public static final char TRANSMISSION_AMPLITUDE_TARGET_KEY = 'r';
 
     public static final char CONTROL_PORT_OPTION_KEY = 'c';
 
@@ -87,7 +87,7 @@ public abstract class AbstractDacArgParser {
 
     protected String usageStatement;
 
-    private Options programOptions;
+    private final Options programOptions;
 
     /**
      * 
@@ -127,15 +127,15 @@ public abstract class AbstractDacArgParser {
         Collection<Integer> transmitters = parseTransmitterArg(cmd
                 .getOptionValue(TRANSMITTER_OPTION_KEY));
 
-        double dbTarget = Double.parseDouble(cmd
-                .getOptionValue(TRANSMISSION_DB_TARGET_KEY));
+        short amplitudeTarget = Short.parseShort(cmd
+                .getOptionValue(TRANSMISSION_AMPLITUDE_TARGET_KEY));
 
         int managerPort = Integer.parseInt(cmd
                 .getOptionValue(COMMS_MANAGER_PORT_OPTION_KEY));
 
         DacCommonConfig commonConfig = new DacCommonConfig(dacHostname,
-                dacAddress, dataPort, controlPort, transmitters, dbTarget,
-                managerPort);
+                dacAddress, dataPort, controlPort, transmitters,
+                amplitudeTarget, managerPort);
         return this.parseCommandLineInternal(cmd, commonConfig);
     }
 
@@ -186,9 +186,9 @@ public abstract class AbstractDacArgParser {
 
         Option dbRange = OptionBuilder
                 .withDescription(
-                        "The target maximum of the audio (in decibels) allowed by the transmitter.")
-                .hasArg().withArgName("range").withType(Double.class)
-                .create(TRANSMISSION_DB_TARGET_KEY);
+                        "The target maximum amplitude of the audio allowed by the transmitter.")
+                .hasArg().withArgName("range").withType(Short.class)
+                .create(TRANSMISSION_AMPLITUDE_TARGET_KEY);
         dbRange.setRequired(true);
         this.addUsageOption(dbRange, usageStmtBuilder);
 

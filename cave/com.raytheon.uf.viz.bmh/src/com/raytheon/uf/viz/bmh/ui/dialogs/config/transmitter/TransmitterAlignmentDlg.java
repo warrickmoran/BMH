@@ -110,6 +110,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  *                                     longer be the only option.
  * Aug 12, 2015 4724       bkowal      Allow users to close the dialog even when {@link Transmitters}
  *                                     are in maintenance mode.
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author mpduff
@@ -122,7 +123,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             .getHandler(TransmitterAlignmentDlg.class);
 
     /** Constant */
-    private final String STATUS_PREFIX = "Transmitter is ";
+    private final String STATUS_TEXT = "Transmitter %s is %s";
 
     /** List widget of transmitter groups */
     private List transmitterList;
@@ -333,38 +334,40 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             return;
         }
 
-        this.selectedTransmitterGrp.setAudioDBTarget(this.audioVolume
-                .getCurrentDecibelValue());
-        this.selectedTransmitterGrp.setSameDBTarget(this.sameVolume
-                .getCurrentDecibelValue());
-        this.selectedTransmitterGrp.setAlertDBTarget(this.alertVolume
-                .getCurrentDecibelValue());
-        this.selectedTransmitterGrp.setTransferLowDBTarget(this.tfr1800Volume
-                .getCurrentDecibelValue());
-        this.selectedTransmitterGrp.setTransferHighDBTarget(this.tfr2400Volume
-                .getCurrentDecibelValue());
+        this.selectedTransmitterGrp.setAudioAmplitude(this.audioVolume
+                .getCurrentAmplitudeValue());
+        this.selectedTransmitterGrp.setSameAmplitude(this.sameVolume
+                .getCurrentAmplitudeValue());
+        this.selectedTransmitterGrp.setAlertAmplitude(this.alertVolume
+                .getCurrentAmplitudeValue());
+        this.selectedTransmitterGrp.setTransferLowAmplitude(this.tfr1800Volume
+                .getCurrentAmplitudeValue());
+        this.selectedTransmitterGrp.setTransferHighAmplitude(this.tfr2400Volume
+                .getCurrentAmplitudeValue());
 
         try {
             this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
         } catch (Exception e) {
             statusHandler.error(
-                    "Failed to update decibel levels for Transmitter Group: "
+                    "Failed to update volume levels for Transmitter Group: "
                             + this.selectedTransmitterGrp.getName() + ".", e);
             return;
         }
 
         this.saveButton.setEnabled(false);
 
-        this.audioVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
-                .getAudioDBTarget());
-        this.sameVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
-                .getSameDBTarget());
-        this.alertVolume.setCurrentDecibelVolume(this.selectedTransmitterGrp
-                .getAlertDBTarget());
-        this.tfr1800Volume.setCurrentDecibelVolume(this.selectedTransmitterGrp
-                .getTransferLowDBTarget());
-        this.tfr2400Volume.setCurrentDecibelVolume(this.selectedTransmitterGrp
-                .getTransferHighDBTarget());
+        this.audioVolume.setCurrentAmplitudeVolume(this.selectedTransmitterGrp
+                .getAudioAmplitude());
+        this.sameVolume.setCurrentAmplitudeVolume(this.selectedTransmitterGrp
+                .getSameAmplitude());
+        this.alertVolume.setCurrentAmplitudeVolume(this.selectedTransmitterGrp
+                .getAlertAmplitude());
+        this.tfr1800Volume
+                .setCurrentAmplitudeVolume(this.selectedTransmitterGrp
+                        .getTransferLowAmplitude());
+        this.tfr2400Volume
+                .setCurrentAmplitudeVolume(this.selectedTransmitterGrp
+                        .getTransferHighAmplitude());
     }
 
     private void createTransmitterStatusGroup(Composite comp) {
@@ -553,29 +556,28 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             this.alertVolume.enable();
             this.tfr1800Volume.enable();
             this.tfr2400Volume.enable();
-            this.audioVolume.setCurrentDecibelVolume(selectedTransmitterGrp
-                    .getAudioDBTarget());
-            this.sameVolume.setCurrentDecibelVolume(selectedTransmitterGrp
-                    .getSameDBTarget());
-            this.alertVolume.setCurrentDecibelVolume(selectedTransmitterGrp
-                    .getAlertDBTarget());
-            this.tfr1800Volume.setCurrentDecibelVolume(selectedTransmitterGrp
-                    .getTransferLowDBTarget());
-            this.tfr2400Volume.setCurrentDecibelVolume(selectedTransmitterGrp
-                    .getTransferHighDBTarget());
+            this.audioVolume.setCurrentAmplitudeVolume(selectedTransmitterGrp
+                    .getAudioAmplitude());
+            this.sameVolume.setCurrentAmplitudeVolume(selectedTransmitterGrp
+                    .getSameAmplitude());
+            this.alertVolume.setCurrentAmplitudeVolume(selectedTransmitterGrp
+                    .getAlertAmplitude());
+            this.tfr1800Volume.setCurrentAmplitudeVolume(selectedTransmitterGrp
+                    .getTransferLowAmplitude());
+            this.tfr2400Volume.setCurrentAmplitudeVolume(selectedTransmitterGrp
+                    .getTransferHighAmplitude());
 
             if (selectedTransmitterGrp.isEnabled()) {
-                this.statusLbl.setText(STATUS_PREFIX
-                        + selectedTransmitterGrp.getName() + " "
-                        + TxStatus.ENABLED.toString());
+                this.statusLbl.setText(String.format(STATUS_TEXT,
+                        selectedTransmitterGrp.getName(),
+                        TxStatus.ENABLED.toString()));
                 this.updateLevelTestState(false);
                 this.enableButton.setEnabled(false);
                 this.disableButton.setEnabled(false);
                 this.maintButton.setEnabled(true);
             } else if (selectedTransmitterGrp.isMaint()) {
-                this.statusLbl.setText(STATUS_PREFIX
-                        + selectedTransmitterGrp.getName() + " "
-                        + TxStatus.MAINT);
+                this.statusLbl.setText(String.format(STATUS_TEXT,
+                        selectedTransmitterGrp.getName(), TxStatus.MAINT));
                 this.updateLevelTestState(this
                         .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
                 this.enableButton.setEnabled(this.allowTransmitterEnable());
@@ -583,9 +585,9 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
                 this.maintButton.setEnabled(false);
             } else {
                 // Assume group DISABLED and disable the changeStatusBtn.
-                this.statusLbl.setText(STATUS_PREFIX
-                        + selectedTransmitterGrp.getName() + " "
-                        + TxStatus.DISABLED.toString());
+                this.statusLbl.setText(String.format(STATUS_TEXT,
+                        selectedTransmitterGrp.getName(),
+                        TxStatus.DISABLED.toString()));
                 this.updateLevelTestState(false);
                 this.enableButton.setEnabled(false);
                 this.disableButton.setEnabled(false);
@@ -678,8 +680,10 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             this.dataManager.saveTransmitterGroup(this.selectedTransmitterGrp);
             this.updateLevelTestState(this
                     .isTransmitterGroupConfigured(this.selectedTransmitterGrp));
-            statusLbl.setText(STATUS_PREFIX + selectedTransmitterGrp.getName()
-                    + " " + TxStatus.MAINT.toString());
+            statusLbl
+                    .setText(String.format(STATUS_TEXT,
+                            selectedTransmitterGrp.getName(),
+                            TxStatus.MAINT.toString()));
         } catch (Exception e) {
             statusHandler.error(
                     "Error transitioning Transmitter Group to maintenance.", e);
@@ -846,7 +850,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         }
         command.setDataPort(dac.getDataPorts().get(radios[0] - 1));
         command.setRadios(radios);
-        command.setDecibelTarget(this.getSelectedDecibelTarget());
+        command.setAudioAmplitude(this.getSelectedAmplitudeValue());
         command.setInputAudioFile(audioLocation);
         command.setBroadcastDuration(this.durScaleComp.getSelectedValue());
         command.setBroadcastTimeout((int) (TransmitterMaintenanceThread.MAINTENANCE_TIMEOUT / TimeUtil.MILLIS_PER_MINUTE));
@@ -854,20 +858,20 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         return command;
     }
 
-    public double getSelectedDecibelTarget() {
+    public short getSelectedAmplitudeValue() {
         if (this.textRdo.getSelection()) {
-            return this.audioVolume.getCurrentDecibelValue();
+            return this.audioVolume.getCurrentAmplitudeValue();
         } else if (this.sameRdo.getSelection()) {
-            return this.sameVolume.getCurrentDecibelValue();
+            return this.sameVolume.getCurrentAmplitudeValue();
         } else if (this.alertRdo.getSelection()) {
-            return this.alertVolume.getCurrentDecibelValue();
+            return this.alertVolume.getCurrentAmplitudeValue();
         } else if (this.transfer18Rdo.getSelection()) {
-            return this.tfr1800Volume.getCurrentDecibelValue();
+            return this.tfr1800Volume.getCurrentAmplitudeValue();
         } else if (this.transfer24Rdo.getSelection()) {
-            return this.tfr2400Volume.getCurrentDecibelValue();
+            return this.tfr2400Volume.getCurrentAmplitudeValue();
         }
 
-        return 0.;
+        return 0;
     }
 
     /**

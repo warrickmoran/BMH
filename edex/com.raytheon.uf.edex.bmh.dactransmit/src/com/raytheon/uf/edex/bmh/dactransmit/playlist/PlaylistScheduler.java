@@ -267,24 +267,14 @@ public final class PlaylistScheduler implements
     private volatile BROADCASTTYPE type;
 
     /**
-     * Reads the specified directory for valid playlist files (ones that have
-     * not already passed their expiration time) and sorts them into playback
-     * order for DAC transmission. Asynchronously queues each message from each
-     * playlist into the {@code PlaylistMessageCache}.
+     * Reads the directory specified in DacSession for valid playlist files
+     * (ones that have not already passed their expiration time) and sorts them
+     * into playback order for DAC transmission. Asynchronously queues each
+     * message from each playlist into the {@code PlaylistMessageCache}.
      * 
-     * @param inputDirectory
-     *            Directory containing playlists.
-     * @param eventBus
-     *            Reference back to the application-wide {@code EventBus}
-     *            instance for posting and receiving necessary status events.
-     * @param dbTarget
-     *            The target level of audio allowed by the destination
-     *            transmitter in decibels.
-     * @throws IOException
-     *             If any I/O errors occur attempting to get the list of
-     *             playlist files from the specified directory.
+     * @param dacSession
+     *            Reference back to the DacSession
      */
-
     public PlaylistScheduler(DacSession dacSession) {
         this.playlistDirectory = dacSession.getConfig().getInputDirectory();
         this.eventBus = dacSession.getEventBus();

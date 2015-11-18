@@ -24,13 +24,13 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
 import com.raytheon.uf.common.bmh.audio.AudioOverflowException;
+import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 import com.raytheon.uf.common.bmh.audio.AudioRegulationFactory;
-import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.AudioRetrievalException;
+import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
 import com.raytheon.uf.common.bmh.audio.UnsupportedAudioFormatException;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
-import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
 
 /**
  * Abstract representation of an audio retrieval job.
@@ -49,7 +49,7 @@ import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
  * Aug 17, 2015 4757       bkowal      Relocated regulation to BMH common.
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -69,11 +69,11 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
 
     private final int priority;
 
-    protected final double dbTarget;
+    protected final short audioAmplitude;
 
-    protected final double sameDbTarget;
+    protected final short sameAmplitude;
 
-    protected final double alertDbTarget;
+    protected final short alertAmplitude;
 
     protected final DacPlaylistMessage message;
 
@@ -82,21 +82,21 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
      * 
      * @param priority
      *            the job priority
-     * @param dbTarget
-     *            the decibel target associated with the transmitter
+     * @param audioAmplitude
+     *            the target audio amplitude associated with the transmitter
      * @param message
      *            the message to retrieve audio for
      * @param logger
      *            a {@code Logger} associated with the implementing class
      */
-    public AbstractAudioJob(final int priority, final double dbTarget,
-            final double sameDbTarget, final double alertDbTarget,
+    public AbstractAudioJob(final int priority, final short audioAmplitude,
+            final short sameAmplitude, final short alertAmplitude,
             final DacPlaylistMessage message) {
         this.priority = priority;
-        this.dbTarget = dbTarget;
+        this.audioAmplitude = audioAmplitude;
         this.message = message;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
     }
 
     /*
@@ -119,21 +119,21 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
     }
 
     /**
-     * Adjusts the specified audio data so that it will be within the decibel
+     * Adjusts the specified audio data so that it will be within the ampltidue
      * range of the transmitter.
      * 
      * @param originalAudio
      *            the specified audio data
-     * @param message
-     *            identifies the audio data; used for logging purposes
      * @param part
      *            identifies the portion of audio that is being adjusted; used
      *            for logging purposes
+     * @param amplitude
+     *            the target amplitude for this audio
      * @return the adjusted audio data
      * @throws AudioRetrievalException
      */
     protected byte[] adjustAudio(final byte[] originalAudio, final String part,
-            final double dbTarget) throws AudioRetrievalException {
+            final short amplitude) throws AudioRetrievalException {
         if (DISABLE_AUDIO_ATTENUATION) {
             return originalAudio;
         }
@@ -152,7 +152,7 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
             final IAudioRegulator audioRegulator = AudioRegulationFactory
                     .getAudioRegulator(configuration);
             regulatedAudio = audioRegulator.regulateAudioVolume(originalAudio,
-                    dbTarget, AUDIO_SAMPLE_SIZE);
+                    amplitude, AUDIO_SAMPLE_SIZE);
             logger.info("Successfully finished audio attenuation/amplification in "
                     + audioRegulator.getDuration()
                     + " ms for message: "
@@ -160,7 +160,7 @@ public abstract class AbstractAudioJob<T extends IAudioFileBuffer> implements
         } catch (UnsupportedAudioFormatException | AudioConversionException
                 | AudioOverflowException e) {
             final String msg = "Failed to adjust the audio signal to the target "
-                    + this.dbTarget
+                    + this.audioAmplitude
                     + " dB for message: "
                     + message.getBroadcastId();
             throw new AudioRetrievalException(msg, e);

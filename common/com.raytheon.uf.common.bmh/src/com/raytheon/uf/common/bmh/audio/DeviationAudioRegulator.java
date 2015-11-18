@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.IntRange;
 import org.apache.commons.lang.math.Range;
 
 /**
@@ -38,7 +39,7 @@ import org.apache.commons.lang.math.Range;
  * Aug 25, 2015 4771       bkowal      Initial creation
  * Aug 27, 2015 4771       bkowal      Handle edge cases with no to little variance in
  *                                     which there is no standard deviation.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -72,68 +73,64 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
     protected Range calculateBoundarySignals(byte[] audio, int offset,
             int length) {
         /*
-         * First, determine the decibel levels of every segment of audio.
+         * First, determine the amplitude levels of every segment of audio.
          */
-        List<Double> audioDecibels = new ArrayList<>(audio.length / 2);
-        double decibelSampleCount = 0;
-        double decibelSum = 0.0;
+        List<Short> audioAmplitudes = new ArrayList<>(audio.length / 2);
+        double sampleCount = 0;
+        double amplitudeSum = 0.0;
         for (int i = offset; i < (offset + length); i += 2) {
             short amplitude = (short) (((audio[i + 1] & 0xff) << 8) | (audio[i] & 0xff));
             amplitude = (short) Math.abs(amplitude);
 
-            double dbValue = calculateDecibels(amplitude);
-            /*
-             * Silence indicated by +/- infinity is eliminated to avoid
-             * completely corrupting the data.
-             */
-            if (dbValue != Double.NEGATIVE_INFINITY
-                    && dbValue != Double.POSITIVE_INFINITY) {
-                audioDecibels.add(dbValue);
-                ++decibelSampleCount;
-                decibelSum += dbValue;
+            if (amplitude > 0) {
+                audioAmplitudes.add(amplitude);
+                ++sampleCount;
+                amplitudeSum += amplitude;
             }
         }
 
         /*
          * Now calculate the standard deviation.
          */
-        if (decibelSampleCount == 0) {
+        if (sampleCount == 0) {
             /*
-             * All samples were negative or positive infinity.
+             * All samples were 0.
              */
-            return new DoubleRange(Double.NEGATIVE_INFINITY,
-                    Double.NEGATIVE_INFINITY);
+            return new IntRange(0, 0);
         }
-        double mean = decibelSum / decibelSampleCount;
+
+        double mean = amplitudeSum / sampleCount;
         double varianceSum = 0.0;
-        for (double dbLevel : audioDecibels) {
-            double square = Math.pow((dbLevel - mean), 2);
+        for (short amplitude : audioAmplitudes) {
+            double square = Math.pow((amplitude - mean), 2);
             varianceSum += square;
         }
-        final double stdDeviation = Math.sqrt(varianceSum / decibelSampleCount);
-        final double minimumDb = mean - (stdDeviation * DEVIATION_RANGE);
-        final double maximumDb = mean + (stdDeviation * DEVIATION_RANGE);
+
+        final double stdDeviation = Math.sqrt(varianceSum / sampleCount);
+        final double minimumAmplitude = mean - (stdDeviation * DEVIATION_RANGE);
+        final double maximumAmplitude = mean + (stdDeviation * DEVIATION_RANGE);
 
         if (stdDeviation == 0) {
             /*
              * All values are exactly the same; so there is no variance.
              */
-            return new DoubleRange(minimumDb, maximumDb);
+            return new DoubleRange(minimumAmplitude, maximumAmplitude);
         }
 
         /*
-         * Finally, determine the minimum and maximum decibel ranges while
-         * including all decibel levels that are within a standard deviation of
-         * the mean.
+         * Finally, determine the minimum and maximum amplitudes while including
+         * all amplitudes that are within a standard deviation of the mean.
          */
-        double rangeMinDb = Double.MAX_VALUE;
-        double rangeMaxDb = -Double.MAX_VALUE;
+        short rangeMinAmplitude = Short.MAX_VALUE;
+        short rangeMaxAmplitude = Short.MIN_VALUE;
         boolean rangeCalculated = false;
-        for (double dbLevel : audioDecibels) {
-            if (dbLevel >= minimumDb && dbLevel <= maximumDb) {
+        for (short amplitude : audioAmplitudes) {
+            if (amplitude >= minimumAmplitude && amplitude <= maximumAmplitude) {
                 rangeCalculated = true;
-                rangeMinDb = Math.min(rangeMinDb, dbLevel);
-                rangeMaxDb = Math.max(rangeMaxDb, dbLevel);
+                rangeMinAmplitude = (short) Math.min(rangeMinAmplitude,
+                        amplitude);
+                rangeMaxAmplitude = (short) Math.max(rangeMaxAmplitude,
+                        amplitude);
             }
         }
 
@@ -141,14 +138,9 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
             /*
              * There was a slight variance; but, it was extremely small.
              */
-            return new DoubleRange(minimumDb, maximumDb);
+            return new DoubleRange(minimumAmplitude, maximumAmplitude);
         }
 
-        if (rangeMaxDb == Double.NaN) {
-            rangeMinDb = Double.NEGATIVE_INFINITY;
-            rangeMaxDb = Double.NEGATIVE_INFINITY;
-        }
-
-        return new DoubleRange(rangeMinDb, rangeMaxDb);
+        return new IntRange(rangeMinAmplitude, rangeMaxAmplitude);
     }
 }
