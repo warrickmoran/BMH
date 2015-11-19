@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -30,6 +31,9 @@ import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.ListUtils;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -44,10 +48,12 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -70,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 09, 2015  5113      bkowal       Updated to support the new {@link Dac} fields as well
  *                                      as {@link DacChannel}s.
  * Nov 11, 2015  5114      rjpeter      Update port numbering scheme.
+ * Nov 12, 2015  5113      bkowal       Support executing DAC configuration changes.
  * </pre>
  * 
  * @author lvenable
@@ -91,6 +98,10 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     private final String REBOOT_TEXT = "Reboot";
 
     private final String AUTO_CONFIGURE_TEXT = "Auto-Configure (Requires DAC Reboot)";
+
+    private final String CONFIGURE_TEXT = "Configure...";
+
+    private final String SAVE_TEXT = "Save";
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -144,6 +155,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     /** The Reboot / Auto-Configure checkbox */
     private Button rebootAutoConfigureChk;
 
+    private Button createSaveBtn;
+
     /** The new/edited dac */
     private Dac dac;
 
@@ -162,6 +175,14 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
     /** Type of dialog (Create or Edit). */
     private DialogType dialogType = DialogType.CREATE;
+
+    /**
+     * Keep track of the address of the DAC that is currently being edited (when
+     * applicable).
+     */
+    private String currentConfigAddress;
+
+    private DacConfigResponse latestConfigResponse;
 
     /**
      * Constructor.
@@ -212,6 +233,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             populateNew();
         } else {
             populate();
+            this.currentConfigAddress = dac.getAddress();
         }
     }
 
@@ -385,11 +407,20 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         this.rebootAutoConfigureChk
                 .setSelection((dialogType == DialogType.CREATE));
         this.rebootAutoConfigureChk.setLayoutData(gd);
-        /*
-         * Default to disabled for now until the server-side requirements can be
-         * merged.
-         */
-        this.rebootAutoConfigureChk.setEnabled(false);
+        rebootAutoConfigureChk.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (dialogType == DialogType.EDIT) {
+                    return;
+                }
+
+                if (rebootAutoConfigureChk.getSelection()) {
+                    createSaveBtn.setText(CONFIGURE_TEXT);
+                } else {
+                    createSaveBtn.setText(SAVE_TEXT);
+                }
+            }
+        });
     }
 
     /**
@@ -401,15 +432,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 75;
+        int buttonWidth = 90;
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button createSaveBtn = new Button(buttonComp, SWT.PUSH);
+        createSaveBtn = new Button(buttonComp, SWT.PUSH);
         if (dialogType == DialogType.CREATE) {
-            createSaveBtn.setText(" Create ");
+            createSaveBtn.setText(CONFIGURE_TEXT);
         } else if (dialogType == DialogType.EDIT) {
-            createSaveBtn.setText(" Save ");
+            createSaveBtn.setText(SAVE_TEXT);
         }
 
         createSaveBtn.setLayoutData(gd);
@@ -765,11 +796,20 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setReceivePort(receivePortInt);
             dac.setChannels(channels);
 
-            try {
-                dac = dataManager.saveDac(dac);
-                setReturnValue(dac);
-            } catch (Exception e) {
-                statusHandler.error("Error saving DAC configuation.", e);
+            if ((this.dialogType == DialogType.CREATE && this.rebootAutoConfigureChk
+                    .getSelection()) || this.dialogType == DialogType.EDIT) {
+                configureDac();
+            } else {
+                /*
+                 * This path only exists to support adding a {@link Dac}
+                 * associated with an already fully configured DAC to BMH.
+                 */
+                try {
+                    dac = dataManager.saveDac(dac);
+                    setReturnValue(dac);
+                } catch (Exception e) {
+                    statusHandler.error("Error saving DAC configuation.", e);
+                }
             }
         } else {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR,
@@ -777,6 +817,75 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         }
 
         return isValid;
+    }
+
+    private void configureDac() {
+        /*
+         * Display any prompts that are necessary to retrieve additional
+         * information and/or confirm the user's decision.
+         */
+        final String configAddress;
+        if (this.dialogType == DialogType.CREATE) {
+            /*
+             * The DAC associated with the {@link Dac} has never been previously
+             * configured. Request the address of the DAC to configure.
+             */
+            final InputTextDlg inputDlg = new InputTextDlg(shell,
+                    "Configure DAC",
+                    "Enter the IP Address of the DAC to configure:",
+                    DacConfigDlg.MANUFACTURER_DAC_IP,
+                    new ConfigureDacAddressValidator(), false, true);
+            configAddress = (String) inputDlg.open();
+            if (configAddress == null) {
+                // Cancel
+                return;
+            }
+        } else {
+            configAddress = this.currentConfigAddress;
+        }
+
+        final boolean reboot = rebootAutoConfigureChk.getSelection();
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+        try {
+            dialog.run(true, false, new IRunnableWithProgress() {
+                @Override
+                public void run(IProgressMonitor monitor)
+                        throws InvocationTargetException, InterruptedException {
+                    monitor.beginTask("Configuring DAC: " + dac.getName()
+                            + " ...", IProgressMonitor.UNKNOWN);
+                    try {
+                        latestConfigResponse = dataManager.configureSaveDac(
+                                dac, reboot, configAddress);
+
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Failed to configure DAC: " + dac.getName()
+                                        + ".", e);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            statusHandler.error("Failed to configure DAC: " + dac.getName()
+                    + ".", e);
+            return;
+        }
+
+        if (latestConfigResponse == null) {
+            return;
+        }
+        if (latestConfigResponse.isSuccess()) {
+            dac = latestConfigResponse.getDac();
+            /*
+             * Update the address that would be used to configure the DAC if any
+             * additional changes are made before this dialog is closed.
+             */
+            this.currentConfigAddress = dac.getAddress();
+            setReturnValue(dac);
+        }
+
+        DacConfigEventDlg dacEventDlg = new DacConfigEventDlg(shell,
+                latestConfigResponse.getEvents(), null);
+        dacEventDlg.open();
     }
 
     /**

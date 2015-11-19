@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.edex.bmh.dac;
+package com.raytheon.uf.common.bmh.dac;
 
 import java.util.Calendar;
 
@@ -35,6 +35,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2015  5113       bkowal      Initial creation
+ * Nov 12, 2015 5113       bkowal      Added "Reboot Only" message text.
  * 
  * </pre>
  * 
@@ -49,15 +50,17 @@ public class DacConfigEvent {
 
     public static final String MSG_VERIFY = "Verifying DAC availability ...";
 
-    public static final String MSG_VERIFY_SUCCESS = "Successfully connected to the dac.";
+    public static final String MSG_VERIFY_SUCCESS = "Successfully connected to the DAC.";
 
-    public static final String MSG_VERIFY_FAILURE = "Failed to connect to the dac!";
+    public static final String MSG_VERIFY_FAILURE = "Failed to connect to the DAC!";
 
     public static final String MSG_CONFIGURE = "Configuring the DAC ...";
 
     public static final String MSG_CONFIGURE_SUCCESS = "DAC configured successfully.";
 
     public static final String MSG_CONFIGURE_FAILURE = "Failed to configure the DAC!";
+    
+    public static final String MSG_REBOOT_TRIGGER_FAILURE = "Failed to initiate a DAC reboot!";
 
     public static final String MSG_REBOOT = "Rebooting the DAC ...";
 

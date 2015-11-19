@@ -19,10 +19,14 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -35,6 +39,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
@@ -44,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.CreateEditDacConfigDlg.DialogType;
@@ -68,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Sep 24, 2015  4922      bkowal       Prevent editing / adding / deleting dacs when not
  *                                      in operational mode.
  * Nov 11, 2015  5113      bkowal       Preparing dialog to support auto-configuration of DACs.
+ * Nov 12, 2015  5113      bkowal       Support reboot and failover of DACs.
  * </pre>
  * 
  * @author lvenable
@@ -75,6 +82,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  */
 
 public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
+
+    public static final String MANUFACTURER_DAC_IP = "10.2.69.1";
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -100,6 +109,8 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
     /** Data access manager */
     private DacDataManager dataManager;
+
+    private DacConfigResponse latestConfigResponse;
 
     /**
      * Constructor.
@@ -423,10 +434,119 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
     }
 
     private void handleRebootAction() {
-        // TODO: implement
+        if (dacTable.getSelectedIndex() >= 0) {
+            TableRowData rowData = dacTableData.getTableRow(dacTable
+                    .getSelectedIndex());
+            final Dac dac = (Dac) rowData.getData();
+
+            /* Confirm the reboot. */
+            int option = DialogUtility.showMessageBox(this.shell,
+                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "DAC Reboot",
+                    "Are you sure you want to reboot DAC: " + dac.getName()
+                            + "?");
+            if (option != SWT.YES) {
+                return;
+            }
+
+            ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+            try {
+                dialog.run(true, false, new IRunnableWithProgress() {
+                    @Override
+                    public void run(IProgressMonitor monitor)
+                            throws InvocationTargetException,
+                            InterruptedException {
+                        monitor.beginTask("Rebooting DAC: " + dac.getName()
+                                + " ...", IProgressMonitor.UNKNOWN);
+                        try {
+                            latestConfigResponse = dataManager
+                                    .configureSaveDac(null, true,
+                                            dac.getAddress());
+
+                        } catch (Exception e) {
+                            statusHandler.error("Failed to configure DAC: "
+                                    + dac.getName() + ".", e);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                statusHandler.error("Failed to reboot DAC: " + dac.getName()
+                        + ".", e);
+                return;
+            }
+
+            this.displayDACEventDlg(null);
+        }
     }
 
     private void handleFailoverAction() {
-        // TODO: implement
+        if (dacTable.getSelectedIndex() >= 0) {
+            TableRowData rowData = dacTableData.getTableRow(dacTable
+                    .getSelectedIndex());
+            final Dac dac = (Dac) rowData.getData();
+
+            /*
+             * Confirm that the user ideally has unplugged the failed DAC.
+             */
+            int option = DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_QUESTION | SWT.YES
+                            | SWT.NO, "DAC Failover",
+                            "Has the DAC that was previously using this configuration been unplugged?");
+            if (option != SWT.YES) {
+                return;
+            }
+
+            /*
+             * Request the IP Address of the replacement DAC.
+             */
+            final InputTextDlg inputDlg = new InputTextDlg(shell,
+                    "Configure DAC",
+                    "Enter the IP Address of the DAC to configure:",
+                    MANUFACTURER_DAC_IP, new ConfigureDacAddressValidator(),
+                    false, true);
+            final String configAddress = (String) inputDlg.open();
+            if (configAddress == null) {
+                // Cancel
+                return;
+            }
+            ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+            try {
+                dialog.run(true, false, new IRunnableWithProgress() {
+                    @Override
+                    public void run(IProgressMonitor monitor)
+                            throws InvocationTargetException,
+                            InterruptedException {
+                        monitor.beginTask("Configuring DAC: " + dac.getName()
+                                + " ...", IProgressMonitor.UNKNOWN);
+                        try {
+                            latestConfigResponse = dataManager
+                                    .configureSaveDac(dac, true, configAddress);
+
+                        } catch (Exception e) {
+                            statusHandler.error("Failed to configure DAC: "
+                                    + dac.getName() + ".", e);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                statusHandler.error("Failed to configure DAC: " + dac.getName()
+                        + ".", e);
+                return;
+            }
+
+            final String commonText = (this.latestConfigResponse != null && this.latestConfigResponse
+                    .isSuccess()) ? "Transfer audio lines to the replacement DAC."
+                    : null;
+            this.displayDACEventDlg(commonText);
+        }
+    }
+
+    private void displayDACEventDlg(final String commonText) {
+        if (latestConfigResponse == null) {
+            return;
+        }
+
+        DacConfigEventDlg dacEventDlg = new DacConfigEventDlg(shell,
+                latestConfigResponse.getEvents(), commonText);
+        dacEventDlg.open();
     }
 }

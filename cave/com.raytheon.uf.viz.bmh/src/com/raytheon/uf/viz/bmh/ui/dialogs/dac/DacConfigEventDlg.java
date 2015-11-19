@@ -19,14 +19,15 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -36,9 +37,13 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.dac.DacConfigEvent;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
+import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 
 /**
@@ -55,6 +60,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2015 5113       bkowal      Initial creation
+ * Nov 12, 2015 5113       bkowal      Updated to display the recommended action.
  * </pre>
  * 
  * @author bkowal
@@ -66,24 +72,26 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
 
     private final String EVENT_COL_HEADER = "Event";
 
-    private final Color failureColor;
+    private final List<DacConfigEvent> events;
+
+    private final String commonAction;
 
     private GenericTable eventTable;
 
     private StyledText actionText;
 
-    protected DacConfigEventDlg(Shell parentShell) {
+    protected DacConfigEventDlg(Shell parentShell,
+            final List<DacConfigEvent> events, final String commonAction) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
-                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
+                CAVE.PERSPECTIVE_INDEPENDENT);
         this.setText("DAC Configuration Events");
-        this.failureColor = new Color(shell.getDisplay(), 255, 0, 0);
+        this.events = events;
+        this.commonAction = commonAction;
     }
 
     @Override
     protected Layout constructShellLayout() {
-        GridLayout mainLayout = new GridLayout(1, false);
-
-        return mainLayout;
+        return new GridLayout(1, false);
     }
 
     @Override
@@ -95,13 +103,6 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
     @Override
     protected void opened() {
         shell.setMinimumSize(shell.getSize());
-    }
-
-    @Override
-    protected void disposed() {
-        if (this.failureColor != null) {
-            this.failureColor.dispose();
-        }
     }
 
     @Override
@@ -152,17 +153,69 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
                 close();
             }
         });
+
+        populateEventTable();
     }
 
-    /*
-     * TODO: wait for http://lightning.omaha.us.ray.com:8080/#/c/9336/ where the
-     * dac config event type has been declared.
-     */
     private void populateEventTable() {
         List<TableColumnData> columns = new ArrayList<>(2);
-        columns.add(new TableColumnData(DATETIME_COL_HEADER, 125));
-        columns.add(new TableColumnData(EVENT_COL_HEADER, 275, SWT.LEFT));
+        TableColumnData tableColumnData = new TableColumnData(
+                DATETIME_COL_HEADER, 125);
+        tableColumnData.setPack(true);
+        columns.add(tableColumnData);
+        tableColumnData = new TableColumnData(EVENT_COL_HEADER, 275, SWT.LEFT);
+        tableColumnData.setPack(true);
+        columns.add(tableColumnData);
 
+        final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
+        List<TableCellData> rowCells;
         TableData td = new TableData(columns);
+        for (int i = 0; i < events.size(); i++) {
+            rowCells = new ArrayList<>(2);
+            DacConfigEvent event = events.get(i);
+
+            TableCellData tcd = new TableCellData(sdf.format(event
+                    .getEventDate().getTime()));
+            if (event.isError()) {
+                tcd.setForegroundColor(this.getDisplay().getSystemColor(
+                        SWT.COLOR_RED));
+            }
+            rowCells.add(tcd);
+
+            tcd = new TableCellData(event.getMessage());
+            if (event.isError()) {
+                tcd.setForegroundColor(this.getDisplay().getSystemColor(
+                        SWT.COLOR_RED));
+            }
+            rowCells.add(tcd);
+
+            TableRowData trd = new TableRowData(rowCells);
+            td.addDataRow(trd);
+            trd.setData(event);
+        }
+
+        eventTable.populateTable(td);
+        if (this.commonAction == null) {
+            eventTable.setCallbackAction(new ITableActionCB() {
+                @Override
+                public void tableSelectionChange(int selectionCount) {
+                    if (selectionCount != 1) {
+                        return;
+                    }
+
+                    TableRowData selectedTrd = eventTable.getSelection().get(0);
+                    DacConfigEvent event = (DacConfigEvent) selectedTrd
+                            .getData();
+                    if (event == null) {
+                        actionText.setText(StringUtils.EMPTY);
+                    } else {
+                        actionText.setText(event.getAction());
+                    }
+                }
+            });
+        } else {
+            this.actionText.setText(commonAction);
+        }
     }
 }

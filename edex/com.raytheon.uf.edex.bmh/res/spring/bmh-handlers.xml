@@ -95,6 +95,11 @@
             value="com.raytheon.uf.common.bmh.request.DacRequest" />
         <constructor-arg ref="dacHandler" />
     </bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+    	<constructor-arg
+    		value="com.raytheon.uf.common.bmh.request.DacConfigRequest" />
+    	<constructor-arg ref="dacHandler" />
+    </bean>
 
     <bean id="broadcastMsgHandler" class="com.raytheon.uf.edex.bmh.handler.BroadcastMessageHandler">
         <constructor-arg ref="edexMessageLogger" />

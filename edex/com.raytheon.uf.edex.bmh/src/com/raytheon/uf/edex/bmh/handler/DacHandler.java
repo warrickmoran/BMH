@@ -27,11 +27,16 @@ import java.util.Set;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
+import com.raytheon.uf.common.bmh.request.DacConfigRequest;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dac.OrionPost;
 import com.raytheon.uf.edex.bmh.dao.DacChannelDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
 /**
  * Handles any requests to get or modify the state of {@link Dac}s
@@ -49,6 +54,7 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * Oct 22, 2014  3687     bsteffen    Send notifications.
  * May 28, 2015  4429     rjpeter     Add ITraceable
  * Nov 09, 2015  5113     bkowal      Added {@link #validateUnique(DacRequest)}.
+ * Nov 12, 2015  5113     bkowal      Handle {@link DacConfigRequest}s.
  * </pre>
  * 
  * @author mpduff
@@ -56,6 +62,9 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  */
 
 public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
+
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(DacHandler.class);
 
     @Override
     public Object handleRequest(DacRequest request) throws Exception {
@@ -66,10 +75,21 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
             response = getAllDacs(request);
             break;
         case SaveDac:
-            response = saveDac(request);
-            BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
-                    ConfigChangeType.Update, request.getDac(), request),
-                    request.isOperational());
+            if (request instanceof DacConfigRequest) {
+                DacConfigResponse configResponse = configureSaveDac((DacConfigRequest) request);
+                if (configResponse.isSuccess() && request.getDac() != null) {
+                    BmhMessageProducer.sendConfigMessage(
+                            new DacConfigNotification(ConfigChangeType.Update,
+                                    request.getDac(), request), request
+                                    .isOperational());
+                }
+                return configResponse;
+            } else {
+                response = saveDac(request);
+                BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
+                        ConfigChangeType.Update, request.getDac(), request),
+                        request.isOperational());
+            }
             break;
         case DeleteDac:
             deleteDac(request);
@@ -105,6 +125,37 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         Dac dac = request.getDac();
         dao.saveOrUpdate(dac);
         response.addDac(dac);
+
+        return response;
+    }
+
+    private DacConfigResponse configureSaveDac(DacConfigRequest request)
+            throws Exception {
+        if (request.isOperational() == false) {
+            throw new IllegalStateException(
+                    "A DAC cannot be configured in PRACTICE mode.");
+        }
+
+        if (request.getDac() == null) {
+            statusHandler.info("Handling request to reboot DAC at IP: "
+                    + request.getConfigAddress() + " ...");
+        } else {
+            statusHandler.info("Handling request to configure DAC: "
+                    + request.getDac().getName() + " at IP: "
+                    + request.getConfigAddress() + " ...");
+        }
+        final OrionPost orionPost = new OrionPost(request.getDac(),
+                request.getConfigAddress());
+        DacConfigResponse response = new DacConfigResponse();
+        response.setSuccess(orionPost.configureDAC(request.isReboot()));
+        response.setEvents(orionPost.getEvents());
+        if (response.isSuccess() && request.getDac() != null) {
+            /*
+             * Persist the {@link Dac} record to the database.
+             */
+            final DacResponse dacResponse = this.saveDac(request);
+            response.setDac(dacResponse.getDacList().get(0));
+        }
 
         return response;
     }

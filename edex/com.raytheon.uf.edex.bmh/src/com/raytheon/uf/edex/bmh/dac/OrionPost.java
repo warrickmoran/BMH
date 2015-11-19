@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.dac;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -43,6 +45,7 @@ import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 
+import com.raytheon.uf.common.bmh.dac.DacConfigEvent;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -59,6 +62,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2015  5113       bkowal      Initial creation
+ * Nov 12, 2015 5113       bkowal      Updated to support DAC reboots. Improved retry
+ *                                     logic for verifying that a DAC has restarted.
  * 
  * </pre>
  * 
@@ -73,16 +78,40 @@ public final class OrionPost {
 
     private static final int DEFAULT_TIMEOUT_SECONDS = 10;
 
-    private static final int REBOOT_RETRY_COUNT = 12;
+    /*
+     * The amount of time (in seconds) to wait before attempts to verify that a
+     * DAC has come back online after being rebooted.
+     */
+    private static final int REBOOT_SLEEP_TIME = 30000;
+
+    /*
+     * The maximum number of times to attempt to connect to a DAC to verify that
+     * it is accessible after a reboot has been requested.
+     */
+    private static final int REBOOT_RETRY_COUNT = 25;
+
+    /*
+     * The amount of time (in milliseconds) to wait before verifying that a DAC
+     * has successfully rebooted after a DAC reboot has been requested.
+     */
+    private static final long REBOOT_ALLOWANCE = 5000;
 
     private final Dac dac;
+
+    private String configAddress;
 
     private final List<DacConfigEvent> events = new LinkedList<>();
 
     private HttpClient httpClient;
 
-    public OrionPost(final Dac dac) throws DacConfigurationException {
+    public OrionPost(final Dac dac, final String configAddress)
+            throws DacConfigurationException {
         this.dac = dac;
+        if (configAddress == null) {
+            this.configAddress = dac.getAddress();
+        } else {
+            this.configAddress = configAddress;
+        }
         this.buildHttpClient();
     }
 
@@ -106,8 +135,9 @@ public final class OrionPost {
                 .build();
     }
 
-    public void configureDAC(final boolean reboot)
+    public boolean configureDAC(final boolean reboot)
             throws DacConfigurationException {
+        boolean success = true;
         /*
          * First, verify that we can connect to the DAC.
          */
@@ -117,7 +147,7 @@ public final class OrionPost {
             available = this.verifyDacAvailability(DEFAULT_TIMEOUT_SECONDS);
         } catch (Exception e) {
             statusHandler.error("Failed to verify the availability of DAC: "
-                    + this.dac.getAddress() + "!", e);
+                    + this.configAddress + "!", e);
         }
         if (available == false) {
             /*
@@ -127,17 +157,30 @@ public final class OrionPost {
                     DacConfigEvent.MSG_VERIFY_FAILURE,
                     DacConfigEvent.DEFAULT_ACTION));
             this.events.add(new DacConfigEvent(DacConfigEvent.MSG_FAIL));
-            return;
+            return false;
         }
         this.events.add(new DacConfigEvent(DacConfigEvent.MSG_VERIFY_SUCCESS));
         try {
-            this.events.add(new DacConfigEvent(DacConfigEvent.MSG_CONFIGURE));
-            List<NameValuePair> params = this.getConfiguration();
+            List<NameValuePair> params = null;
+            if (this.dac == null) {
+                params = this.getAllOrionConfiguration();
+            } else {
+                params = this.getUnmanagedOrionConfiguration();
+                this.addBmhManagedConfiguration(params);
+                this.events
+                        .add(new DacConfigEvent(DacConfigEvent.MSG_CONFIGURE));
+            }
             this.saveConfiguration(reboot, params);
         } catch (Exception e) {
-            this.events.add(new DacConfigEvent(
-                    DacConfigEvent.MSG_CONFIGURE_FAILURE,
-                    DacConfigEvent.DEFAULT_ACTION));
+            if (this.dac == null) {
+                this.events.add(new DacConfigEvent(
+                        DacConfigEvent.MSG_REBOOT_TRIGGER_FAILURE,
+                        DacConfigEvent.DEFAULT_ACTION));
+            } else {
+                this.events.add(new DacConfigEvent(
+                        DacConfigEvent.MSG_CONFIGURE_FAILURE,
+                        DacConfigEvent.DEFAULT_ACTION));
+            }
             this.events.add(new DacConfigEvent(DacConfigEvent.MSG_FAIL));
             throw e;
         }
@@ -145,9 +188,32 @@ public final class OrionPost {
          * If the DAC has been rebooted, we will attempt to wait until it
          * becomes accessible again.
          */
-        this.events
-                .add(new DacConfigEvent(DacConfigEvent.MSG_CONFIGURE_SUCCESS));
+        if (this.dac != null) {
+            this.events.add(new DacConfigEvent(
+                    DacConfigEvent.MSG_CONFIGURE_SUCCESS));
+        }
         if (reboot) {
+            /*
+             * Wait a while to ensure that we do not attempt to connect to the
+             * DAC before it even fully processes the configuration change and
+             * starts the reboot process.
+             */
+            try {
+                Thread.sleep(REBOOT_ALLOWANCE);
+            } catch (InterruptedException e) {
+                statusHandler
+                        .warn("Interrupted while waiting for the DAC to process configuration changes.");
+            }
+            /*
+             * When the DAC reboots, we want to verify that it is accessible at
+             * the address associated with the {@link Dac}.
+             */
+            if (this.dac != null) {
+                /*
+                 * DAC configuration + reboot.
+                 */
+                this.configAddress = this.dac.getAddress();
+            }
             this.events.add(new DacConfigEvent(DacConfigEvent.MSG_REBOOT));
             available = false;
             int count = 0;
@@ -156,18 +222,30 @@ public final class OrionPost {
                 try {
                     available = this
                             .verifyDacAvailability(DEFAULT_TIMEOUT_SECONDS);
+                } catch (DacHttpCloseException e) {
+                    statusHandler
+                            .error("Failed to close an HTTP connection to the DAC. Terminating DAC configuration session ...",
+                                    e);
+                    break;
                 } catch (Exception e) {
                     if (count >= REBOOT_RETRY_COUNT) {
                         statusHandler.error("Failed to verify that DAC: "
-                                + this.dac.getAddress()
+                                + this.configAddress
                                 + " has rebooted successfully!", e);
                     }
                 }
                 if (available == false) {
                     this.events.add(new DacConfigEvent(
                             DacConfigEvent.MSG_REBOOT_WAIT));
+                    try {
+                        Thread.sleep(REBOOT_SLEEP_TIME);
+                    } catch (InterruptedException e) {
+                        statusHandler
+                                .warn("Interrupted while waiting to verify that the DAC has rebooted.");
+                    }
                 }
             }
+            success = available;
             if (available) {
                 this.events.add(new DacConfigEvent(
                         DacConfigEvent.MSG_REBOOT_SUCCESS));
@@ -177,11 +255,14 @@ public final class OrionPost {
                         DacConfigEvent.DEFAULT_ACTION));
             }
         }
-        this.events.add(new DacConfigEvent(DacConfigEvent.MSG_SUCCESS));
+        if (this.dac != null && success) {
+            this.events.add(new DacConfigEvent(DacConfigEvent.MSG_SUCCESS));
+        }
+        return success;
     }
 
     public boolean verifyDacAvailability(final int secondsTimeout)
-            throws DacConfigurationException {
+            throws DacConfigurationException, DacHttpCloseException {
         final int millisecondsTimeout = secondsTimeout
                 * (int) TimeUtil.MILLIS_PER_SECOND;
         RequestConfig.Builder requestConfigBuilder = RequestConfig.custom();
@@ -198,8 +279,18 @@ public final class OrionPost {
             throw new DacConfigurationException("Failed to execute Http GET!",
                     e);
         }
+        final int statusCode = response.getStatusLine().getStatusCode();
+        if (response.getEntity() != null) {
+            try {
+                EntityUtils.consume(response.getEntity());
+            } catch (IOException e) {
+                statusHandler
+                        .error("Failed to fully consume the HTTP Response returned by verifying DAC availability.",
+                                e);
+            }
+        }
 
-        return (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK);
+        return (statusCode == HttpStatus.SC_OK);
     }
 
     /**
@@ -210,7 +301,30 @@ public final class OrionPost {
      * @return the retrieved {@link List} of {@link NameValuePair}s
      * @throws DacConfigurationException
      */
-    private List<NameValuePair> getConfiguration()
+    private List<NameValuePair> getUnmanagedOrionConfiguration()
+            throws DacConfigurationException {
+        return this
+                .getOrionConfiguration(OrionPatterns.ORION_UNMANAGED_PARAM_PATTERNS);
+    }
+
+    private List<NameValuePair> getAllOrionConfiguration()
+            throws DacConfigurationException {
+        return this
+                .getOrionConfiguration(OrionPatterns.ALL_ORION_PARAM_PATTERNS);
+    }
+
+    /**
+     * Returns a {@link List} of {@link NameValuePair}s associated with the
+     * specified Orion configuration parameter {@link Pattern}s.
+     * 
+     * @param orionConfigPatterns
+     *            the specified Orion configuration parameter {@link Pattern}s.
+     * 
+     * @return the retrieved {@link List} of {@link NameValuePair}s
+     * @throws DacConfigurationException
+     */
+    private List<NameValuePair> getOrionConfiguration(
+            final Pattern[] orionConfigPatterns)
             throws DacConfigurationException {
         final HttpPost post = new HttpPost(
                 this.buildPostURL(OrionPostParams.INDEX));
@@ -253,25 +367,22 @@ public final class OrionPost {
         final String formData = sb.toString();
 
         List<NameValuePair> existingOrionConfigParams = new ArrayList<>();
-        for (Pattern pattern : OrionPatterns.ORION_PARAM_PATTERNS) {
+        for (Pattern pattern : orionConfigPatterns) {
             Matcher matcher = pattern.matcher(formData);
             while (matcher.find()) {
                 existingOrionConfigParams.add(new BasicNameValuePair(matcher
                         .group(1), matcher.group(2)));
             }
         }
+        existingOrionConfigParams.add(new BasicNameValuePair(
+                OrionPostParams.PARAM_IPTYPE, OrionPostParams.IP_TYPE_IPV4));
         return existingOrionConfigParams;
     }
 
-    private void saveConfiguration(final boolean reboot,
-            final List<NameValuePair> params) throws DacConfigurationException {
-        final HttpPost post = new HttpPost(
-                this.buildPostURL(OrionPostParams.TEST));
+    private void addBmhManagedConfiguration(final List<NameValuePair> params) {
         /*
          * Add the remaining configuration information to the parameters.
          */
-        params.add(new BasicNameValuePair(OrionPostParams.PARAM_IPTYPE,
-                OrionPostParams.IP_TYPE_IPV4));
         params.add(new BasicNameValuePair(OrionPostParams.PARAM_IP_ADDRESS,
                 this.dac.getAddress()));
         params.add(new BasicNameValuePair(OrionPostParams.PARAM_NETMASK,
@@ -299,6 +410,12 @@ public final class OrionPost {
             params.add(new BasicNameValuePair(levelParam, Double
                     .toString(channel.getLevel())));
         }
+    }
+
+    private void saveConfiguration(final boolean reboot,
+            final List<NameValuePair> params) throws DacConfigurationException {
+        final HttpPost post = new HttpPost(
+                this.buildPostURL(OrionPostParams.TEST));
         if (reboot) {
             params.add(new BasicNameValuePair(OrionPostParams.PARAM_REBOOT,
                     OrionPostParams.REBOOT_YES));
@@ -330,7 +447,7 @@ public final class OrionPost {
 
     private String buildPostURL(final String endpoint) {
         StringBuilder sb = new StringBuilder(OrionPostParams.HTTPS);
-        sb.append(dac.getAddress()).append("/");
+        sb.append(this.configAddress).append("/");
         if (endpoint != null) {
             sb.append(OrionPostParams.CGI_BIN).append("/").append(endpoint);
         }
