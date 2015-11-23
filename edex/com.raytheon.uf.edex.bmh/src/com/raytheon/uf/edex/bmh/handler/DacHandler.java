@@ -32,6 +32,7 @@ import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dac.DacSyncValidator;
 import com.raytheon.uf.edex.bmh.dac.OrionPost;
 import com.raytheon.uf.edex.bmh.dao.DacChannelDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
@@ -55,6 +56,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * May 28, 2015  4429     rjpeter     Add ITraceable
  * Nov 09, 2015  5113     bkowal      Added {@link #validateUnique(DacRequest)}.
  * Nov 12, 2015  5113     bkowal      Handle {@link DacConfigRequest}s.
+ * Nov 23, 2015  5113     bkowal      Maintain sync with DAC sync information.
  * </pre>
  * 
  * @author mpduff
@@ -65,6 +67,20 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(DacHandler.class);
+
+    /*
+     * Used to retrieve information about any {@link Dac}s that are out of sync
+     * to be returned when all {@link Dac}s are requested.
+     */
+    private final DacSyncValidator dacSyncValidator;
+
+    public DacHandler(DacSyncValidator dacSyncValidator) {
+        if (dacSyncValidator == null) {
+            throw new IllegalArgumentException(
+                    "Required argument dacSyncValidator has not been provided!");
+        }
+        this.dacSyncValidator = dacSyncValidator;
+    }
 
     @Override
     public Object handleRequest(DacRequest request) throws Exception {
@@ -116,6 +132,7 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         List<Dac> dacList = dao.getAll();
 
         response.setDacList(dacList);
+        response.setDesyncedDacs(this.dacSyncValidator.getOutOfSyncDacs());
         return response;
     }
 
@@ -140,15 +157,28 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
             statusHandler.info("Handling request to reboot DAC at IP: "
                     + request.getConfigAddress() + " ...");
         } else {
-            statusHandler.info("Handling request to configure DAC: "
-                    + request.getDac().getName() + " at IP: "
-                    + request.getConfigAddress() + " ...");
+            final String action = (request.isSync()) ? "sync" : "configure";
+            final String address = (request.isSync()) ? request.getDac()
+                    .getAddress() : request.getConfigAddress();
+            statusHandler.info("Handling request to " + action + " DAC: "
+                    + request.getDac().getName() + " at IP: " + address
+                    + " ...");
         }
         final OrionPost orionPost = new OrionPost(request.getDac(),
                 request.getConfigAddress());
         DacConfigResponse response = new DacConfigResponse();
-        response.setSuccess(orionPost.configureDAC(request.isReboot()));
-        response.setEvents(orionPost.getEvents());
+        if (request.isSync()) {
+            /*
+             * Verify it is possible to connect to the DAC.
+             */
+            orionPost.verifyDacAvailability(OrionPost.DEFAULT_TIMEOUT_SECONDS);
+            orionPost.verifySync(true);
+            request.setDac(orionPost.getDac());
+            response.setSuccess(true);
+        } else {
+            response.setSuccess(orionPost.configureDAC(request.isReboot()));
+            response.setEvents(orionPost.getEvents());
+        }
         if (response.isSuccess() && request.getDac() != null) {
             /*
              * Persist the {@link Dac} record to the database.

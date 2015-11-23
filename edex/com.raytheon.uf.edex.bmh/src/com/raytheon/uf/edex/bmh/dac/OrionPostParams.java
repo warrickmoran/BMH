@@ -35,6 +35,7 @@ import org.apache.http.message.BasicNameValuePair;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2015  5113       bkowal      Initial creation
+ * Nov 23, 2015 5113       bkowal      Added {@link #ALL_LEVELS} and {@link #ALL_PORTS}.
  * 
  * </pre>
  * 
@@ -135,6 +136,20 @@ public final class OrionPostParams {
     public static final String PARAM_SUB = "sub";
 
     public static final String PARAM_REBOOT = "Reboot";
+
+    public static final List<String> ALL_PORTS;
+
+    public static final List<String> ALL_LEVELS;
+
+    static {
+        ALL_PORTS = new ArrayList<>(4);
+        ALL_LEVELS = new ArrayList<>(4);
+        for (int i = 0; i < 4; i++) {
+            String index = Integer.toString(i + 1);
+            ALL_PORTS.add(String.format(PARAM_PORT, index));
+            ALL_LEVELS.add(String.format(PARAM_LEVEL, index));
+        }
+    }
 
     protected OrionPostParams() {
     }

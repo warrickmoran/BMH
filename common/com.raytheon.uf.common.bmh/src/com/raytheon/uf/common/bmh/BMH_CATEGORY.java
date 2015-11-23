@@ -50,6 +50,7 @@ import java.util.Map;
  * Jun 01, 2015 4490       bkowal      Added {@link #SAME_AREA_TRUNCATION}, {@link #SAME_DURATION_TRUNCATION},
  *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
  * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
+ * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
  * </pre>
  * 
  * @author bkowal
@@ -212,6 +213,15 @@ public enum BMH_CATEGORY {
      * unacceptable words.
      */
     MESSAGE_VALIDATION_UNACCEPTABLE(33, "MESSAGE_VALIDATION"),
+    /*
+     * indicates that a DAC and BMH {@link Dac} are out of sync.
+     */
+    DAC_SYNC_ISSUE(35, "BMH"),
+    /*
+     * indicates that an attempt to verify that BMH {@link Dac}s were in sync
+     * with the DACs has failed.
+     */
+    DAC_SYNC_VERIFY_FAIL(36, "BMH"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

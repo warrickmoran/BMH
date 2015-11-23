@@ -17,13 +17,16 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.request;
+package com.raytheon.uf.common.bmh.notify.config;
+
+import java.util.List;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * POJO used to request DAC configuration changes and/or DAC reboots.
+ * {@link ConfigNotification} that is used to notify others whenever the group
+ * of {@link Dac}s that are not in sync changes.
  * 
  * <pre>
  * 
@@ -31,8 +34,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Nov 11, 2015 5113       bkowal      Initial creation
- * Nov 23, 2015 5113       bkowal      Added {@link #sync}.
+ * Nov 23, 2015 5113       bkowal      Initial creation
  * 
  * </pre>
  * 
@@ -40,61 +42,30 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class DacConfigRequest extends DacRequest {
+public class DacNotSyncNotification extends ConfigNotification {
 
     @DynamicSerializeElement
-    private boolean reboot;
+    private List<Integer> desyncedDacsList;
 
-    @DynamicSerializeElement
-    private String configAddress;
-    
-    @DynamicSerializeElement
-    private boolean sync;
+    public DacNotSyncNotification() {
+    }
 
-    public DacConfigRequest() {
+    public DacNotSyncNotification(List<Integer> desyncedDacsList) {
+        this.desyncedDacsList = desyncedDacsList;
     }
 
     /**
-     * @return the reboot
+     * @return the desyncedDacsList
      */
-    public boolean isReboot() {
-        return reboot;
+    public List<Integer> getDesyncedDacsList() {
+        return desyncedDacsList;
     }
 
     /**
-     * @param reboot
-     *            the reboot to set
+     * @param desyncedDacsList
+     *            the desyncedDacsList to set
      */
-    public void setReboot(boolean reboot) {
-        this.reboot = reboot;
-    }
-
-    /**
-     * @return the configAddress
-     */
-    public String getConfigAddress() {
-        return configAddress;
-    }
-
-    /**
-     * @param configAddress
-     *            the configAddress to set
-     */
-    public void setConfigAddress(String configAddress) {
-        this.configAddress = configAddress;
-    }
-
-    /**
-     * @return the sync
-     */
-    public boolean isSync() {
-        return sync;
-    }
-
-    /**
-     * @param sync the sync to set
-     */
-    public void setSync(boolean sync) {
-        this.sync = sync;
+    public void setDesyncedDacsList(List<Integer> desyncedDacsList) {
+        this.desyncedDacsList = desyncedDacsList;
     }
 }

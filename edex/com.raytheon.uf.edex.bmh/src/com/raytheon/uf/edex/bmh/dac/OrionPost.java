@@ -46,6 +46,7 @@ import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 
 import com.raytheon.uf.common.bmh.dac.DacConfigEvent;
+import com.raytheon.uf.common.bmh.dac.DacSyncFields;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
@@ -64,6 +65,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 5, 2015  5113       bkowal      Initial creation
  * Nov 12, 2015 5113       bkowal      Updated to support DAC reboots. Improved retry
  *                                     logic for verifying that a DAC has restarted.
+ * Nov 23, 2015 5113       bkowal      Updates to allow for verifying that a DAC and
+ *                                     {@link Dac} are in sync.
  * 
  * </pre>
  * 
@@ -76,7 +79,7 @@ public final class OrionPost {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(OrionPost.class);
 
-    private static final int DEFAULT_TIMEOUT_SECONDS = 10;
+    public static final int DEFAULT_TIMEOUT_SECONDS = 10;
 
     /*
      * The amount of time (in seconds) to wait before attempts to verify that a
@@ -307,10 +310,134 @@ public final class OrionPost {
                 .getOrionConfiguration(OrionPatterns.ORION_UNMANAGED_PARAM_PATTERNS);
     }
 
+    /**
+     * Returns a {@link List} of {@link NameValuePair}s associated with ALL
+     * orion configuration parameters.
+     * 
+     * @return the retrieved {@link List} of {@link NameValuePair}s
+     * @throws DacConfigurationException
+     */
     private List<NameValuePair> getAllOrionConfiguration()
             throws DacConfigurationException {
         return this
                 .getOrionConfiguration(OrionPatterns.ALL_ORION_PARAM_PATTERNS);
+    }
+
+    /**
+     * Verifies that the BMH {@link Dac} specified in constructor is in sync
+     * with its associated DAC. Returns a {@link List} of fields that are not in
+     * sync if an inconsistency is discovered. When the completeSync parameter
+     * is set to true, this method will also update the {@link Dac} specified in
+     * the constructor to match the configuration of the associated DAC. The
+     * updated BMH {@link Dac} can then be retrieved using the {@link #getDac()}
+     * method.
+     * 
+     * @param completeSync
+     *            boolean flag indicating whether or not the specified BMH
+     *            {@link Dac} should also be updated to match the associated
+     *            DAC.
+     * @return
+     * @throws DacConfigurationException
+     */
+    public List<String> verifySync(final boolean completeSync)
+            throws DacConfigurationException {
+        List<NameValuePair> configPairs = this
+                .getOrionConfiguration(OrionPatterns.ORION_MANAGED_PARAM_PATTERNS);
+        if (configPairs.isEmpty()) {
+            return null;
+        }
+
+        final List<String> nonSyncedFields = new ArrayList<>();
+        final List<DacChannel> configuredChannels = this.dac.getChannels();
+
+        for (NameValuePair nvp : configPairs) {
+            if (OrionPostParams.PARAM_IP_ADDRESS.equals(nvp.getName())) {
+                if (this.dac.getAddress().equals(nvp.getValue()) == false) {
+                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_IP_ADDRESS);
+                }
+                if (completeSync) {
+                    this.dac.setAddress(nvp.getValue());
+                }
+                continue;
+            }
+            if (OrionPostParams.PARAM_NETMASK.equals(nvp.getName())) {
+                if (this.dac.getNetMask().equals(nvp.getValue()) == false) {
+                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_NET_MASK);
+                }
+                if (completeSync) {
+                    this.dac.setNetMask(nvp.getValue());
+                }
+                continue;
+            }
+            if (OrionPostParams.PARAM_GATEWAY.equals(nvp.getName())) {
+                if (this.dac.getGateway().equals(nvp.getValue()) == false) {
+                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_GATEWAY);
+                }
+                if (completeSync) {
+                    this.dac.setGateway(nvp.getValue());
+                }
+                continue;
+            }
+            if (OrionPostParams.PARAM_JITTER.equals(nvp.getName())) {
+                int jitterBuffer = Integer.parseInt(nvp.getValue());
+                if (this.dac.getBroadcastBuffer() != jitterBuffer) {
+                    nonSyncedFields.add(DacSyncFields.FIELD_BROADCAST_BUFFER);
+                }
+                if (completeSync) {
+                    this.dac.setBroadcastBuffer(jitterBuffer);
+                }
+                continue;
+            }
+            if (OrionPostParams.PARAM_TXIPADDR.equals(nvp.getName())) {
+                if (this.dac.getReceiveAddress().equals(nvp.getValue()) == false) {
+                    nonSyncedFields
+                            .add(DacSyncFields.FIELD_DAC_RECEIVE_ADDRESS);
+                }
+                if (completeSync) {
+                    this.dac.setReceiveAddress(nvp.getValue());
+                }
+                continue;
+            }
+            if (OrionPostParams.PARAM_TXPORT.equals(nvp.getName())) {
+                int port = Integer.parseInt(nvp.getValue());
+                if (this.dac.getReceivePort() != port) {
+                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_RECEIVE_PORT);
+                }
+                if (completeSync) {
+                    this.dac.setReceivePort(port);
+                }
+                continue;
+            }
+            int indx = OrionPostParams.ALL_PORTS.indexOf(nvp.getName());
+            if (indx == -1) {
+                indx = OrionPostParams.ALL_LEVELS.indexOf(nvp.getName());
+                if (indx == -1) {
+                    continue;
+                }
+
+                double level = Double.parseDouble(nvp.getValue());
+                if (configuredChannels.get(indx).getLevel() != level) {
+                    nonSyncedFields.add(String.format(
+                            DacSyncFields.FIELD_DAC_CHANNEL_LVL_FMT,
+                            Integer.toString(indx + 1)));
+                }
+                if (completeSync) {
+                    this.dac.getChannels().get(indx).setLevel(level);
+                }
+            } else {
+                int port = Integer.parseInt(nvp.getValue());
+                if (configuredChannels.get(indx).getPort() != port) {
+                    nonSyncedFields.add(String.format(
+                            DacSyncFields.FIELD_DAC_CHANNEL_FMT,
+                            Integer.toString(indx + 1)));
+                }
+                if (completeSync) {
+                    this.dac.getChannels().get(indx).setPort(port);
+                }
+            }
+        }
+
+        return nonSyncedFields;
     }
 
     /**
@@ -460,5 +587,12 @@ public final class OrionPost {
      */
     public List<DacConfigEvent> getEvents() {
         return events;
+    }
+
+    /**
+     * @return the dac
+     */
+    public Dac getDac() {
+        return dac;
     }
 }

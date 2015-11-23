@@ -89,7 +89,9 @@
         <constructor-arg ref="playlistHandler" />
     </bean>
 
-    <bean id="dacHandler" class="com.raytheon.uf.edex.bmh.handler.DacHandler" />
+    <bean id="dacHandler" class="com.raytheon.uf.edex.bmh.handler.DacHandler">
+    	<constructor-arg ref="dacSyncValidator" />
+    </bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
             value="com.raytheon.uf.common.bmh.request.DacRequest" />
