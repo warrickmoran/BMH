@@ -31,9 +31,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.notify.MessageExpiredNotification;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.edex.bmh.BMHRejectionDataManager;
-import com.raytheon.uf.edex.bmh.BMHRejectionException;
+import com.raytheon.uf.edex.bmh.BMHFileProcessException;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
@@ -64,6 +64,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 21, 2015  4429     rjpeter     Added additional logging.
  * Jul 29, 2015  4690     rjpeter     Added reject/checkReject methods.
  * Sep 24, 2015  4924     bkowal      Added {@link #getValidationNotificationCategory(TransmissionStatus)}.
+ * Nov 16, 2015  5127     rjpeter     Renamed BMHRejectionDataManager to FileManager.
  * </pre>
  * 
  * @author bsteffen
@@ -89,10 +90,10 @@ public class InputMessageValidator {
 
     private final IMessageLogger messageLogger;
 
-    private final BMHRejectionDataManager rejectionManager;
+    private final FileManager rejectionManager;
 
     public InputMessageValidator(final IMessageLogger messageLogger,
-            final BMHRejectionDataManager rejectionManager) {
+            final FileManager rejectionManager) {
         this.messageLogger = messageLogger;
         this.ldadCheck = new LdadValidator(true, messageLogger);
         this.transmissionCheck = new TransmissionValidator(messageLogger);
@@ -255,9 +256,9 @@ public class InputMessageValidator {
      */
     public void reject(InputMessage message) {
         try {
-            rejectionManager.rejectFile(message.getOriginalFile().toPath(),
-                    BMH_CATEGORY.MESSAGE_VALIDATION_ERROR);
-        } catch (BMHRejectionException e) {
+            rejectionManager.processFile(message.getOriginalFile().toPath(),
+                    BMH_CATEGORY.MESSAGE_VALIDATION_ERROR, false);
+        } catch (BMHFileProcessException e) {
             statusHandler.error(BMH_CATEGORY.MESSAGE_VALIDATION_ERROR,
                     "Unable to write reject message", e);
         }
