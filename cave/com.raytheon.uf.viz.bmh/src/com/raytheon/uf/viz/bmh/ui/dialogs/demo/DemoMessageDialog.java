@@ -55,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -91,6 +92,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jun 05, 2015  4490     rjpeter     Updated constructor.
  * Jun 24, 2015  4490     bkowal      Retrieve and display {@link TtsVoice}s instead of
  *                                    {@link TransmitterLanguage}s.
+ * Nov 16, 2015  5127     rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * </pre>
  * 
  * @author bsteffen
@@ -396,7 +398,6 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         TransmitterGroup selection = getSelectedTransmitterGroup();
         request.setSelectedTransmitters(selection.getTransmitterList());
         InputMessage inputMessage = new InputMessage();
-        inputMessage.setUpdateDate(TimeUtil.newGmtCalendar());
         MessageType messageType = null;
         try {
             messageType = getMessageType(selection);

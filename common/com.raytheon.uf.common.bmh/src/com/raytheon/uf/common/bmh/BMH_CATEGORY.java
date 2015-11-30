@@ -50,6 +50,7 @@ import java.util.Map;
  * Jun 01, 2015 4490       bkowal      Added {@link #SAME_AREA_TRUNCATION}, {@link #SAME_DURATION_TRUNCATION},
  *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
  * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
+ * Nov 16, 2015 5127       rjpeter     Added MESSAGE_ARCHIVE_FAILED.
  * </pre>
  * 
  * @author bkowal
@@ -207,11 +208,18 @@ public enum BMH_CATEGORY {
      * a message that had been previously processed.
      */
     MESSAGE_VALIDATION_DUPLICATE(32, "MESSAGE_VALIDATION"),
+
     /*
      * indicates that a message failed validation because it contained
      * unacceptable words.
      */
     MESSAGE_VALIDATION_UNACCEPTABLE(33, "MESSAGE_VALIDATION"),
+
+    /*
+     * indicates that a message failed to copy to the archive.
+     */
+    MESSAGE_ARCHIVE_FAILED(34, "MESSAGE_PARSE"),
+
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
