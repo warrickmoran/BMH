@@ -61,6 +61,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2015 5113       bkowal      Initial creation
  * Nov 12, 2015 5113       bkowal      Updated to display the recommended action.
+ * Dec 01, 2015 5113       bkowal      Allow for Enter -> ... -> Enter creation for new
+ *                                     DACs using the generated configuration.
  * </pre>
  * 
  * @author bkowal
@@ -79,6 +81,8 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
     private GenericTable eventTable;
 
     private StyledText actionText;
+
+    private Button closeBtn;
 
     protected DacConfigEventDlg(Shell parentShell,
             final List<DacConfigEvent> events, final String commonAction) {
@@ -141,7 +145,7 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
         comp.setLayout(gl);
         comp.setLayoutData(gd);
 
-        Button closeBtn = new Button(comp, SWT.PUSH);
+        closeBtn = new Button(comp, SWT.PUSH);
         closeBtn.setText("Close");
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gd.verticalIndent = 5;
@@ -168,6 +172,7 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
         columns.add(tableColumnData);
 
         final SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+        boolean success = true;
 
         List<TableCellData> rowCells;
         TableData td = new TableData(columns);
@@ -187,6 +192,7 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
             if (event.isError()) {
                 tcd.setForegroundColor(this.getDisplay().getSystemColor(
                         SWT.COLOR_RED));
+                success = false;
             }
             rowCells.add(tcd);
 
@@ -216,6 +222,16 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
             });
         } else {
             this.actionText.setText(commonAction);
+        }
+
+        if (success) {
+            /*
+             * Allow for easy, convenient: Enter -> Enter -> Enter
+             * configuration.
+             * 
+             * Only if successful.
+             */
+            this.closeBtn.forceFocus();
         }
     }
 }

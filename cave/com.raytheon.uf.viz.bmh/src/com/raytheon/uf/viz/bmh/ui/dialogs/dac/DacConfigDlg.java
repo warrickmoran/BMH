@@ -87,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 12, 2015  5113      bkowal       Support reboot and failover of DACs.
  * Nov 23, 2015  5113      bkowal       Update table rows to indicate whether or not a {@link Dac}
  *                                      has sync with the associated DAC.
+ * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
+ *                                      DACs using the generated configuration. 
  * </pre>
  * 
  * @author lvenable
@@ -107,6 +109,9 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
 
     /** DAC table data. */
     private TableData dacTableData = null;
+
+    /** New/Create button. */
+    private Button newBtn;
 
     /** Edit button. */
     private Button editBtn;
@@ -195,6 +200,11 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
         createDacTable();
         createBottomActionButtons();
         populateDacTable();
+
+        /*
+         * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+         */
+        this.newBtn.forceFocus();
     }
 
     /**
@@ -222,7 +232,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
 
         gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button newBtn = new Button(buttonComp, SWT.PUSH);
+        newBtn = new Button(buttonComp, SWT.PUSH);
         newBtn.setText("New...");
         newBtn.setLayoutData(gd);
         newBtn.addSelectionListener(new SelectionAdapter() {
@@ -237,6 +247,13 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
                         Dac dac = (Dac) returnValue;
                         if (dac != null) {
                             updateTable(dac);
+                            /*
+                             * Allow for easy, convenient: Enter -> Enter ->
+                             * Enter configuration.
+                             * 
+                             * Only if successful.
+                             */
+                            newBtn.forceFocus();
                         }
                     }
                 });
