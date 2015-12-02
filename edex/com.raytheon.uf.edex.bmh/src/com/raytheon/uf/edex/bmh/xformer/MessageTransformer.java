@@ -62,7 +62,6 @@ import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeT
 import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.schemas.ssml.ObjectFactory;
-import com.raytheon.uf.common.bmh.schemas.ssml.Paragraph;
 import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
@@ -155,6 +154,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 06, 2015 4904       bkowal      Set the neospeech volume in the SSML.
  * Oct 29, 2015 5065       bkowal      Update paragraph cleanup to maintain
  *                                     message boundaries.
+ * Dec 01, 2015 5157       bkowal      Eliminate the use of SSML paragraphs.
  * </pre>
  * 
  * @author bkowal
@@ -167,12 +167,6 @@ public class MessageTransformer implements IContextStateProcessor {
             .getInstance(MessageTransformer.class);
 
     private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "[\\r\\n|\\r|\\n]";
-
-    private static final String PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX = String
-            .format("%s%s+", PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                    PLATFORM_AGNOSTIC_NEWLINE_REGEX);
-
-    private static final String BLOCK_PARAGRAPH_NEWLINE = "\n\n";
 
     private static final String SENTENCE_REGEX = "[^.!?\\s][^.!?]*(?:[.!?](?!['\"]?\\s|$)[^.!?]*)*[.!?]?['\"]?(?=\\s|$)";
 
@@ -818,13 +812,6 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     public String formatText(String content) {
-        /*
-         * Replace multiple new line characters with a single new line
-         * character.
-         */
-        content = content.replaceAll(PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX,
-                BLOCK_PARAGRAPH_NEWLINE);
-
         return WordUtils.capitalizeFully(content);
     }
 
@@ -1011,27 +998,24 @@ public class MessageTransformer implements IContextStateProcessor {
          */
         ObjectFactory objectFactory = ssmlDocument.getFactory();
 
-        String[] paragraphs = content.split(BLOCK_PARAGRAPH_NEWLINE);
-        for (String paragraph : paragraphs) {
-            paragraph = paragraph.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                    " ").trim();
+        final String cleanContent = content.replaceAll(
+                PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ").trim();
 
-            /*
-             * Analyze one paragraph worth of text at a time.
-             */
+        List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+        transformationCandidates.add(new RulingFreeText(cleanContent));
 
-            List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-            transformationCandidates.add(new RulingFreeText(paragraph));
-
-            if (textTransformations.isEmpty() == false) {
-                transformationCandidates = this.setTransformations(
-                        textTransformations, transformationCandidates);
-            }
-
-            Paragraph ssmlParagraph = this.applyTransformations(objectFactory,
-                    transformationCandidates, paragraph);
-            ssmlProsody.getContent().add(ssmlParagraph);
+        if (textTransformations.isEmpty() == false) {
+            transformationCandidates = this.setTransformations(
+                    textTransformations, transformationCandidates);
         }
+
+        List<Sentence> sentences = this
+                .applyTransformations(
+                        objectFactory,
+                        transformationCandidates,
+                        content.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ")
+                                .trim());
+        ssmlProsody.getContent().addAll(sentences);
 
         ssmlDocument.getRootTag().getContent().add(ssmlProsody);
 
@@ -1050,7 +1034,7 @@ public class MessageTransformer implements IContextStateProcessor {
      *            the formatted prosody speech rate.
      * @throws SSMLConversionException
      */
-    private Paragraph applyTransformations(ObjectFactory objectFactory,
+    private List<Sentence> applyTransformations(ObjectFactory objectFactory,
             List<ITextRuling> transformationCandidates,
             final String originalMessage) throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
@@ -1059,11 +1043,7 @@ public class MessageTransformer implements IContextStateProcessor {
         while (sentenceMatcher.find()) {
             approximateSentences.add(sentenceMatcher.group(0));
         }
-
-        /*
-         * All sentences that are discovered will be part of the same paragraph.
-         */
-        Paragraph ssmlParagraph = objectFactory.createParagraph();
+        List<Sentence> sentences = new ArrayList<>(approximateSentences.size());
 
         // Start the first sentence.
         Sentence ssmlSentence = objectFactory.createSentence();
@@ -1102,7 +1082,7 @@ public class MessageTransformer implements IContextStateProcessor {
                 boolean periodRemains = ".".equals(currentSentence.trim());
                 if ((periodRemains || currentSentence.isEmpty())
                         && (approximateSentences.isEmpty() == false)) {
-                    ssmlParagraph.getContent().add(ssmlSentence);
+                    sentences.add(ssmlSentence);
                     ssmlSentence = objectFactory.createSentence();
                     currentSentence = approximateSentences.remove(0);
                 }
@@ -1113,10 +1093,10 @@ public class MessageTransformer implements IContextStateProcessor {
          * Add the final sentence to the SSML document.
          */
         if (ssmlSentence.getContent().isEmpty() == false) {
-            ssmlParagraph.getContent().add(ssmlSentence);
+            sentences.add(ssmlSentence);
         }
 
-        return ssmlParagraph;
+        return sentences;
     }
 
     /**
