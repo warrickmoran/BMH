@@ -74,6 +74,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 13, 2015  4429     rferrel     Implement {@link ITraceable}.
  * Aug 10, 2015  4723     bkowal      Added {@link #GET_EXPIRED_VALIDATED_NON_DELIVERED_MSGS_QUERY}.
+ * Dec 03, 2015  5158     bkowal      Added {@link TransmissionStatus#NOLANG}.
  * </pre>
  * 
  * @author bsteffen
@@ -116,6 +117,8 @@ public class ValidatedMessage implements ITraceable {
         DUPLICATE,
         /** The message contents contains unnacceptable words. */
         UNACCEPTABLE,
+        /** The message is associated with an unsupported language. */
+        NOLANG,
         /** Validation did not complete successfully */
         ERROR;
     }

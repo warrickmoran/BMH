@@ -78,6 +78,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -155,6 +156,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 29, 2015 5065       bkowal      Update paragraph cleanup to maintain
  *                                     message boundaries.
  * Dec 01, 2015 5157       bkowal      Eliminate the use of SSML paragraphs.
+ * Dec 03, 2015 5158       bkowal      Ensure data written by BMH correctly reflects when the language
+ *                                     in the message header overrides the message type language.
  * </pre>
  * 
  * @author bkowal
@@ -203,13 +206,16 @@ public class MessageTransformer implements IContextStateProcessor {
     /* Used to fulfill the message logging requirement. */
     private final IMessageLogger messageLogger;
 
+    private final TtsVoiceDao ttsVoiceDao;
+
     /**
      * Constructor
      */
     public MessageTransformer(final TimeMessagesGenerator tmGenerator,
-            final IMessageLogger messageLogger) {
+            final IMessageLogger messageLogger, final TtsVoiceDao ttsVoiceDao) {
         this.tmGenerator = tmGenerator;
         this.messageLogger = messageLogger;
+        this.ttsVoiceDao = ttsVoiceDao;
         statusHandler.info("Message Transformer Ready ...");
     }
 
@@ -611,6 +617,38 @@ public class MessageTransformer implements IContextStateProcessor {
          * Handle the static message type special case.
          */
         TtsVoice fragmentVoice = messageType.getVoice();
+        
+        /*
+         * Verify that the {@link TtsVoice} matches the {@link Language}
+         * specified in the {@link InputMessage} header. Adjust if necessary.
+         */
+        if (fragmentVoice.getLanguage() != inputMessage.getLanguage()) {
+            /*
+             * This information can optionally be cached provided that the
+             * required listeners are setup to listen to changes to the
+             * configured {@link TtsVoice}s.
+             */
+            fragmentVoice = this.ttsVoiceDao
+                    .getDefaultVoiceForLanguage(inputMessage.getLanguage());
+            if (fragmentVoice == null) {
+                /*
+                 * Extremely unlikely due to parsing validation.
+                 */
+                throw new BMHConfigurationException(
+                        "Unable to find the default voice for language: "
+                                + inputMessage.getLanguage().name() + "!");
+            }
+
+            StringBuilder sb = new StringBuilder(" Voice: ");
+            sb.append(fragmentVoice.toString())
+                    .append(" will be used to synthesize message: ")
+                    .append(traceable.getTraceId());
+            sb.append(" instead of the voice associated with message type: ")
+                    .append(inputMessage.getAfosid()).append(".");
+
+            statusHandler.info(sb.toString());
+        }        
+        
         TransmitterLanguage transmitterLanguage = null;
         StaticMessageType staticMessageType = null;
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
