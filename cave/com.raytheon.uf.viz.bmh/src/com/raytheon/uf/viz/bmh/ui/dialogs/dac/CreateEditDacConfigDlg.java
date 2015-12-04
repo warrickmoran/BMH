@@ -80,6 +80,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 12, 2015  5113      bkowal       Support executing DAC configuration changes.
  * Nov 23, 2015  5113      bkowal       Display a common status indicating whether or not a {@link Dac}
  *                                      has sync. Allow the user to sync a {@link Dac}.
+ * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
+ *                                      DACs using the generated configuration.                                     
  * </pre>
  * 
  * @author lvenable
@@ -254,6 +256,13 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
+        
+        if (dialogType == DialogType.CREATE) {
+            /*
+             * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+             */
+            this.createSaveBtn.forceFocus();
+        }
     }
 
     @Override
