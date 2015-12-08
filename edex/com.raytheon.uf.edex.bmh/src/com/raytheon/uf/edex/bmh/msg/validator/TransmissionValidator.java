@@ -38,6 +38,7 @@ import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -56,6 +57,8 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jul 17, 2014  3406     mpduff      Area object changed.
  * Jul 17, 2014  3175     rjpeter     Updated transmitter group lookup.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
+ * Dec 03, 2015  5158     bkowal      Validate that the message is associated with a
+ *                                    recognized {@link Language}.
  * </pre>
  * 
  * @author bsteffen
@@ -75,6 +78,8 @@ public class TransmissionValidator {
     private final ZoneDao zoneDao = new ZoneDao();
 
     private final ProgramDao programDao = new ProgramDao();
+
+    private final TtsVoiceDao ttsVoiceDao = new TtsVoiceDao();
 
     public TransmissionValidator(final IMessageLogger messageLogger) {
         inputMessageDao = new InputMessageDao(messageLogger);
@@ -98,8 +103,31 @@ public class TransmissionValidator {
                     if (groups.isEmpty()) {
                         message.setTransmissionStatus(TransmissionStatus.UNASSIGNED);
                     } else {
-                        message.setTransmitterGroups(groups);
-                        message.setTransmissionStatus(TransmissionStatus.ACCEPTED);
+                        boolean languageNotSupported = false;
+                        try {
+                            /*
+                             * This information can optionally be cached
+                             * provided that the required listeners are setup to
+                             * listen to changes to the configured {@link
+                             * TtsVoice}s.
+                             */
+                            languageNotSupported = (this.ttsVoiceDao
+                                    .getDefaultVoiceForLanguage(input
+                                            .getLanguage()) == null);
+                        } catch (IllegalStateException e) {
+                            /*
+                             * An unlikely case. The {@link Language} is
+                             * supported. But, it is not possible to determine
+                             * the default voice because more than one exists in
+                             * the database for the specified {@link Language}.
+                             */
+                        }
+                        if (languageNotSupported) {
+                            message.setTransmissionStatus(TransmissionStatus.NOLANG);
+                        } else {
+                            message.setTransmitterGroups(groups);
+                            message.setTransmissionStatus(TransmissionStatus.ACCEPTED);
+                        }
                     }
                 }
             }
