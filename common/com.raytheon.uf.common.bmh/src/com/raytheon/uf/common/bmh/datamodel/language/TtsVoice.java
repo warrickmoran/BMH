@@ -28,6 +28,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.ForeignKey;
 
@@ -54,6 +55,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 13, 2015 3809       bkowal      Added {@link #GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY}.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Dec 03, 2015 5158       bkowal      Added {@link #GET_DEFAULT_VOICE_FOR_LANGUAGE}.
+ * Dec 08, 2015 5159       bkowal      Added {@link #GET_VOICE_FOR_DICTIONARY}.
  * </pre>
  * 
  * @author rjpeter
@@ -62,7 +64,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @NamedQueries({
         @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY),
         @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, query = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY),
-        @NamedQuery(name = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE, query = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE_QUERY) })
+        @NamedQuery(name = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE, query = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE_QUERY),
+        @NamedQuery(name = TtsVoice.GET_VOICE_FOR_DICTIONARY, query = TtsVoice.GET_VOICE_FOR_DICTIONARY_QUERY) })
 @Entity
 @Table(name = "tts_voice")
 @DynamicSerialize
@@ -90,6 +93,10 @@ public class TtsVoice {
 
     protected static final String GET_DEFAULT_VOICE_FOR_LANGUAGE_QUERY = "SELECT v FROM TtsVoice v WHERE v.language = :language";
 
+    public static final String GET_VOICE_FOR_DICTIONARY = "getVoiceForDictionary";
+
+    protected static final String GET_VOICE_FOR_DICTIONARY_QUERY = "SELECT v from TtsVoice v WHERE v.dictionary = :dictionary";
+
     @Id
     @Column
     @DynamicSerializeElement
@@ -116,6 +123,15 @@ public class TtsVoice {
     @ForeignKey(name = "fk_tts_voice_to_dict")
     @DynamicSerializeElement
     private Dictionary dictionary;
+
+    /**
+     * {@link #removedDictionary} is used to ensure that static messages are
+     * updated correctly in response to {@link TtsVoice}-level
+     * {@link Dictionary} changes.
+     */
+    @Transient
+    @DynamicSerializeElement
+    private Dictionary removedDictionary;
 
     public int getVoiceNumber() {
         return voiceNumber;
@@ -162,6 +178,21 @@ public class TtsVoice {
      */
     public void setDictionary(Dictionary dictionary) {
         this.dictionary = dictionary;
+    }
+
+    /**
+     * @return the removedDictionary
+     */
+    public Dictionary getRemovedDictionary() {
+        return removedDictionary;
+    }
+
+    /**
+     * @param removedDictionary
+     *            the removedDictionary to set
+     */
+    public void setRemovedDictionary(Dictionary removedDictionary) {
+        this.removedDictionary = removedDictionary;
     }
 
     @Override

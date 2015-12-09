@@ -46,13 +46,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 13, 2015 4213       bkowal      Added {@link #staticAfosIds}.
  * Mar 31, 2015 4213       bkowal      Fix NPE when no static message types exist.
  * May 28, 2015 4429       rjpeter     Update for ITraceable
+ * Dec 03, 2015 5159       bkowal      Extend {@link AbstractDictionaryWordChangeNotification}.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class TransmitterLanguageConfigNotification extends ConfigNotification {
+public class TransmitterLanguageConfigNotification extends
+        AbstractDictionaryWordChangeNotification {
 
     @DynamicSerializeElement
     private TransmitterLanguagePK key;

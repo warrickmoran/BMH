@@ -25,7 +25,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Notification that is used when the National {@link Dictionary} is altered.
+ * Notification that is used when a {@link Language}-specific {@link Dictionary}
+ * is altered. A {@link Language}-specific {@link Dictionary} is defined as a
+ * {@link Dictionary} that is either national or that has been assigned to a
+ * specific {@link TtsVoice}.
  * 
  * <pre>
  * 
@@ -37,29 +40,35 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 15, 2014 3618       bkowal      Added {@link #language}.
  * Dec 16, 2014 3618       bkowal      Added {@link #NationalDictionaryConfigNotification()}.
  * May 28, 2015 4429       rjpeter     Update for ITraceable
+ * Dec 03, 2015 5159       bkowal      Extend {@link AbstractDictionaryWordChangeNotification}.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 @DynamicSerialize
-public class NationalDictionaryConfigNotification extends ConfigNotification {
+public class LanguageDictionaryConfigNotification extends
+        AbstractDictionaryWordChangeNotification {
 
     @DynamicSerializeElement
     private Language language;
 
+    @DynamicSerializeElement
+    private boolean national;
+
     /*
      * Default constructor for dynamicserialize.
      */
-    public NationalDictionaryConfigNotification() {
+    public LanguageDictionaryConfigNotification() {
     }
 
     /**
      * Constructor
      */
-    public NationalDictionaryConfigNotification(ConfigChangeType type,
-            ITraceable traceable) {
+    public LanguageDictionaryConfigNotification(ConfigChangeType type,
+            ITraceable traceable, boolean national) {
         super(type, traceable);
+        this.national = national;
     }
 
     /**
@@ -75,5 +84,19 @@ public class NationalDictionaryConfigNotification extends ConfigNotification {
      */
     public void setLanguage(Language language) {
         this.language = language;
+    }
+
+    /**
+     * @return the national
+     */
+    public boolean isNational() {
+        return national;
+    }
+
+    /**
+     * @param national the national to set
+     */
+    public void setNational(boolean national) {
+        this.national = national;
     }
 }

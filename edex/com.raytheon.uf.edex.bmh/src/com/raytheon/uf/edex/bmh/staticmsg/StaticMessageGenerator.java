@@ -48,9 +48,11 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.notify.config.AbstractDictionaryWordChangeNotification;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageActivationNotification;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.StaticMsgTypeConfigNotification;
@@ -141,6 +143,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jun 11, 2015 4490       bkowal      {@link AlignmentTestGenerator} is now initialized by Spring.
  * Oct 06, 2015 4904       bkowal      Check the volume when determining if a static message will
  *                                     need to be regenerated.
+ * Dec 03, 2015 5159       bkowal      Messages will now be regenerated when dictionary rules apply
+ *                                     or no longer apply.
  * </pre>
  * 
  * @author bkowal
@@ -257,12 +261,13 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 generatedMsgs.addAll(msgs);
             }
             return generatedMsgs;
-        } else if (notificationObject instanceof ResetNotification) {
+        } else if (notificationObject instanceof ResetNotification
+                || notificationObject instanceof LanguageDictionaryConfigNotification) {
             List<TraceableId> generatedMsgs = new ArrayList<>();
             for (TransmitterGroup group : this.transmitterGroupDao
                     .getEnabledTransmitterGroups()) {
                 List<TraceableId> msgs = this.generateStaticMessages(group,
-                        (ResetNotification) notificationObject);
+                        (ITraceable) notificationObject);
                 if (msgs == null || msgs.isEmpty()) {
                     continue;
                 }
@@ -442,7 +447,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 || notificationObject instanceof TransmitterGroupConfigNotification
                 || notificationObject instanceof ResetNotification
                 || notificationObject instanceof StaticMsgTypeConfigNotification
-                || notificationObject instanceof SuiteConfigNotification || notificationObject instanceof ProgramConfigNotification) == false;
+                || notificationObject instanceof SuiteConfigNotification
+                || notificationObject instanceof ProgramConfigNotification || notificationObject instanceof LanguageDictionaryConfigNotification) == false;
     }
 
     private List<TraceableId> generateStaticMessage(
@@ -787,7 +793,29 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 .equals(existingMsg.getInputMessage().getActive()) == false;
         existingMsg.getInputMessage().setActive(Boolean.TRUE);
 
+        /*
+         * In addition to message text, if the potential regeneration was
+         * triggered by a dictionary change, we will also need to determine if
+         * the message contains any of the dictionary words that were altered.
+         */
+        boolean containsUpdatedDictionaryWord = false;
+        if (traceable instanceof AbstractDictionaryWordChangeNotification) {
+            AbstractDictionaryWordChangeNotification updatedWordsNotification = (AbstractDictionaryWordChangeNotification) traceable;
+            if (CollectionUtils.isEmpty(updatedWordsNotification
+                    .getUpdatedWords()) == false) {
+                String compareContent = text.toLowerCase();
+                for (String wordToFind : updatedWordsNotification
+                        .getUpdatedWords()) {
+                    if (compareContent.contains(wordToFind.toLowerCase())) {
+                        containsUpdatedDictionaryWord = true;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (text.equals(existingMsg.getInputMessage().getContent()) == false
+                || containsUpdatedDictionaryWord
                 || equivalentPeriodicity == false
                 || oneSpeechRateMatch == false || oneVolumeMatch == false) {
             /*

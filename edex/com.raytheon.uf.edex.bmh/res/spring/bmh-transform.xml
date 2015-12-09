@@ -65,7 +65,7 @@
 				<bean ref="serializationUtil" method="transformFromThrift" />
 				<filter>
 					<simple>${body} is
-						"com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification"
+						"com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification"
 					</simple>
 					<bean ref="messageTransformer" method="updateNationalDictionary" />
 				</filter>

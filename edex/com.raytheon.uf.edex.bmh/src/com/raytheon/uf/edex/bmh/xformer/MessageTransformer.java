@@ -59,7 +59,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.schemas.ssml.ObjectFactory;
 import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
@@ -157,6 +157,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     message boundaries.
  * Dec 01, 2015 5157       bkowal      Eliminate the use of SSML paragraphs.
  * Dec 03, 2015 5158       bkowal      Ensure data written by BMH correctly reflects when the language
+ * Dec 03, 2015 5159       bkowal      Log when a {@link TransmitterLanguage} is removed from cache
+ *                                     in response to an update.
  *                                     in the message header overrides the message type language.
  * </pre>
  * 
@@ -200,6 +202,7 @@ public class MessageTransformer implements IContextStateProcessor {
     private final ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
             Language.values().length, 1.0f);
 
+    /* Cached transmitter languages */
     private final Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
             .create();
 
@@ -1144,7 +1147,14 @@ public class MessageTransformer implements IContextStateProcessor {
      *            a notification of the {@link Dictionary} change
      */
     public void updateNationalDictionary(
-            NationalDictionaryConfigNotification notification) {
+            LanguageDictionaryConfigNotification notification) {
+        if (notification.isNational() == false) {
+            /*
+             * Just a voice-level dictionary.
+             */
+            return;
+        }
+
         if (notification.getType() == ConfigChangeType.Update) {
             this.retrieveNationalDictionaryForLanguage(notification
                     .getLanguage());
@@ -1171,9 +1181,16 @@ public class MessageTransformer implements IContextStateProcessor {
     public void updateTransmitterDictionary(
             TransmitterLanguageConfigNotification notification) {
         synchronized (this.transmitterLanguageTableCache) {
-            this.transmitterLanguageTableCache
-                    .remove(notification.getKey().getTransmitterGroup(),
-                            notification.getKey().getLanguage());
+            TransmitterLanguage tl = this.transmitterLanguageTableCache.remove(
+                    notification.getKey().getTransmitterGroup(), notification
+                            .getKey().getLanguage());
+            if (tl != null) {
+                statusHandler.info("Removed Language: "
+                        + notification.getKey().getLanguage()
+                        + " for Transmitter Group: "
+                        + notification.getKey().getTransmitterGroup().getName()
+                        + " from the Transmitter Language cache.");
+            }
         }
     }
 
@@ -1211,7 +1228,7 @@ public class MessageTransformer implements IContextStateProcessor {
      * Retrieves the national {@link Dictionary} associated with the specified
      * {@link Language}. Used to retrieve an updated national {@link Dictionary}
      * for a specific {@link Language} whenever a
-     * {@link NationalDictionaryConfigNotification} is received.
+     * {@link LanguageDictionaryConfigNotification} is received.
      * 
      * @param language
      *            the specified {@link Language}.

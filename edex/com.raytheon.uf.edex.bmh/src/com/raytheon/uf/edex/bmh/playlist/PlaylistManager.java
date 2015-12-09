@@ -801,7 +801,7 @@ public class PlaylistManager implements IContextStateProcessor {
             StringBuilder sb = new StringBuilder(msgHeader);
             sb.append("Setting transmission status to ").append(
                     TransmissionStatus.EXPIRED.name());
-            sb.append("for non-broadcast, expired message: ")
+            sb.append(" for non-broadcast, expired message: ")
                     .append(validatedMsg.getId()).append(".");
             statusHandler.info(sb.toString());
         }
