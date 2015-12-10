@@ -254,4 +254,12 @@
     		</doTry>
     	</route>
     </camelContext>
+    
+    <bean id="importLegacyDictionaryHandler"
+    	class="com.raytheon.uf.edex.bmh.legacy.handler.ImportLegacyDictionaryHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.legacy.ImportLegacyDictionaryRequest" />
+        <constructor-arg ref="importLegacyDictionaryHandler" />
+    </bean>
 </beans>
