@@ -3,7 +3,7 @@
 # neospeech_tts  This shell script takes care of starting and stopping
 #                the NeoSpeech TTS Server.
 #
-# chkconfig: - 99 10
+# chkconfig: 235 99 10
 # description: BMH NeoSpeech TTS 
 # processname: ttssrv
 ##############################################################################

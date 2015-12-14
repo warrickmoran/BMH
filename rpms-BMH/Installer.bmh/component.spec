@@ -64,7 +64,19 @@ fi
 
 %pre
 %post
+# register the service script; multiple add class will not fail
+/sbin/chkconfig --add comms_manager
+
 %preun
+if [ "${1}" = "1" ]; then
+   # still a package installed indicating upgrade; do nothing
+   exit 0
+fi
+if [ -f /etc/init.d/comms_manager ]; then
+   # unregister the service script
+   /sbin/chkconfig --del comms_manager
+fi
+
 %postun
 
 %clean

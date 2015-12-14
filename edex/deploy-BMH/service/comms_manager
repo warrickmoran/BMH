@@ -3,7 +3,7 @@
 # comms_manager  This shell script takes care of starting and stopping
 #                the BMH Comms Manager instance.
 #
-# chkconfig: - 99 10
+# chkconfig: 235 99 10
 # description: BMH Comms Manager 
 # processname: commsmanager.sh
 # config: /awips2/bmh/conf/comms.xml
