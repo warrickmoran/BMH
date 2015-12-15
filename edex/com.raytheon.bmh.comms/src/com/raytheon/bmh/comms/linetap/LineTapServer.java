@@ -34,11 +34,10 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.bmh.comms.LineTapRequest;
 import com.raytheon.uf.common.bmh.dac.DacReceiveThread;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
 
@@ -57,12 +56,13 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Apr 14, 2015  4394     bkowal      Eliminated the need to iteratively search for
  *                                    dac configuration information.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class LineTapServer extends AbstractServerThread {
+public class LineTapServer extends AbstractServer {
 
     private static final Logger logger = LoggerFactory
             .getLogger(LineTapServer.class);
@@ -73,7 +73,7 @@ public class LineTapServer extends AbstractServerThread {
 
     public LineTapServer(CommsManager manager, CommsConfig config)
             throws IOException {
-        super(manager.getSocketListener(), 2);
+        super(manager.getSocketListener());
         reconfigure(config);
     }
 
@@ -94,25 +94,32 @@ public class LineTapServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnectionInternal(Socket socket, Object obj)
-            throws SerializationException, IOException {
+    public boolean handleConnection(Socket socket, Object obj) {
         if (!(obj instanceof LineTapRequest)) {
             logger.warn("Received unexpected message with type: "
                     + obj.getClass().getName() + ". Disconnecting ...");
-            socket.close();
-            return;
+            return true;
         }
 
         LineTapRequest message = (LineTapRequest) obj;
-        DacReceiveThread receiver = getReceiver(message);
-        if (receiver != null) {
-            LineTapCommunicator comms = new LineTapCommunicator(this,
-                    message.getTransmitterGroup(), message.getChannel(), socket);
-            receiver.subscribe(comms);
-            comms.start();
-        } else {
-            socket.close();
+        DacReceiveThread receiver = null;
+        try {
+            receiver = getReceiver(message);
+        } catch (UnknownHostException | SocketException e) {
+            logger.error("Error occurred looking address for request {}",
+                    message, e);
         }
+
+        if (receiver == null) {
+            // no receiver found
+            return true;
+        }
+
+        LineTapCommunicator comms = new LineTapCommunicator(this,
+                message.getTransmitterGroup(), message.getChannel(), socket);
+        receiver.subscribe(comms);
+        comms.start();
+        return false;
     }
 
     private DacReceiveThread getReceiver(LineTapRequest request)

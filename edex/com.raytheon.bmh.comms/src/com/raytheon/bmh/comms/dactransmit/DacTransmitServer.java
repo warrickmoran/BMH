@@ -36,11 +36,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
@@ -81,12 +80,13 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class DacTransmitServer extends AbstractServerThread {
+public class DacTransmitServer extends AbstractServer {
 
     private static final Logger logger = LoggerFactory
             .getLogger(DacTransmitServer.class);
@@ -116,7 +116,7 @@ public class DacTransmitServer extends AbstractServerThread {
      */
     public DacTransmitServer(CommsManager manager, CommsConfig config)
             throws IOException {
-        super(manager.getSocketListener(), 4);
+        super(manager.getSocketListener());
         int mapSize = 0;
         if (config.getDacs() != null) {
             mapSize = config.getDacs().size() * 4;
@@ -360,21 +360,23 @@ public class DacTransmitServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnectionInternal(Socket socket,
-            Object registrationMessage) throws SerializationException,
-            IOException {
+    public boolean handleConnection(Socket socket, Object registrationMessage) {
         if (registrationMessage instanceof DacTransmitRegister) {
             this.handleDacTransmitConnection(
                     (DacTransmitRegister) registrationMessage, socket);
-        } else if (registrationMessage instanceof DacMaintenanceRegister) {
+            return false;
+        }
+
+        if (registrationMessage instanceof DacMaintenanceRegister) {
             this.handleDacMaintenanceConnection(
                     (DacMaintenanceRegister) registrationMessage, socket);
-        } else {
-            logger.warn("Received unexpected message with type: "
-                    + registrationMessage.getClass().getName()
-                    + " from an unknown entity. Disconnecting ...");
-            socket.close();
+            return false;
         }
+
+        logger.warn("Received unexpected message with type: "
+                + registrationMessage.getClass().getName()
+                + " from an unknown entity. Disconnecting ...");
+        return true;
     }
 
     private void handleDacTransmitConnection(DacTransmitRegister message,

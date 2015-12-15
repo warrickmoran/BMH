@@ -39,9 +39,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
@@ -78,12 +77,13 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  *                                    if the transmitter ever stops running on the remote host.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class ClusterServer extends AbstractServerThread {
+public class ClusterServer extends AbstractServer {
 
     /**
      * When load balancing, after a remote comms manager has disconnect from a
@@ -131,7 +131,7 @@ public class ClusterServer extends AbstractServerThread {
      */
     public ClusterServer(CommsManager manager, CommsConfig config)
             throws IOException {
-        super(manager.getSocketListener(), 0);
+        super(manager.getSocketListener());
         this.manager = manager;
         if (config.getClusterHosts() == null) {
             logger.warn("No cluster members in config, continuing without clustering.");
@@ -282,31 +282,30 @@ public class ClusterServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnectionInternal(Socket socket, Object obj)
-            throws SerializationException, IOException {
+    public boolean handleConnection(Socket socket, Object obj) {
         if (!(obj instanceof String)) {
             logger.warn("Received unexpected message with type: "
                     + obj.getClass().getName() + ". Disconnecting ...");
-            socket.close();
-            return;
+            return true;
         }
 
         // first message from socket is to be its ip from comms.xml
         String id = (String) obj;
         InetAddress address = socket.getInetAddress();
 
-        if (configuredAddresses.contains(id)) {
-            logger.info("Received new cluster request from {}", id);
-            ClusterCommunicator communicator = new ClusterCommunicator(manager,
-                    this, socket, id);
-            addCommunicator(communicator);
-        } else {
+        if (!configuredAddresses.contains(id)) {
             // reject socket, not from known host
             logger.warn(
                     "Cluster request from unknown host, rejecting request from {}",
                     address.getHostName());
-            socket.close();
+            return true;
         }
+
+        logger.info("Received new cluster request from {}", id);
+        ClusterCommunicator communicator = new ClusterCommunicator(manager,
+                this, socket, id);
+        addCommunicator(communicator);
+        return false;
     }
 
     protected void addCommunicator(ClusterCommunicator communicator) {

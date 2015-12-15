@@ -142,6 +142,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
@@ -375,10 +376,6 @@ public class CommsManager {
                     "Cannot monitor config file, config changes will not take affect.",
                     e);
         }
-        transmitServer.start();
-        clusterServer.start();
-        lineTapServer.start();
-        broadcastStreamServer.start();
         socketListener.start();
         if (jms != null) {
             jms.connect();
@@ -395,8 +392,7 @@ public class CommsManager {
         } catch (InterruptedException e1) {
             /* Just start processing right away. */
         }
-        while (transmitServer.isAlive() && lineTapServer.isAlive()
-                && clusterServer.isAlive() && broadcastStreamServer.isAlive()) {
+        while (socketListener.isAlive()) {
             sendStatus();
             int sleeptime = 0;
             clusterServer.attempClusterConnections(config);
@@ -1056,10 +1052,6 @@ public class CommsManager {
         jms.close();
         try {
             socketListener.join();
-            transmitServer.join();
-            broadcastStreamServer.join();
-            clusterServer.join();
-            transmitServer.join();
         } catch (InterruptedException e) {
             logger.error("Unexpected interruption while shutting down.", e);
         }
