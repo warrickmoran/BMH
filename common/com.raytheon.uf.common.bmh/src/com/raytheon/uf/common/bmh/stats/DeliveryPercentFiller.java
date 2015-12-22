@@ -25,7 +25,8 @@ import java.util.Map;
 import com.raytheon.uf.common.stats.StatisticsEvent;
 
 /**
- * Placeholder statistic record so that the statistic will be selectable in CAVE.
+ * Placeholder statistic record so that the statistic will be selectable in
+ * CAVE.
  * 
  * <pre>
  * 
@@ -34,7 +35,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 29, 2015 4686       bkowal      Initial creation
- * 
+ * Dec 21, 2015 5218       rjpeter     Added toString
  * </pre>
  * 
  * @author bkowal
@@ -104,4 +105,12 @@ public class DeliveryPercentFiller extends StatisticsEvent {
     public void setPctSuccess(double pctSuccess) {
         this.pctSuccess = pctSuccess;
     }
+
+    @Override
+    public String toString() {
+        return new StringBuilder("DeliveryPercentFiller [summary=")
+                .append(summary).append(", pctSuccess=").append(pctSuccess)
+                .append("]").toString();
+    }
+
 }

@@ -19,9 +19,11 @@
  **/
 package com.raytheon.bmh.comms.jms;
 
-import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 
 import javax.jms.BytesMessage;
@@ -68,7 +70,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Apr 15, 2015  4397     bkowal      Added {@link #bmhStatisticProducer}.
  * Apr 20, 2015  4407     bkowal      Cleanup of {@link PlaylistUpdateNotification}.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- * 
+ * Dec 21, 2015  5218     rjpeter     Added SendThread.
  * </pre>
  * 
  * @author bsteffen
@@ -79,65 +81,66 @@ public class JmsCommunicator extends JmsNotificationManager {
     private static final Logger logger = LoggerFactory
             .getLogger(JmsCommunicator.class);
 
-    private static final int BMH_STATUS_QUEUE_SIZE = 100;
+    private static final int QUEUE_SIZE = 200;
 
-    private Set<PlaylistNotificationObserver> playlistObservers = new HashSet<>();
+    private static final int RETRY_LIMIT = 5;
+
+    private final Set<PlaylistNotificationObserver> playlistObservers = new HashSet<>();
 
     private final boolean operational;
 
-    private final ProducerWrapper bmhStatusProducer;
+    private final String bmhStatusTopic;
 
-    private final ProducerWrapper bmhStatisticProducer;
+    private final String bmhStatisticTopic;
 
-    private final ProducerWrapper alertProducer;
+    private final String alertTopic;
+
+    private final SendThread sendThread;
 
     public JmsCommunicator(CommsConfig config, boolean operational)
             throws URLSyntaxException {
         super(new AMQConnectionFactory(config.getJmsConnection()));
         this.operational = operational;
-        String topic = "BMH.Status";
-        if (!operational) {
-            topic = "BMH.Practice.Status";
-        }
-        this.bmhStatusProducer = new ProducerWrapper(topic,
-                BMH_STATUS_QUEUE_SIZE);
-
         if (operational) {
-            this.bmhStatisticProducer = new ProducerWrapper("BMH.Statistic",
-                    BMH_STATUS_QUEUE_SIZE);
+            bmhStatusTopic = "BMH.Status";
+            bmhStatisticTopic = "BMH.Statistic";
         } else {
-            this.bmhStatisticProducer = null;
+            bmhStatusTopic = "BMH.Practice.Status";
+            bmhStatisticTopic = null;
         }
-
-        this.alertProducer = new ProducerWrapper("edex.alerts.msg");
+        alertTopic = "edex.alerts.msg";
+        sendThread = new SendThread(QUEUE_SIZE);
+        /* Don't want a hung thread to hold up jvm shutdown */
+        sendThread.setDaemon(true);
+        sendThread.start();
         JmsStatusMessageAppender.setJmsCommunicator(this);
     }
 
     public void sendBmhStatus(Object notification) {
-        bmhStatusProducer.enqueue(notification);
-        bmhStatusProducer.sendQueued();
+        sendThread.enqueue(bmhStatusTopic, notification);
     }
 
     public void sendBmhStat(StatisticsEvent event) {
         if (this.operational == false) {
             return;
         }
-        bmhStatisticProducer.enqueue(event);
-        bmhStatisticProducer.sendQueued();
+        sendThread.enqueue(bmhStatisticTopic, event);
     }
 
-    public void sendStatusMessage(StatusMessage message) throws JMSException,
-            SerializationException {
-        alertProducer.send(message);
+    public void sendStatusMessage(StatusMessage message) {
+        sendThread.enqueue(alertTopic, message);
     }
 
     @Override
     public void connect(boolean notifyError) {
         super.connect(notifyError);
-        bmhStatusProducer.sendQueued();
-        synchronized (playlistObservers) {
-            for (PlaylistNotificationObserver observer : playlistObservers) {
-                observer.connected();
+
+        if (connected) {
+            sendThread.wake();
+            synchronized (playlistObservers) {
+                for (PlaylistNotificationObserver observer : playlistObservers) {
+                    observer.connected();
+                }
             }
         }
     }
@@ -149,14 +152,15 @@ public class JmsCommunicator extends JmsNotificationManager {
                 observer.disconnected();
             }
         }
-        disconnectProducers();
+
+        sendThread.disconnect();
         super.disconnect(notifyError);
     }
 
     @Override
     public void onException(JMSException e) {
         super.onException(e);
-        disconnectProducers();
+        sendThread.disconnect();
     }
 
     public void listenForPlaylistChanges(String group, DacTransmitServer server) {
@@ -187,15 +191,29 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     }
 
-    protected synchronized void disconnectProducers() {
-        alertProducer.disconnect();
-        bmhStatusProducer.disconnect();
-    }
-
     @Override
     public void close() {
         JmsStatusMessageAppender.setJmsCommunicator(null);
         super.close();
+
+        // any unsent message will be discarded
+        sendThread.continueRunning = false;
+
+        // this will interrupt unsent.take() as well as sleep/wait
+        sendThread.interrupt();
+    }
+
+    private class MessageWrapper {
+        private final String topicName;
+
+        private final byte[] data;
+
+        private int attempts = 0;
+
+        public MessageWrapper(String topicName, byte[] data) {
+            this.topicName = topicName;
+            this.data = data;
+        }
     }
 
     /**
@@ -204,92 +222,140 @@ public class JmsCommunicator extends JmsNotificationManager {
      * of messages that will be sent later if there is a temporary
      * communications problem.
      */
-    private class ProducerWrapper {
-
-        private final String topicName;
-
-        private final Deque<Object> unsent;
+    private class SendThread extends Thread {
+        private final BlockingDeque<MessageWrapper> unsent;
 
         private Session session;
 
-        private MessageProducer producer;
+        private boolean continueRunning = true;
 
-        public ProducerWrapper(String topicName) {
-            this(topicName, 1);
-        }
+        private final Map<String, MessageProducer> producers = new HashMap<String, MessageProducer>();
 
-        public ProducerWrapper(String topicName, int queueSize) {
-            this.topicName = topicName;
+        private final Object connectionLock = new Object();
+
+        public SendThread(int queueSize) {
+            super("JmsMessageSender");
             unsent = new LinkedBlockingDeque<>(queueSize);
         }
 
-        public synchronized void send(Object message) throws JMSException,
-                SerializationException {
-            if (session == null) {
-                session = createSession();
-            }
-            if (session == null) {
-                return;
-            }
+        public void enqueue(String topic, Object obj) {
             try {
-                BytesMessage m = session.createBytesMessage();
-                m.setJMSDeliveryMode(DeliveryMode.PERSISTENT);
-                byte[] bytes = SerializationUtil.transformToThrift(message);
-                m.writeBytes(bytes);
-                if (producer == null) {
-                    Topic t = session.createTopic(topicName);
-                    producer = session.createProducer(t);
+                MessageWrapper message = new MessageWrapper(topic,
+                        SerializationUtil.transformToThrift(obj));
+
+                /* If too many messages are queued up drop the oldest message. */
+                while (!unsent.offerLast(message)) {
+                    unsent.pollFirst();
                 }
-                producer.send(m);
-            } catch (JMSException e) {
-                disconnect();
-                throw e;
+            } catch (SerializationException e) {
+                logger.error("Error serializing message {} to topic {}", obj,
+                        topic, e);
             }
         }
 
-        public void enqueue(Object message) {
-            /* If too many messages are queued up drop the oldest message. */
-            while (!unsent.offerLast(message)) {
-                unsent.pollFirst();
-            }
-        }
+        @Override
+        public void run() {
+            while (continueRunning) {
+                boolean messageProcessed = false;
+                MessageWrapper message = null;
 
-        public synchronized void sendQueued() {
-            Object message = unsent.pollFirst();
-            while (message != null) {
                 try {
-                    send(message);
+                    message = unsent.take();
+                    MessageProducer producer = null;
+                    BytesMessage m = null;
+
+                    synchronized (connectionLock) {
+                        if (session == null) {
+                            session = createSession();
+                        }
+
+                        if (session == null) {
+                            connectionLock.wait(10000);
+                            continue;
+                        }
+
+                        message.attempts++;
+                        producer = producers.get(message.topicName);
+
+                        if (producer == null) {
+                            Topic t = session.createTopic(message.topicName);
+                            producer = session.createProducer(t);
+                            producers.put(message.topicName, producer);
+                        }
+
+                        m = session.createBytesMessage();
+                    }
+
+                    m.setJMSDeliveryMode(DeliveryMode.PERSISTENT);
+                    m.writeBytes(message.data);
+
+                    producer.send(m);
+                    messageProcessed = true;
+                } catch (InterruptedException e) {
+                    // ignore
                 } catch (JMSException e) {
-                    logger.error("Cannot send message, will retry.", e);
-                    disconnect();
-                    unsent.offerFirst(message);
-                    return;
-                } catch (SerializationException e) {
-                    logger.error("Unable to send message" + message, e);
+                    logger.error("Error occurred sending message to topic {}",
+                            message.topicName, e);
+
+                    JmsCommunicator.this.disconnect();
+                } catch (Throwable e) {
+                    if (message != null) {
+                        logger.error(
+                                "Unexcepted error occurred sending message to JMS topic {}",
+                                message.topicName, e);
+                    } else {
+                        logger.error(
+                                "Unexcepted error occurred getting next message to send via JMS",
+                                e);
+                    }
+                } finally {
+                    if ((messageProcessed == false) && (message != null)) {
+                        if (message.attempts >= RETRY_LIMIT) {
+                            logger.warn(
+                                    "Message for topic {} failed to deliver {} times, dropping message",
+                                    message.topicName, message.attempts);
+                        } else if (unsent.offerFirst(message) == false) {
+                            logger.warn("Internal message queue is full, dropping message");
+                        }
+                    }
+
                 }
-                message = unsent.pollFirst();
             }
+
         }
 
-        public synchronized void disconnect() {
-            if (producer != null) {
-                try {
-                    producer.close();
-                } catch (JMSException e) {
-                    logger.error("Cannot close producer.", e);
-                }
-                producer = null;
+        public void wake() {
+            synchronized (connectionLock) {
+                connectionLock.notify();
             }
-            if (session != null) {
-                try {
-                    session.close();
-                } catch (JMSException e) {
-                    logger.error("Cannot close producer session.", e);
-                }
-                session = null;
-            }
+            this.interrupt();
         }
 
+        public void disconnect() {
+            synchronized (connectionLock) {
+                for (Map.Entry<String, MessageProducer> entry : producers
+                        .entrySet()) {
+                    try {
+                        entry.getValue().close();
+                    } catch (JMSException e) {
+                        logger.error("Cannot close producer for topic {}.",
+                                entry.getKey(), e);
+                    }
+                }
+
+                producers.clear();
+
+                if (session != null) {
+                    try {
+                        session.close();
+                    } catch (JMSException e) {
+                        logger.error("Cannot close producer session.", e);
+                    }
+
+                    session = null;
+                }
+            }
+        }
     }
 
 }
