@@ -33,7 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 20, 2015 4394       bkowal      Initial creation
- * 
+ * Dec 21, 2015 5218       rjpeter     Added toString
  * </pre>
  * 
  * @author bkowal
@@ -63,9 +63,17 @@ public class DacTransmitShutdownNotification {
     }
 
     /**
-     * @param transmitterGroup the transmitterGroup to set
+     * @param transmitterGroup
+     *            the transmitterGroup to set
      */
     public void setTransmitterGroup(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(
+                "DacTransmitShutdownNotification [transmitterGroup=")
+                .append(transmitterGroup).append("]").toString();
     }
 }
