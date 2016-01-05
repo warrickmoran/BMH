@@ -59,9 +59,9 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSuite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite.SuiteType;
-import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionStatus;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
@@ -680,8 +680,8 @@ public class PlaylistManager implements IContextStateProcessor {
     private void newMessage(BroadcastMsg msg, ITraceable traceable) {
         TransmitterGroup group = msg.getTransmitterGroup();
         if (!group.isEnabled()) {
-            logBroadcastMsgInfo(traceable, msg,
-                    "group not enabled for new message.");
+            logBroadcastMsgInfo(traceable, msg, "group " + group.getName()
+                    + " not enabled for new message.");
             return;
         }
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
@@ -1049,8 +1049,8 @@ public class PlaylistManager implements IContextStateProcessor {
                 dac.setBroadcastId(id);
                 dac.setTimestamp(metadataTimestamp);
                 InputMessage input = broadcast.getInputMessage();
-                dac.setInitialRecognitionTime(input.getUpdateDate()
-                        .getTimeInMillis());
+                dac.setInitialRecognitionTime(input.getLastUpdateTime()
+                        .getTime());
                 String afosid = input.getAfosid();
                 dac.setName(input.getName());
                 for (BroadcastFragment fragment : contents

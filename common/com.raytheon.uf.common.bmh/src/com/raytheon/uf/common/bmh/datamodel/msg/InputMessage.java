@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -94,12 +95,13 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                     Calendar elements.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
  * Apr 16, 2015  4395     rferrel     Added {@link #ALL_UNEXPIRED_QUERY}.
- * Apr 21, 2015  4397     bkowal      Added {@link #updateDate}.
+ * Apr 21, 2015  4397     bkowal      Added {@link #lastUpdateTime}.
  * May 11, 2015  4476     bkowal      Added {@link #ALL_WITH_NAME_AND_AFOSID_QUERY}.
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 19, 2015  4483     bkowal      Updated {@link #DUP_QUERY} to match effective and
  *                                    expiration times and removed mrd comparison.
  * Jul 29, 2015  4690     rjpeter     Added originalFile.
+ * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
  * </pre>
  * 
  * @author bsteffen
@@ -111,6 +113,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
         @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY),
         @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY),
+        @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY),
         @NamedQuery(name = InputMessage.ALL_UNEXPIRED_QUERY_NAME, query = InputMessage.ALL_UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ALL_WITH_NAME_AND_AFOSID, query = InputMessage.ALL_WITH_NAME_AND_AFOSID_QUERY) })
@@ -154,11 +157,19 @@ public class InputMessage {
 
     /**
      * Named query to retrieve messages that have a specific afosid and
-     * areacodes and are active and have not yet expired and have no mrd.
+     * areacodes and are active and have not yet expired.
      */
     public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodes";
 
-    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true";
+    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
+
+    /**
+     * Named query to retrieve messages that have a specific afosid and
+     * areacodes and are active and have not yet expired and have no mrd.
+     */
+    public static final String ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME = "getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd";
+
+    protected static final String ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid and m.areaCodes = :areaCodes and m.mrd IS NULL and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
 
     public static final String ALL_UNEXPIRED_QUERY_NAME = "getALLNonExpiredMessages";
 
@@ -170,7 +181,7 @@ public class InputMessage {
      */
     public static final String ACTIVE_WITH_MRD_LIKE_QUERY_NAME = "getActiveInputMessagesWithMrdLike";
 
-    protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true";
+    protected static final String ACTIVE_WITH_MRD_LIKE_QUERY = "FROM InputMessage m WHERE m.mrd LIKE :mrdLike and m.expirationTime >= :expireAfter and m.active = true and m.language = :language";
 
     /**
      * Used to retrieve all {@link InputMessage}s with the specified Afos Id and
@@ -343,7 +354,16 @@ public class InputMessage {
      */
     @Column(nullable = false)
     @DynamicSerializeElement
-    private Calendar updateDate = TimeUtil.newGmtCalendar();
+    private Date lastUpdateTime = TimeUtil.newDate();
+
+    /**
+     * The date that this {@link InputMessage} record was inserted. This field
+     * is auto populated by the database at insert time and cannot be saved back
+     * to database.
+     */
+    @Column(nullable = false, insertable = false, updatable = false, columnDefinition = "timestamp default now()")
+    @DynamicSerializeElement
+    private Date insertTime;
 
     private transient File originalFile;
 
@@ -700,18 +720,18 @@ public class InputMessage {
     }
 
     /**
-     * @return the updateDate
+     * @return the lastUpdateTime
      */
-    public Calendar getUpdateDate() {
-        return updateDate;
+    public Date getLastUpdateTime() {
+        return lastUpdateTime;
     }
 
     /**
-     * @param updateDate
-     *            the updateDate to set
+     * @param lastUpdateTime
+     *            the lastUpdateTime to set
      */
-    public void setUpdateDate(Calendar updateDate) {
-        this.updateDate = updateDate;
+    public void setLastUpdateTime(Date lastUpdateTime) {
+        this.lastUpdateTime = lastUpdateTime;
     }
 
     /**
@@ -722,11 +742,31 @@ public class InputMessage {
     }
 
     /**
+     * 
      * @param originalFile
      *            the originalFile to set
      */
     public void setOriginalFile(File originalFile) {
         this.originalFile = originalFile;
+    }
+
+    /**
+     * @return the insertTime
+     */
+    public Date getInsertTime() {
+        return insertTime;
+    }
+
+    /**
+     * The time this message was inserted in to the database. Setter exists only
+     * for serialization purposes. Changes to this field are not persisted to
+     * database.
+     * 
+     * @param insertTime
+     *            the insertTime to set
+     */
+    public void setInsertTime(Date insertTime) {
+        this.insertTime = insertTime;
     }
 
     @Override
@@ -947,6 +987,7 @@ public class InputMessage {
             }
             content = content + "...";
         }
+
         return "InputMessage [\n  id=" + id + "\n  language=" + language
                 + "\n  name=\"" + name + "\"" + "\n  afosid=" + afosid
                 + "\n  creationTime=" + creationTime.getTime()

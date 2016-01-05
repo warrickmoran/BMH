@@ -112,6 +112,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Jun 18, 2015  4490      bkowal      {@link RecordedByUtils} relocated to common.
  * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
+ * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * </pre>
  * 
  * @author lvenable
@@ -772,7 +773,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 + Long.toString(System.currentTimeMillis());
 
         InputMessage inputMsg = new InputMessage();
-        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
         inputMsg.setName(generatedMsgName);
         inputMsg.setLanguage(messageType.getVoice().getLanguage());
         inputMsg.setAfosid(messageType.getAfosid());

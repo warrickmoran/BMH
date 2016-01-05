@@ -929,8 +929,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             }
             logText = "Updating ";
         }
-        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
-
         inputMsg.setName(inputMsgName);
 
         inputMsg.setLanguage(language.getLanguage());

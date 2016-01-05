@@ -29,7 +29,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -113,6 +112,7 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                     overwritten due to a message attribute update.
  * Sep 30, 2015  4938      bkowal      Validate that the afos id meets the minimum length
  *                                     requirements when the same tone flag is set.
+ * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * </pre>
  * 
  * @author bkowal
@@ -196,7 +196,6 @@ public class NewBroadcastMsgHandler extends
                             + ") failed to validate because the associated message type does not meet the minimum length requirements. Message type length must be >= 7 characters.");
         }
         inputMessage = updateInputMessage(request);
-        inputMessage.setUpdateDate(TimeUtil.newGmtCalendar());
         final boolean newInputMsg = inputMessage.getId() == 0;
 
         /*
@@ -304,8 +303,10 @@ public class NewBroadcastMsgHandler extends
         }
 
         // persist all entities.
-        List<Object> entitiesToPersist = new LinkedList<Object>();
+        List<Object> entitiesToPersist = new ArrayList<Object>(
+                broadcastRecords.size() + 2);
         // input message first
+        validMsg.getInputMessage().setLastUpdateTime(TimeUtil.newDate());
         entitiesToPersist.add(validMsg.getInputMessage());
         // the validated message next
         entitiesToPersist.add(validMsg);
@@ -313,7 +314,6 @@ public class NewBroadcastMsgHandler extends
         entitiesToPersist.addAll(broadcastRecords);
         validatedMsgDao.persistAll(entitiesToPersist);
 
-        validatedMsgDao.persistCascade(validMsg);
         if (newInputMsg == false
                 && Boolean.FALSE.equals(inputMessage.getActive())) {
             BmhMessageProducer.sendConfigMessage(

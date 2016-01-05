@@ -50,6 +50,7 @@ import java.util.Map;
  * Jun 01, 2015 4490       bkowal      Added {@link #SAME_AREA_TRUNCATION}, {@link #SAME_DURATION_TRUNCATION},
  *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
  * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
+ * Nov 16, 2015 5127       rjpeter     Added MESSAGE_ARCHIVE_FAILED.
  * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
  * </pre>
  * 
@@ -208,17 +209,18 @@ public enum BMH_CATEGORY {
      * a message that had been previously processed.
      */
     MESSAGE_VALIDATION_DUPLICATE(32, "MESSAGE_VALIDATION"),
+
     /*
      * indicates that a message failed validation because it contained
      * unacceptable words.
      */
     MESSAGE_VALIDATION_UNACCEPTABLE(33, "MESSAGE_VALIDATION"),
+
     /*
-     * indicates that a DAC and BMH {@link Dac} are out of sync.
+     * indicates that a message failed to copy to the archive.
      */
-    DAC_SYNC_ISSUE(35, "BMH"),
-    /*
-     * indicates that an attempt to verify that BMH {@link Dac}s were in sync
+    MESSAGE_ARCHIVE_FAILED(34, "MESSAGE_PARSE"),
+
      * with the DACs has failed.
      */
     DAC_SYNC_VERIFY_FAIL(36, "BMH"),

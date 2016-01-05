@@ -1,66 +1,74 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
-  http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+    http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-	<bean id="rejectionDataManager" class="com.raytheon.uf.edex.bmh.BMHRejectionDataManager" />
+    <bean id="rejectFileManager" class="com.raytheon.uf.edex.bmh.FileManager">
+        <constructor-arg value="Reject" />
+        <constructor-arg value="bmh.data.reject" />
+    </bean>
 
-	<bean id="fileChangedStrategy" class="com.raytheon.uf.edex.esb.camel.FileChangedExclusiveReadLockStrategy"/>
+    <bean id="archiveFileManager" class="com.raytheon.uf.edex.bmh.FileManager">
+        <constructor-arg value="Archive" />
+        <constructor-arg value="bmh.data.archive" />
+    </bean>
 
-	<bean id="largeFileFilter" class="com.raytheon.uf.edex.bmh.msg.validator.BMHLargeFileFilter"
-	depends-on="rejectionDataManager">
-		<constructor-arg ref="rejectionDataManager" />
-	</bean>
+    <bean id="fileChangedStrategy"
+        class="com.raytheon.uf.edex.esb.camel.FileChangedExclusiveReadLockStrategy" />
 
-	<bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser">
-		<constructor-arg ref="edexMessageLogger" />
-	</bean>
+    <bean id="largeFileFilter" class="com.raytheon.uf.edex.bmh.msg.validator.BMHLargeFileFilter">
+        <constructor-arg ref="rejectFileManager" />
+    </bean>
 
-	<bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator">
-		<constructor-arg ref="edexMessageLogger" />
-        <constructor-arg ref="rejectionDataManager" />
-	</bean>
+    <bean id="inputMessageParser" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageParser">
+        <constructor-arg ref="edexMessageLogger" />
+        <constructor-arg ref="archiveFileManager" />
+    </bean>
+
+    <bean id="inputMessageValidator" class="com.raytheon.uf.edex.bmh.msg.validator.InputMessageValidator">
+        <constructor-arg ref="edexMessageLogger" />
+        <constructor-arg ref="rejectFileManager" />
+    </bean>
 	
-  	<bean id="dacSyncValidator" class="com.raytheon.uf.edex.bmh.dac.DacSyncValidator">
+    <camelContext id="clusteredBmhDirectoryScanner" xmlns="http://camel.apache.org/schema/spring"
   		<constructor-arg ref="dacDao" />
   	</bean>
 
-	<camelContext id="clusteredBmhDirectoryScanner"
-		xmlns="http://camel.apache.org/schema/spring"
-		errorHandlerRef="errorHandler">
+        errorHandlerRef="errorHandler">
 		
 		<endpoint id="validateDacSyncCron" uri="timer://validateDacSync?fixedRate=true&amp;period=10m" /> 
 		
-		<endpoint id="bmhDirectoryScanner"
+        <endpoint id="bmhDirectoryScanner"
             uri="file:${BMH_DATA}/nwr/ready?delete=true&amp;delay=5000&amp;maxMessagesPerPoll=1000&amp;exclusiveReadLockStrategy=#fileChangedStrategy&amp;filter=#largeFileFilter&amp;recursive=true" />
 
-		<route id="bmhInputMessageParser">
-		    <from ref="bmhDirectoryScanner" />
-		    <doTry>
-				<pipeline>
-				    <bean ref="inputMessageParser" method="parse" />
-				    <filter>
-  						<simple>${body.validHeader} == false</simple>
+        <route id="bmhInputMessageParser">
+            <from ref="bmhDirectoryScanner" />
+            <doTry>
+                <pipeline>
+                    <bean ref="inputMessageParser" method="parse" />
+                    <filter>
+                        <simple>${body.validHeader} == false</simple>
                         <bean ref="inputMessageValidator" method="reject" />
-  						<stop />
-					</filter> 
+                        <stop />
+                    </filter>
                     <bean ref="inputMessageDao" method="persist" />
-				    <bean ref="inputMessageValidator" method="validate" />
-  					<filter>
-  						<simple>${body.isAccepted} == false</simple>
+                    <bean ref="inputMessageParser" method="archive" />
+                    <bean ref="inputMessageValidator" method="validate" />
+                    <filter>
+                        <simple>${body.isAccepted} == false</simple>
                         <bean ref="inputMessageValidator" method="checkReject" />
-  						<stop />
-					</filter>
+                        <stop />
+                    </filter>
                     <bean ref="validatedMessageDao" method="persist" />
-  					<setBody>
-  						<simple>${body.getTraceableId}</simple>
-					</setBody>
+                    <setBody>
+                        <simple>${body.getTraceableId}</simple>
+                    </setBody>
                     <bean ref="serializationUtil" method="transformToThrift" />
-  					<to uri="jms-durable:queue:BMH.Transform" />
-				</pipeline>
-				<doCatch>
-					<exception>java.lang.Throwable</exception>
-					<to uri="log:bmh?level=ERROR"/>
+                    <to uri="jms-durable:queue:BMH.Transform" />
+                </pipeline>
+                <doCatch>
+                    <exception>java.lang.Throwable</exception>
+                    <to uri="log:bmh?level=ERROR" />
 				</doCatch>
 			</doTry>
 		</route>
@@ -72,12 +80,12 @@
 				<doCatch>
 					<exception>java.lang.Throwable</exception>
 					<to uri="log:bmh?level=ERROR"/>				
-				</doCatch>
-			</doTry>
-		</route>
+                </doCatch>
+            </doTry>
+        </route>
     </camelContext>
 
-	<bean factory-bean="contextManager" factory-method="registerClusteredContext">
-		<constructor-arg ref="clusteredBmhDirectoryScanner" />
-  	</bean>
+    <bean factory-bean="contextManager" factory-method="registerClusteredContext">
+        <constructor-arg ref="clusteredBmhDirectoryScanner" />
+    </bean>
 </beans>

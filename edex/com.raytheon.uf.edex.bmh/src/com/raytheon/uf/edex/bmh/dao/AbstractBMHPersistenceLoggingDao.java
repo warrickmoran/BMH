@@ -69,17 +69,7 @@ public abstract class AbstractBMHPersistenceLoggingDao<T, I extends Serializable
      */
     @Override
     public void persist(final Object obj) throws TransactionException {
-        try {
-            super.persist(obj);
-        } catch (Exception e) {
-            ITraceable it = null;
-            if (obj instanceof ITraceable) {
-                it = (ITraceable) obj;
-            }
-            this.messageLogger.logDaoError(it, BMH_ACTIVITY.DATA_STORAGE, obj,
-                    e);
-            throw e;
-        }
+        saveOrUpdate(obj);
     }
 
     /*

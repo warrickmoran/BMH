@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage;
 import com.raytheon.uf.common.bmh.trace.TraceableId;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
 /**
@@ -48,8 +49,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Apr 16, 2015  4396     rferrel     Added {@link #getAllUnexpiredMessages(Calendar)}.
  * May 13, 2015  4429     rferrel     Added {@link #getByTraceableId(TraceableId)}.
  * Aug 10, 2015  4723     bkowal      Added {@link #getExpiredNonDeliveredMessages(Calendar)}.
- * 
- * 
+ * Nov 24, 2015  5127     rjpeter     Updated persistCascade to set lastUpdateTime.
  * </pre>
  * 
  * @author bsteffen
@@ -71,6 +71,7 @@ public class ValidatedMessageDao extends
         txTemplate.execute(new TransactionCallbackWithoutResult() {
             @Override
             protected void doInTransactionWithoutResult(TransactionStatus status) {
+                msg.getInputMessage().setLastUpdateTime(TimeUtil.newDate());
                 persist(msg.getInputMessage());
                 persist(msg);
             }
