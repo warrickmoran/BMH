@@ -220,7 +220,12 @@ public enum BMH_CATEGORY {
      * indicates that a message failed to copy to the archive.
      */
     MESSAGE_ARCHIVE_FAILED(34, "MESSAGE_PARSE"),
-
+    /*
+     * indicates that a DAC and BMH {@link Dac} are out of sync.
+     */
+    DAC_SYNC_ISSUE(35, "BMH"),
+    /*
+     * indicates that an attempt to verify that BMH {@link Dac}s were in sync
      * with the DACs has failed.
      */
     DAC_SYNC_VERIFY_FAIL(36, "BMH"),
