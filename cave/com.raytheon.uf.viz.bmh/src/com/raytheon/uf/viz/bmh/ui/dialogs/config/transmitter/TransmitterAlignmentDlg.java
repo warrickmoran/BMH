@@ -111,6 +111,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Aug 12, 2015 4724       bkowal      Allow users to close the dialog even when {@link Transmitters}
  *                                     are in maintenance mode.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * </pre>
  * 
  * @author mpduff
@@ -123,7 +124,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
             .getHandler(TransmitterAlignmentDlg.class);
 
     /** Constant */
-    private final String STATUS_TEXT = "Transmitter %s is %s";
+    private final String STATUS_TEXT = "Transmitter Group %s is %s";
 
     /** List widget of transmitter groups */
     private List transmitterList;
@@ -266,7 +267,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         GridLayout gl = new GridLayout(1, false);
         Group transGrp = new Group(comp, SWT.BORDER);
-        transGrp.setText(" Transmitters ");
+        transGrp.setText(" Transmitter Groups ");
         transGrp.setLayout(gl);
         transGrp.setLayoutData(gd);
 
@@ -289,7 +290,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Group dbGroup = new Group(comp, SWT.BORDER);
-        dbGroup.setText(" Transmitter Volume ");
+        dbGroup.setText(" Transmitter Group Volume ");
         dbGroup.setLayout(gl);
         dbGroup.setLayoutData(gd);
 
@@ -329,7 +330,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         if (this.dataIsCurrent()) {
             this.saveButton.setEnabled(false);
             DialogUtility.showMessageBox(shell, SWT.ICON_INFORMATION | SWT.OK,
-                    "Save Transmitter Alignment",
+                    "Save Transmitter Group Alignment",
                     "No changes have been made. There is nothing to Save.");
             return;
         }
@@ -374,7 +375,7 @@ public class TransmitterAlignmentDlg extends AbstractBMHDialog implements
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Group statusGrp = new Group(comp, SWT.BORDER);
-        statusGrp.setText(" Transmitter Status ");
+        statusGrp.setText(" Transmitter Group Status ");
         statusGrp.setLayout(gl);
         statusGrp.setLayoutData(gd);
 

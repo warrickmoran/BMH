@@ -106,6 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 20, 2015 4490       bkowal      Display existing {@link Program} name in the rename dialog.
  *                                     Fix warnings without suppressing them.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
+ * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * </pre>
  * 
  * @author lvenable
@@ -348,7 +349,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
          * Transmitter controls.
          */
         Label transmitterLbl = new Label(progTransComp, SWT.NONE);
-        transmitterLbl.setText("Assigned Transmitters: ");
+        transmitterLbl.setText("Assigned Transmitter Groups: ");
 
         GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
         gd.minimumWidth = 300;
@@ -356,7 +357,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         transmitterListLbl.setLayoutData(gd);
 
         assignTransmitterBtn = new Button(progTransComp, SWT.PUSH);
-        assignTransmitterBtn.setText(" Assign Transmitter(s)... ");
+        assignTransmitterBtn.setText(" Assign Transmitter Group(s)... ");
         assignTransmitterBtn.setEnabled(false);
         assignTransmitterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -606,7 +607,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             if (t.getTxStatus() == TxStatus.ENABLED) {
                 if (transmitterMsg == null) {
                     transmitterMsg = new StringBuilder(
-                            "The following transmitters are enabled:\n\n");
+                            "The following transmitter groups are enabled:\n\n");
                 }
                 transmitterMsg.append(t.getLocation()).append("\n");
             }
@@ -614,7 +615,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
 
         if (transmitterMsg != null) {
             transmitterMsg
-                    .append("\nYou must disable the transmitter(s) or reassign the transmitter(s) a ")
+                    .append("\nYou must disable the transmitter groups(s) or assign the transmitter group(s) to a ")
                     .append("different program before this program can be deleted");
             DialogUtility.showMessageBox(shell, SWT.ICON_WARNING | SWT.OK,
                     "Enabled Transmitters", transmitterMsg.toString());
@@ -701,7 +702,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     StringBuilder sb = new StringBuilder();
                     sb.append("Cannot remove suite ")
                             .append(suite.getName())
-                            .append(" since it is category GENERAL and is associated with the following ENABLED transmitter/group(s):");
+                            .append(" since it is category GENERAL and is associated with the following ENABLED transmitter group(s):");
                     for (TransmitterGroup group : enabledGroups) {
                         sb.append("\n\t").append(group.getName());
                     }
