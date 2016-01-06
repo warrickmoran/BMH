@@ -61,6 +61,7 @@ import org.eclipse.swt.widgets.Label;
  * Mar 31, 2015 #4304      rferrel      Added {@link #reset(Set, Set)}.
  * Apr 15, 2015 #4396      rferrel      {@link #reset(boolean)} restores selections to defaults by
  *                                       using {@link #checkListData}.
+ * Jan 05, 2016 #4997      bkowal       Added {@link #replaceCheckboxes(CheckListData)}.
  * 
  * </pre>
  * 
@@ -199,14 +200,7 @@ public class CheckScrollListComp extends Composite {
         checkBtnComp
                 .setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true));
 
-        Map<String, Boolean> dataMap = checkListData.getDataMap();
-
-        for (String str : dataMap.keySet()) {
-            Button checkBox = new Button(checkBtnComp, SWT.CHECK);
-            checkBox.setText(str);
-            checkBox.setSelection(dataMap.get(str));
-            checkboxArray.add(checkBox);
-        }
+        this.addCheckboxes();
 
         scrolledComp.setExpandHorizontal(true);
         scrolledComp.setExpandVertical(true);
@@ -220,6 +214,17 @@ public class CheckScrollListComp extends Composite {
         scrolledComp.layout();
 
         createSelectControls();
+    }
+
+    private void addCheckboxes() {
+        Map<String, Boolean> dataMap = checkListData.getDataMap();
+
+        for (String str : dataMap.keySet()) {
+            Button checkBox = new Button(checkBtnComp, SWT.CHECK);
+            checkBox.setText(str);
+            checkBox.setSelection(dataMap.get(str));
+            checkboxArray.add(checkBox);
+        }
     }
 
     /**
@@ -432,5 +437,25 @@ public class CheckScrollListComp extends Composite {
                 unselectAllBtn.setEnabled(allowEnable);
             }
         }
+    }
+
+    /**
+     * Replace the currently displayed swt checkboxes with a new set of swt
+     * checkboxes that are created based on the specified {@link CheckListData}.
+     * 
+     * @param updatedCLD
+     *            the specified {@link CheckListData}
+     */
+    public void replaceCheckboxes(CheckListData updatedCLD) {
+        for (Button chkButton : this.checkboxArray) {
+            chkButton.dispose();
+        }
+        this.checkboxArray.clear();
+        this.checkListData = updatedCLD;
+        this.addCheckboxes();
+        this.checkBtnComp.layout();
+        scrolledComp.setMinSize(checkBtnComp.computeSize(SWT.DEFAULT,
+                SWT.DEFAULT));
+        this.scrolledComp.layout();
     }
 }
