@@ -30,10 +30,12 @@
         <constructor-arg ref="rejectFileManager" />
     </bean>
 	
-    <camelContext id="clusteredBmhDirectoryScanner" xmlns="http://camel.apache.org/schema/spring"
+    <bean id="dacSyncValidator" class="com.raytheon.uf.edex.bmh.dac.DacSyncValidator">
   		<constructor-arg ref="dacDao" />
   	</bean>
 
+	<camelContext id="clusteredBmhDirectoryScanner" 
+		xmlns="http://camel.apache.org/schema/spring"
         errorHandlerRef="errorHandler">
 		
 		<endpoint id="validateDacSyncCron" uri="timer://validateDacSync?fixedRate=true&amp;period=10m" /> 
