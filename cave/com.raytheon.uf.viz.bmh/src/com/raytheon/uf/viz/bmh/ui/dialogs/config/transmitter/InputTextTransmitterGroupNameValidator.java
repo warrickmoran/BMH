@@ -39,6 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * ------------ ---------- ----------- --------------------------
  * Jul 21, 2015 4424       bkowal      Initial creation
  * Jul 22, 2015 4424       bkowal      Improved validation.
+ * Jan 06, 2016 4997       bkowal      Made {@link #currentName} protected.
  * 
  * </pre>
  * 
@@ -56,7 +57,7 @@ public class InputTextTransmitterGroupNameValidator implements
      * Additional abstraction can occur if this validator is ever more widely
      * used.
      */
-    private final String currentName;
+    protected final String currentName;
 
     private final TransmitterGroup tg;
 
