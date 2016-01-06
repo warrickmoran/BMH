@@ -135,11 +135,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
-        return command.getType().toString()
-                + "_"
-                + (command.getMsgSource() == MSGSOURCE.COMMS ? command
-                        .getBroadcastId() : UUID.randomUUID().toString()
-                        .toUpperCase());
+        return (command.getMsgSource() == MSGSOURCE.COMMS ? command
+                .getBroadcastId() : command.getType().toString() + "_"
+                + UUID.randomUUID().toString().toUpperCase());
     }
 
     private void handleStateTransition() {
