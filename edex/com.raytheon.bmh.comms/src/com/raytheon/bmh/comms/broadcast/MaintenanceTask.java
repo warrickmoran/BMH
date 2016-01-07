@@ -30,6 +30,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
+import com.raytheon.bmh.dactransmit.DAC_MODE;
+import com.raytheon.bmh.dactransmit.DacMaintenanceArgParser;
+import com.raytheon.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.uf.common.bmh.TransmitterAlignmentException;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastStatus;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
@@ -38,9 +41,6 @@ import com.raytheon.uf.common.bmh.broadcast.TrxTransferMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
-import com.raytheon.uf.edex.bmh.dactransmit.DAC_MODE;
-import com.raytheon.uf.edex.bmh.dactransmit.DacMaintenanceArgParser;
-import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
 
 /**
  * Starts a comms manager in maintenance mode to play a maintenance message.
@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
  * Jul 22, 2015 4676       bkowal      Improved results reporting.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
+ * Jan 07, 2016 4997       bkowal      dactransmit is no longer a uf edex plugin.
  * </pre>
  * 
  * @author bkowal

@@ -38,13 +38,13 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
+import com.raytheon.bmh.dactransmit.ipc.DacMaintenanceRegister;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacMaintenanceRegister;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
 
 /**
  * 
@@ -81,6 +81,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitRegister;
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
+ * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * </pre>
  * 
  * @author bsteffen
