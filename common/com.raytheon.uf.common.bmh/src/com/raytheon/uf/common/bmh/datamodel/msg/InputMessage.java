@@ -55,6 +55,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
  * 
@@ -112,6 +113,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = InputMessage.PURGE_QUERY_NAME, query = InputMessage.PURGE_QUERY),
         @NamedQuery(name = InputMessage.UNEXPIRED_QUERY_NAME, query = InputMessage.UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY),
+        @NamedQuery(name = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY_NAME, query = InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_AND_NO_MRD_QUERY),
         @NamedQuery(name = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY_NAME, query = InputMessage.ACTIVE_WITH_MRD_LIKE_QUERY),
         @NamedQuery(name = InputMessage.ALL_UNEXPIRED_QUERY_NAME, query = InputMessage.ALL_UNEXPIRED_QUERY),
         @NamedQuery(name = InputMessage.ALL_WITH_NAME_AND_AFOSID, query = InputMessage.ALL_WITH_NAME_AND_AFOSID_QUERY) })
@@ -352,7 +354,7 @@ public class InputMessage {
      */
     @Column(nullable = false)
     @DynamicSerializeElement
-    private Date lastUpdateTime;
+    private Date lastUpdateTime = TimeUtil.newDate();
 
     /**
      * The date that this {@link InputMessage} record was inserted. This field
