@@ -129,6 +129,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Aug 07, 2015 4424       bkowal      Convert audio to wav format before converting to mp3.
  * Aug 10, 2015 4723       bkowal      Made the message processing and ldad processing methods
  *                                     easily distinguishable.
+ * Oct 06, 2015 4904       bkowal      Verify the NeoSpeech volume.                                    
  * </pre>
  * 
  * @author bkowal
@@ -328,6 +329,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
                     this.ttsHeartbeat, TimeUnit.MILLISECONDS);
         }
+
+        NeoSpeechConstants.verify();
+        statusHandler.info("NeoSpeech Volume is: " + NeoSpeechConstants.getVolume());
+
         statusHandler.info("Initialization Successful!");
 
         this.edexHost = SystemUtil.getHostName();

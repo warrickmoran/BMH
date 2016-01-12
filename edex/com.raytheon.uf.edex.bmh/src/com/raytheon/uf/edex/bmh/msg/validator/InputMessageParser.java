@@ -41,6 +41,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.FileUtil;
+import com.raytheon.uf.edex.bmh.BMHFileProcessException;
+import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -80,6 +82,9 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                    encountered.
  * Sep 24, 2015  4916     bkowal      Trim the afos id.
  * Sep 24, 2015  4925     bkowal      Added {@link #parseUGCs(String, int)}.
+ * Sep 30, 2015  4938     bkowal      Validate that the afos id meets the minimum length
+ *                                    requirements when the same tone flag is set.
+ * Nov 16, 2015  5127     rjpeter     Added logging of headers and archiving of original file.
  * </pre>
  * 
  * @author bsteffen
@@ -97,6 +102,9 @@ public class InputMessageParser {
                     TimeZone.getTimeZone("GMT"));
 
     private static final Pattern startPattern = Pattern.compile("\\ea");
+
+    private static final Pattern headerPattern = Pattern.compile("^.*$",
+            Pattern.MULTILINE);
 
     private static final Pattern formatPattern = Pattern
             .compile("^([A-Z])_([A-Z]{3})");
@@ -128,16 +136,18 @@ public class InputMessageParser {
 
     private final IMessageLogger messageLogger;
 
-    public InputMessageParser(final IMessageLogger messageLogger) {
+    private final FileManager archiveFileManager;
+
+    public InputMessageParser(final IMessageLogger messageLogger,
+            final FileManager archiveFileManager) {
         this.messageLogger = messageLogger;
+        this.archiveFileManager = archiveFileManager;
     }
 
-    public InputMessage parse(@Body
-    File file, @Headers
-    Map<String, Object> headers) {
+    public InputMessage parse(@Body File file,
+            @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
 
-        message.setUpdateDate(TimeUtil.newGmtCalendar());
         String fileName = headers.get("CamelFileNameOnly").toString();
         message.setName(fileName);
         message.setOriginalFile(file);
@@ -148,6 +158,14 @@ public class InputMessageParser {
         try {
             CharSequence text = FileUtil.file2String(file);
             int index = findStart(text);
+            Matcher header = headerPattern.matcher(text);
+            header.region(index, text.length());
+            if (header.find() == false) {
+                throw new ParseException("Cannot find message header", index);
+            }
+
+            messageLogger.logParseHeader(message, header.group());
+
             index = parseMessageFormat(message, text, index);
             index = parseAfosId(message, text, index);
             index = parseCreationDate(message, text, index);
@@ -174,6 +192,24 @@ public class InputMessageParser {
         }
 
         return message;
+    }
+
+    /**
+     * Archives the original file associated with the given input message.
+     * 
+     * @param msg
+     */
+    public void archive(InputMessage msg) {
+        File file = msg.getOriginalFile();
+
+        try {
+            archiveFileManager.processFile(file.toPath(),
+                    BMH_CATEGORY.MESSAGE_ARCHIVE_FAILED, true);
+        } catch (BMHFileProcessException e) {
+            statusHandler.error(BMH_CATEGORY.MESSAGE_ARCHIVE_FAILED,
+                    "Failed to copy incoming file " + file.getName()
+                            + " to archive");
+        }
     }
 
     private int findStart(CharSequence text) throws ParseException {
@@ -352,6 +388,13 @@ public class InputMessageParser {
             throw new ParseException("Unrecognized Alert Tone Character: "
                     + active, index);
         }
+
+        if (message.getNwrsameTone() && message.getAfosid().length() < 7) {
+            throw new ParseException(
+                    "Invalid message type. Message type length must be >= 7 characters.",
+                    index);
+        }
+
         return index + 1;
     }
 
@@ -444,14 +487,13 @@ public class InputMessageParser {
 
         boolean first = true;
         String lastSSF = null;
-        for (int i = 0; i < ugcComponents.length; i++) {
+        for (String ugcComponent : ugcComponents) {
             if (first) {
                 first = false;
             } else {
                 sb.append(UGC_SEPARATOR);
             }
 
-            String ugcComponent = ugcComponents[i];
             if (ugcComponent.contains(UGC_CONSECUTIVE)) {
                 String[] consecutiveComponents = ugcComponent
                         .split(UGC_CONSECUTIVE);

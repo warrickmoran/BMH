@@ -54,6 +54,8 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Aug 11, 2015  4372     bkowal      Handle {@link LiveBroadcastSwitchNotification} from other
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  *                                    cluster members.
+ * Oct 23, 2015  5029     rjpeter     Make isConnected public, have disconnect call removeCommunicator.
+ * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * </pre>
  * 
  * @author bsteffen
@@ -69,17 +71,26 @@ public class ClusterCommunicator extends Thread {
 
     private final CommsManager manager;
 
+    private final ClusterServer server;
+
     private ClusterStateMessage state;
 
     private final String remoteHost;
 
     private volatile long timeLastMessageReceived = System.currentTimeMillis();
 
-    public ClusterCommunicator(CommsManager manager, Socket socket,
-            String remoteHost) {
+    public ClusterCommunicator(CommsManager manager, ClusterServer server,
+            Socket socket, String remoteHost) {
         super("ClusterCommunicator-" + remoteHost);
+
+        if (socket == null) {
+            // not currently possible, but better safe than sorry
+            throw new IllegalArgumentException("Socket must not be null");
+        }
+
         this.socket = socket;
         this.manager = manager;
+        this.server = server;
         this.remoteHost = remoteHost;
     }
 
@@ -100,11 +111,12 @@ public class ClusterCommunicator extends Thread {
                     }
                 }
                 if (lostConnection) {
-                    logger.error("Lost connection to cluster member: {}",
+                    logger.error(
+                            "Lost connection to cluster member: {}, disconnecting...",
                             remoteHost);
                 } else {
                     logger.error(
-                            "Error reading message from cluster member: {}",
+                            "Error reading message from cluster member: {}, disconnecting...",
                             remoteHost, e);
                 }
                 disconnect();
@@ -129,7 +141,7 @@ public class ClusterCommunicator extends Thread {
                             "Clustered manager {} has requested a dac transmit.",
                             remoteHost);
                     manager.dacRequestedRemote(newState
-                            .getRequestedTransmitter());
+                            .getRequestedTransmitters());
                 }
             } else {
                 for (String transmitterGroup : newState
@@ -145,20 +157,23 @@ public class ClusterCommunicator extends Thread {
                     }
                 }
                 if (newState.hasRequestedTransmitter()
-                        && !oldState.isRequestedTransmitter(newState
-                                .getRequestedTransmitter())) {
+                        && !newState.getRequestedTransmitters().equals(
+                                oldState.getRequestedTransmitters())) {
                     logger.info(
                             "Clustered manager {} has requested a dac transmit.",
                             remoteHost);
                     manager.dacRequestedRemote(newState
-                            .getRequestedTransmitter());
+                            .getRequestedTransmitters());
                 }
             }
         } else if (message instanceof ClusterShutdownMessage) {
             if (((ClusterShutdownMessage) message).isAcknowledged()) {
+                logger.info("{} has acknowledged shutdown, disconnecting...",
+                        remoteHost);
                 disconnect();
             } else {
-                logger.info("Clustered manager {} is shutting down.",
+                logger.info(
+                        "Clustered manager {} is shutting down, disconnecting...",
                         remoteHost);
                 send(new ClusterShutdownMessage(true));
                 disconnect();
@@ -172,8 +187,8 @@ public class ClusterCommunicator extends Thread {
             String heartbeatIp = ((ClusterHeartbeatMessage) message).getHost();
             if (!remoteHost.equals(heartbeatIp)) {
                 logger.error(
-                        "Received wrong host for heartbeat.  Expected {} received {}.  Closing connection to {}",
-                        remoteHost, heartbeatIp, remoteHost);
+                        "Received wrong heartbeat host for {}.  Expected {} received {}, disconnecting...",
+                        remoteHost, remoteHost, heartbeatIp);
                 disconnect();
             }
         } else if (message instanceof LiveBroadcastSwitchNotification) {
@@ -188,17 +203,20 @@ public class ClusterCommunicator extends Thread {
     public boolean send(Object toSend) {
         synchronized (sendLock) {
             if (this.isConnected() == false) {
+                logger.error(
+                        "No active connection(s) to cluster member: {}, disconnecting...",
+                        this.remoteHost);
+
                 // No usable connection. Initiate cleanup.
                 this.disconnect();
-                logger.error("No active connection(s) to cluster member: {}.",
-                        this.remoteHost);
                 return false;
             }
             try {
                 SerializationUtil.transformToThriftUsingStream(toSend,
                         socket.getOutputStream());
             } catch (Throwable e) {
-                logger.error("Error communicating with cluster member: {}",
+                logger.error(
+                        "Error communicating with cluster member: {}, disconnecting...",
                         remoteHost, e);
                 this.disconnect();
                 return false;
@@ -212,9 +230,10 @@ public class ClusterCommunicator extends Thread {
         return send(state);
     }
 
-    private boolean isConnected() {
-        return (this.socket != null) && (this.socket.isClosed() == false)
-                && (this.socket.isOutputShutdown() == false);
+    public boolean isConnected() {
+        return (this.socket.isClosed() == false)
+                && (this.socket.isOutputShutdown() == false)
+                && (this.socket.isInputShutdown() == false);
     }
 
     /**
@@ -229,25 +248,23 @@ public class ClusterCommunicator extends Thread {
 
     public void disconnect() {
         try {
-            if (socket != null) {
-                socket.close();
-            }
+            socket.close();
         } catch (IOException e) {
             logger.error("Error disconnecting from cluster member: {}",
                     remoteHost, e);
         }
+
         if (state != null) {
             for (String transmitterGroup : state.getConnectedTransmitters()) {
                 manager.dacDisconnectedRemote(transmitterGroup);
             }
         }
+
+        server.removeCommunicator(this);
     }
 
     public boolean isConnected(String transmitterGroup) {
-        if ((state == null) || socket.isClosed()) {
-            return false;
-        }
-        return state.contains(transmitterGroup);
+        return remoteAccepted() && state.contains(transmitterGroup);
     }
 
     public boolean isRequested(String transmitterGroup) {

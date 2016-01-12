@@ -54,6 +54,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Apr 24, 2015 4394       bkowal      Added {@link TONE_TYPE#TRANSFER}.
  * May 13, 2015 4429       rferrel     Changes for traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging methods.
+ * Nov 16, 2015  5127      rjpeter     Added logParseHeader.
  * </pre>
  * 
  * @author bkowal
@@ -178,6 +179,14 @@ public interface IMessageLogger {
      *            the specified {@link InputMessage}
      */
     public void logParseActivity(InputMessage msg);
+
+    /**
+     * Logs parse header.
+     * 
+     * @param msg
+     *            the specified {@link InputMessage}
+     */
+    public void logParseHeader(InputMessage msg, String header);
 
     /**
      * Logs TTS Success

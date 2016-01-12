@@ -78,6 +78,7 @@ import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
 import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
+import com.raytheon.uf.edex.bmh.tts.NeoSpeechConstants;
 import com.raytheon.uf.edex.core.IContextStateProcessor;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
 import com.raytheon.uf.edex.database.cluster.ClusterLocker;
@@ -138,6 +139,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * May 20, 2015 4490       bkowal      Fixes for {@link TraceableId}.
  * May 28, 2015 4429       rjpeter     Add ITraceable.
  * Jun 11, 2015 4490       bkowal      {@link AlignmentTestGenerator} is now initialized by Spring.
+ * Oct 06, 2015 4904       bkowal      Check the volume when determining if a static message will
+ *                                     need to be regenerated.
  * </pre>
  * 
  * @author bkowal
@@ -698,6 +701,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
          * second time.
          */
         boolean oneSpeechRateMatch = false;
+        boolean oneVolumeMatch = false;
         if (complete) {
             /*
              * so, that we will not need to extract the numeric speech rate from
@@ -711,7 +715,8 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                 complete &= output != null && !output.isEmpty()
                         && Files.exists(Paths.get(output));
 
-                if (complete && oneSpeechRateMatch == false
+                if (complete
+                        && (oneSpeechRateMatch == false || oneVolumeMatch == false)
                         && fragment.getSsml() != null
                         && fragment.getSsml().isEmpty() == false) {
                     /*
@@ -747,6 +752,11 @@ public class StaticMessageGenerator implements IContextStateProcessor {
                         Prosody prosody = (Prosody) element.getValue();
                         oneSpeechRateMatch = formattedSpeechRate.equals(prosody
                                 .getRate());
+                        /*
+                         * compare the volume
+                         */
+                        oneVolumeMatch = NeoSpeechConstants.getVolume().equals(
+                                prosody.getVolume());
                     }
                 }
             }
@@ -779,7 +789,7 @@ public class StaticMessageGenerator implements IContextStateProcessor {
 
         if (text.equals(existingMsg.getInputMessage().getContent()) == false
                 || equivalentPeriodicity == false
-                || oneSpeechRateMatch == false) {
+                || oneSpeechRateMatch == false || oneVolumeMatch == false) {
             /*
              * update the original message when one or more of the following
              * conditions apply: the content has been altered, the rate of
@@ -891,8 +901,6 @@ public class StaticMessageGenerator implements IContextStateProcessor {
             }
             logText = "Updating ";
         }
-        inputMsg.setUpdateDate(TimeUtil.newGmtCalendar());
-
         inputMsg.setName(inputMsgName);
 
         inputMsg.setLanguage(language.getLanguage());

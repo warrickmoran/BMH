@@ -45,7 +45,7 @@ import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeDecibelTarget;
+import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
 import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
@@ -99,7 +99,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
- * 
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -119,11 +119,11 @@ public class DacTransmitCommunicator extends Thread {
 
     private int[] radios;
 
-    private double audioDbTarget;
+    private short audioAmplitude;
 
-    private double sameDbTarget;
+    private short sameAmplitude;
 
-    private double alertDbTarget;
+    private short alertAmplitude;
 
     private volatile DacTransmitStatus lastStatus;
 
@@ -138,17 +138,17 @@ public class DacTransmitCommunicator extends Thread {
     private final WtchOrWrnNotBroadcastAlarm wtchOrWrnNotBroadcastAlarm = new WtchOrWrnNotBroadcastAlarm();
 
     public DacTransmitCommunicator(CommsManager manager, String groupName,
-            int[] radios, Socket socket, double audioDbTarget,
-            double sameDbTarget, double alertDbTarget) {
+            int[] radios, Socket socket, short audioAmplitude,
+            short sameAmplitude, short alertAmplitude) {
         super("DacTransmitCommunicator-" + groupName);
         this.manager = manager;
         this.groupName = groupName;
         Arrays.sort(radios);
         this.radios = radios;
         this.socket = socket;
-        this.audioDbTarget = audioDbTarget;
-        this.sameDbTarget = sameDbTarget;
-        this.alertDbTarget = alertDbTarget;
+        this.audioAmplitude = audioAmplitude;
+        this.sameAmplitude = sameAmplitude;
+        this.alertAmplitude = alertAmplitude;
     }
 
     public String getGroupName() {
@@ -282,16 +282,16 @@ public class DacTransmitCommunicator extends Thread {
         }
     }
 
-    public void setTransmitterDBTarget(double audioDbTarget,
-            double sameDbTarget, double alertDbTarget) {
-        if (this.audioDbTarget != audioDbTarget
-                || this.sameDbTarget != sameDbTarget
-                || this.alertDbTarget != alertDbTarget) {
-            this.send(new ChangeDecibelTarget(audioDbTarget, sameDbTarget,
-                    alertDbTarget));
-            this.audioDbTarget = audioDbTarget;
-            this.sameDbTarget = sameDbTarget;
-            this.alertDbTarget = alertDbTarget;
+    public void setTransmitterAudioAmplitudes(short audioAmplitude,
+            short sameAmplitude, short alertAmplitude) {
+        if (this.audioAmplitude != audioAmplitude
+                || this.sameAmplitude != sameAmplitude
+                || this.alertAmplitude != alertAmplitude) {
+            this.send(new ChangeAmplitudeTarget(audioAmplitude, sameAmplitude,
+                    alertAmplitude));
+            this.audioAmplitude = audioAmplitude;
+            this.sameAmplitude = sameAmplitude;
+            this.alertAmplitude = alertAmplitude;
         }
     }
 

@@ -24,6 +24,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.Set;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -51,6 +52,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Oct 10, 2014  3656     bkowal      Added broadcastLivePort
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Apr 07, 2015  4370     rjpeter     Added hashCode, equals, toString.
+ * Oct 28, 2015  5029     rjpeter     getDacs cannot return null.
  * </pre>
  * 
  * @author bsteffen
@@ -86,6 +88,9 @@ public class CommsConfig {
     private Set<CommsHostConfig> clusterHosts;
 
     public Set<DacConfig> getDacs() {
+        if (dacs == null) {
+            dacs = new HashSet<>(1, 1);
+        }
         return dacs;
     }
 

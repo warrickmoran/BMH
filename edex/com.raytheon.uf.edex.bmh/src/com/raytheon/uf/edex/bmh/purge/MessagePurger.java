@@ -26,6 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 
@@ -56,6 +58,7 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Apr 07, 2015  4293     bkowal      Purge all audio generated for a single
  *                                    Broadcast Message.
  * Jul 29, 2015  4690     rjpeter     Added purging of reject files.
+ * Nov 16, 2015  5127     rjpeter     Added purging of archive files.
  * </pre>
  * 
  * @author bsteffen
@@ -77,10 +80,16 @@ public class MessagePurger {
 
     private final Path playlistPath;
 
-    private final Path rejectPath;
+    private final List<FileManager> fileManagers;
 
     public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
             final BroadcastMsgDao broadcastMessageDao, boolean operational) {
+        this(purgeDays, inputMessageDao, broadcastMessageDao, operational, null);
+    }
+
+    public MessagePurger(int purgeDays, final InputMessageDao inputMessageDao,
+            final BroadcastMsgDao broadcastMessageDao, boolean operational,
+            List<FileManager> fileManagers) {
         this.purgeDays = purgeDays;
         this.inputMessageDao = inputMessageDao;
         this.broadcastMessageDao = broadcastMessageDao;
@@ -88,18 +97,10 @@ public class MessagePurger {
                 BMHConstants.AUDIO_DATA_DIRECTORY);
         playlistPath = BMHConstants.getBmhDataDirectory(operational).resolve(
                 "playlist");
-
-        String specifiedRejectionDirectory = System
-                .getProperty("bmh.data.reject");
-        if (operational && specifiedRejectionDirectory != null) {
-            specifiedRejectionDirectory = specifiedRejectionDirectory.trim();
-            if (specifiedRejectionDirectory.length() > 0) {
-                rejectPath = Paths.get(specifiedRejectionDirectory);
-            } else {
-                rejectPath = null;
-            }
+        if (fileManagers != null) {
+            this.fileManagers = fileManagers;
         } else {
-            rejectPath = null;
+            this.fileManagers = Collections.emptyList();
         }
     }
 
@@ -113,10 +114,8 @@ public class MessagePurger {
         purgeAudioFiles(purgeTime);
         purgeMessageFiles(purgeTime);
         purgeOldAudioContents(purgeTime);
-        if (rejectPath != null) {
-            logger.info("Purging reject files");
-            int val = purgeRejectFilesRecursive(rejectPath, purgeTime, false);
-            logger.info("Purged {} reject file{}", val, (val == 1 ? "" : "s"));
+        for (FileManager fileManager : fileManagers) {
+            fileManager.purge(2, purgeDays);
         }
     }
 

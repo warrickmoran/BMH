@@ -1,21 +1,37 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <!-- 
-	Note: Comms Manager must be restarted before any changes to this file
-	will take effect.
+    Note: Comms Manager must be restarted before any changes to this file
+    will take effect.
  -->
 <regulationConfiguration>
-	<dbSilenceLimit>-40.0</dbSilenceLimit>
-	<disableSilenceLimit>false</disableSilenceLimit>
-	<dbMaxLimit>-15.0</dbMaxLimit>
-	<disableMaxLimit>true</disableMaxLimit>
-	<!-- 
-		OPTIONS:
-			* LINEAR_PCM
-			* DEVIATION_EXCLUSION 
-	 -->
-	<regulationAlgorithm>DEVIATION_EXCLUSION</regulationAlgorithm>
-	<audioPlaybackVolume>-10.0</audioPlaybackVolume>
-	<disableRecordedPreAmplication>true</disableRecordedPreAmplication>
-	<initialBufferDelay>250</initialBufferDelay>
-	<bufferDelay>150</bufferDelay>
+    <!-- Value in amplitude.  Valid values from 0 to 32767.  Default of 328 is -40 dB -->
+    <amplitudeSilenceLimit>328</amplitudeSilenceLimit>
+    <disableSilenceLimit>false</disableSilenceLimit>
+
+    <!--
+        Value in amplitude.  Valid values from 0 to 32767.  Default of 10362 is -10 dB.
+        Enabling maxLimit is only useful in certain scenarios with DEVIATION_EXCLUSION
+        algorithm.
+     -->
+    <amplitudeMaxLimit>10362</amplitudeMaxLimit>
+    <disableMaxLimit>true</disableMaxLimit>
+    <!-- 
+        OPTIONS:
+            * LINEAR_PCM
+            * DEVIATION_EXCLUSION 
+     -->
+    <regulationAlgorithm>LINEAR_PCM</regulationAlgorithm>
+
+    <!--
+        Value in amplitude.  Valid values from 0 to 32767.  Default of 32767 is 0 dB. Defaulted
+        to max volume and pre amplifcation enabled so that initial voice is max volume and audio
+        is only attenuated.  This clears up issues with rebroadcast of an emergency override being
+        quieter than the initial broadcast due to differences in streaming amplifcation compared to
+        amplification of whole broadcast at once for EO being rebroadcast.
+     -->
+    <audioPlaybackAmplitude>32767</audioPlaybackAmplitude>
+    <disableRecordedPreAmplication>false</disableRecordedPreAmplication>
+
+    <initialBufferDelay>250</initialBufferDelay>
+    <bufferDelay>150</bufferDelay>
 </regulationConfiguration>

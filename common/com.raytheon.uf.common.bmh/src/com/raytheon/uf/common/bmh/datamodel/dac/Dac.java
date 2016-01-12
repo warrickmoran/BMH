@@ -19,16 +19,17 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.dac;
 
+import java.util.ArrayList;
 import java.util.List;
 
-import javax.persistence.CollectionTable;
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
-import javax.persistence.ElementCollection;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
@@ -36,7 +37,6 @@ import javax.persistence.UniqueConstraint;
 
 import org.hibernate.annotations.Fetch;
 import org.hibernate.annotations.FetchMode;
-import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -59,6 +59,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Feb 03, 2015  4056     bsteffen    Add DEFAULT_RECEIVE_ADDRESS
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jul 01, 2015 4602      rjpeter     Port order matters.
+ * Nov 05, 2015  5092     bkowal      Associate a {@link Dac} with a fully configured
+ *                                    {@link DacChannel} instead of just a port number.
  * </pre>
  * 
  * @author bsteffen
@@ -87,27 +89,34 @@ public class Dac {
     private String name;
 
     /* 39 is long enough for IPv6 */
-    @Column(length = 39)
+    @Column(length = 39, nullable = false)
     @DynamicSerializeElement
     private String address;
 
-    @Column
+    @Column(length = 39, nullable = false)
     @DynamicSerializeElement
-    private int receivePort;
+    private String netMask = "255.255.255.0";
+
+    @Column(length = 39, nullable = false)
+    @DynamicSerializeElement
+    private String gateway = "10.2.69.254";
+
+    @Column(nullable = false)
+    private int broadcastBuffer = 5;
 
     @Column
     @DynamicSerializeElement
     private String receiveAddress;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "dac_ports", uniqueConstraints = @UniqueConstraint(name = "uk_dac_ports", columnNames = {
-            "dac_id", "dataPort" }))
-    @ForeignKey(name = "fk_dac_ports_to_dac")
-    @Column(name = "dataPort")
-    @Fetch(FetchMode.SUBSELECT)
-    @OrderColumn(name = "position")
+    @Column
     @DynamicSerializeElement
-    private List<Integer> dataPorts;
+    private int receivePort;
+
+    @OneToMany(mappedBy = "dac", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @Fetch(FetchMode.SUBSELECT)
+    @OrderColumn(name = "channel")
+    @DynamicSerializeElement
+    private List<DacChannel> channels;
 
     public int getId() {
         return id;
@@ -125,12 +134,49 @@ public class Dac {
         this.address = address;
     }
 
-    public int getReceivePort() {
-        return receivePort;
+    /**
+     * @return the netMask
+     */
+    public String getNetMask() {
+        return netMask;
     }
 
-    public void setReceivePort(int receivePort) {
-        this.receivePort = receivePort;
+    /**
+     * @param netMask
+     *            the netMask to set
+     */
+    public void setNetMask(String netMask) {
+        this.netMask = netMask;
+    }
+
+    /**
+     * @return the gateway
+     */
+    public String getGateway() {
+        return gateway;
+    }
+
+    /**
+     * @param gateway
+     *            the gateway to set
+     */
+    public void setGateway(String gateway) {
+        this.gateway = gateway;
+    }
+
+    /**
+     * @return the broadcastBuffer
+     */
+    public int getBroadcastBuffer() {
+        return broadcastBuffer;
+    }
+
+    /**
+     * @param broadcastBuffer
+     *            the broadcastBuffer to set
+     */
+    public void setBroadcastBuffer(int broadcastBuffer) {
+        this.broadcastBuffer = broadcastBuffer;
     }
 
     public String getReceiveAddress() {
@@ -141,12 +187,48 @@ public class Dac {
         this.receiveAddress = receiveAddress;
     }
 
-    public List<Integer> getDataPorts() {
-        return dataPorts;
+    public int getReceivePort() {
+        return receivePort;
     }
 
-    public void setDataPorts(List<Integer> dataPorts) {
-        this.dataPorts = dataPorts;
+    public void setReceivePort(int receivePort) {
+        this.receivePort = receivePort;
+    }
+
+    /**
+     * @return the channels
+     */
+    public List<DacChannel> getChannels() {
+        return channels;
+    }
+
+    /**
+     * @param channels
+     *            the channels to set
+     */
+    public void setChannels(List<DacChannel> channels) {
+        this.channels = channels;
+        if (channels == null || channels.isEmpty()) {
+            return;
+        }
+        if (channels.size() != 4) {
+            throw new IllegalArgumentException(
+                    "4 channels are required for a DAC; " + channels.size()
+                            + " channels were provided!");
+        }
+        for (int i = 0; i < channels.size(); i++) {
+            DacChannel channel = this.channels.get(i);
+            channel.setDac(this);
+            channel.getId().setChannel(i);
+        }
+    }
+
+    public List<Integer> getDataPorts() {
+        List<Integer> dataPorts = new ArrayList<>(this.channels.size());
+        for (DacChannel channel : this.channels) {
+            dataPorts.add(channel.getPort());
+        }
+        return dataPorts;
     }
 
     public String getName() {

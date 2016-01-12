@@ -111,6 +111,9 @@ import com.raytheon.uf.edex.core.EdexException;
  * May 28, 2015  4429      rjpeter     Add ITraceable
  * Jun 18, 2015  4490      bkowal      Verify that recorded audio messages are not
  *                                     overwritten due to a message attribute update.
+ * Sep 30, 2015  4938      bkowal      Validate that the afos id meets the minimum length
+ *                                     requirements when the same tone flag is set.
+ * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * </pre>
  * 
  * @author bkowal
@@ -180,8 +183,20 @@ public class NewBroadcastMsgHandler extends
         String traceId = request.getTraceId();
         // TODO: logging
         InputMessage inputMessage = request.getInputMessage();
+        if (inputMessage.getNwrsameTone() && inputMessage.getAfosid() != null
+                && inputMessage.getAfosid().length() < 7) {
+            /*
+             * Verify that the afos id meets the length requirements.
+             */
+            throw new IllegalArgumentException(
+                    inputMessage.getName()
+                            + "("
+                            + traceId
+                            + ": "
+                            + inputMessage.getAfosid()
+                            + ") failed to validate because the associated message type does not meet the minimum length requirements. Message type length must be >= 7 characters.");
+        }
         inputMessage = updateInputMessage(request);
-        inputMessage.setUpdateDate(TimeUtil.newGmtCalendar());
         final boolean newInputMsg = inputMessage.getId() == 0;
 
         /*

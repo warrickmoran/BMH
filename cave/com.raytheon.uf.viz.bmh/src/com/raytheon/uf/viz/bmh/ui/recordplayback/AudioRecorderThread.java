@@ -57,7 +57,7 @@ import com.raytheon.uf.common.bmh.audio.IAudioRegulator;
  *                                     the constructor.
  * Sep 01, 2015 4771       bkowal      Audio pre-amplification can now be enabled/disabled based
  *                                     on the {@link AudioRegulationConfiguration}.
- * 
+ * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bkowal
@@ -81,7 +81,7 @@ public class AudioRecorderThread extends Thread {
 
     private final AudioRegulationConfiguration regulationConfiguration;
 
-    private List<byte[]> samples;
+    private final List<byte[]> samples;
 
     private TargetDataLine line;
 
@@ -204,7 +204,7 @@ public class AudioRecorderThread extends Thread {
                 .getAudioRegulator(regulationConfiguration, regulatorySequence);
         regulatorySequence = regulator
                 .regulateAudioCollection(this.regulationConfiguration
-                        .getAudioPlaybackVolume());
+                        .getAudioPlaybackAmplitude());
         for (byte[] regulatedSample : regulatorySequence) {
             destination.put(regulatedSample);
         }

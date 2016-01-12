@@ -88,6 +88,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 01, 2015  4602     rjpeter     Specific dac port now bound to transmitter.
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Jul 23, 2015  4676     bkowal      Use {@link JAXBManager}.
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * </pre>
  * 
  * @author bsteffen
@@ -341,9 +342,9 @@ public class CommsConfigurator implements IContextStateProcessor {
             channel.setDeadAirAlarm(group.getDeadAirAlarm());
             channel.setPlaylistDirectoryPath(playlistDirectoryPath
                     .resolve(group.getName()));
-            channel.setAudioDbTarget(group.getAudioDBTarget());
-            channel.setSameDbTarget(group.getSameDBTarget());
-            channel.setAlertDbTarget(group.getAlertDBTarget());
+            channel.setAudioAmplitude(group.getAudioAmplitude());
+            channel.setSameAmplitude(group.getSameAmplitude());
+            channel.setAlertAmplitude(group.getAlertAmplitude());
             channel.setTimezone(group.getTimeZone());
             channel.setRadios(radios);
         }
