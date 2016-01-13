@@ -160,6 +160,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Dec 03, 2015 5159       bkowal      Log when a {@link TransmitterLanguage} is removed from cache
  *                                     in response to an update.
  *                                     in the message header overrides the message type language.
+ * Jan 15, 2016 5241       bkowal      Use a {@link WordLengthDescComparator} to sort dictionary
+ *                                     rules before they are applied.
  * </pre>
  * 
  * @author bkowal
@@ -620,7 +622,7 @@ public class MessageTransformer implements IContextStateProcessor {
          * Handle the static message type special case.
          */
         TtsVoice fragmentVoice = messageType.getVoice();
-        
+
         /*
          * Verify that the {@link TtsVoice} matches the {@link Language}
          * specified in the {@link InputMessage} header. Adjust if necessary.
@@ -650,8 +652,8 @@ public class MessageTransformer implements IContextStateProcessor {
                     .append(inputMessage.getAfosid()).append(".");
 
             statusHandler.info(sb.toString());
-        }        
-        
+        }
+
         TransmitterLanguage transmitterLanguage = null;
         StaticMessageType staticMessageType = null;
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
@@ -899,7 +901,11 @@ public class MessageTransformer implements IContextStateProcessor {
                 + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
                 + ".");
 
-        return new LinkedList<ITextTransformation>(mergedDictionaryMap.values());
+        List<ITextTransformation> allTransformationsList = new LinkedList<ITextTransformation>(
+                mergedDictionaryMap.values());
+        Collections
+                .sort(allTransformationsList, new WordLengthDescComparator());
+        return allTransformationsList;
     }
 
     /**

@@ -6,6 +6,7 @@ testBin/
 bin-test/
 *.class
 *.pyo
+*.pyc
 *.o
 *.orig
 

@@ -492,4 +492,8 @@ INSERT INTO word (id, substitute, word, dictionary) VALUES (458, 'oh 4 hundred U
 INSERT INTO word (id, substitute, word, dictionary) VALUES (459, 'virgin islands', 'vi', 'paul-nat');
 INSERT INTO word (id, substitute, word, dictionary) VALUES (460, '20 nautical miles coastal', '20 nmcoastal ', 'paul-nat');
 INSERT INTO word (id, substitute, word, dictionary) VALUES (461, '3 0 5 2 2 9 4 5 2 3', '305.229.4523', 'paul-nat');
-ALTER SEQUENCE word_seq RESTART WITH 462;
+INSERT INTO word (id, substitute, word, dictionary) VALUES (462, ' <phoneme alphabet="x-cmu" ph=" W IH1 N D S ">  </phoneme>', 'winds', 'paul-nat');
+INSERT INTO word (id, substitute, word, dictionary) VALUES (463, ' <phoneme alphabet="x-cmu" ph=" L IY1 D ">  </phoneme>', 'lead', 'paul-nat');
+INSERT INTO word (id, substitute, word, dictionary) VALUES (464, 'rek erd', 'record', 'paul-nat');
+INSERT INTO word (id, substitute, word, dictionary) VALUES (465, 'o bjects', 'objects', 'paul-nat');
+ALTER SEQUENCE word_seq RESTART WITH 466;
