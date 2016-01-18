@@ -36,6 +36,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
  * Jun 26, 2014 3302       bkowal      Initial creation
  * Jul 7, 2014  3302       bkowal      Updated the transformation application method
  *                                     to return a list of Serializable.
+ * Jan 15, 2016 5241       bkowal      Added {@link #getWordLength()}.
  * 
  * </pre>
  * 
@@ -55,8 +56,7 @@ public interface ITextTransformation {
     public boolean determineTransformationApplicability(IFreeText candidate);
 
     /**
-     * <TBD> Applies the transformation. Final implementation will be dependent
-     * on how the BMH Word.java is used and defined.
+     * Applies the transformation.
      * 
      * @param text
      *            the raw text to apply the transformation to
@@ -64,4 +64,13 @@ public interface ITextTransformation {
      */
     public List<Serializable> applyTransformation(String text)
             throws SSMLConversionException;
+
+    /**
+     * Returns the length of the word that will be replaced when the
+     * substitution is applied.
+     * 
+     * @return the length of the word that will be replaced when the
+     *         substitution is applied.
+     */
+    public int getWordLength();
 }
