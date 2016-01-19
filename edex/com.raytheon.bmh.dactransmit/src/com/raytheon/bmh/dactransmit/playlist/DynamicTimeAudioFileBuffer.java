@@ -42,6 +42,8 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
  * Oct 1, 2014  3642       bkowal      Initial creation
  * Dec 11, 2014 3651       bkowal      Added {@link DacPlaylistMessage} to
  *                                     the constructor.
+ * Jan 19, 2016 5270       bkowal      Nullify time audio that needs to be
+ *                                     skipped.
  * 
  * </pre>
  * 
@@ -122,6 +124,13 @@ public final class DynamicTimeAudioFileBuffer extends AbstractAudioFileBuffer {
                  * No audio should be retrieved for this token at this time
                  * based on its current value.
                  */
+
+                /*
+                 * Remove the previously played audio segment and replace with
+                 * filler.
+                 */
+                this.audioSegments.remove(index);
+                this.audioSegments.add(index, null);
                 continue;
             }
             byte[] audioData = this.timeCache
@@ -160,8 +169,7 @@ public final class DynamicTimeAudioFileBuffer extends AbstractAudioFileBuffer {
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.bmh.dactransmit.playlist.IAudioFileBuffer#capacity
+     * @see com.raytheon.bmh.dactransmit.playlist.IAudioFileBuffer#capacity
      * (boolean)
      */
     @Override
@@ -183,8 +191,7 @@ public final class DynamicTimeAudioFileBuffer extends AbstractAudioFileBuffer {
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.bmh.dactransmit.playlist.AbstractAudioFileBuffer
+     * @see com.raytheon.bmh.dactransmit.playlist.AbstractAudioFileBuffer
      * #isDynamic()
      */
     @Override
