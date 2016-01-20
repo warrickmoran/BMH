@@ -22,7 +22,7 @@ package com.raytheon.uf.edex.bmh;
 import java.nio.file.Path;
 
 /**
- * Indicates that a BMH file has been unsuccessfully rejected.
+ * Indicates that a BMH file has been unsuccessfully processed.
  * 
  * <pre>
  * 
@@ -31,43 +31,43 @@ import java.nio.file.Path;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 19, 2015 4136       bkowal      Initial creation
- * 
+ * Nov 16, 2015 5127       rjpeter     Renamed to BMHFileProcessException
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 
-public class BMHRejectionException extends Exception {
+public class BMHFileProcessException extends Exception {
 
     private static final long serialVersionUID = -1768662416923119333L;
 
-    private static final String REJECTION_MESSAGE_PREFIX = "Failed to reject file: ";
+    private static final String MESSAGE_PREFIX = "Failed to process file: ";
 
-    private static final String REJECTION_MESSAGE_SUFFIX = ". The file will be purged instead.";
+    private static final String MESSAGE_SUFFIX = ". The file will be purged instead.";
 
     /**
      * Constructor
      * 
-     * @param rejectedFilePath
-     *            the file that was not successfully rejected
+     * @param filePath
+     *            the file that was not successfully processed
      * @param cause
      *            the cause of the rejection failure
      */
-    public BMHRejectionException(Path rejectedFilePath, Throwable cause) {
-        super(buildRejectionMessage(rejectedFilePath), cause);
+    public BMHFileProcessException(Path filePath, Throwable cause) {
+        super(buildProcessMessage(filePath), cause);
     }
 
     /**
      * Constructs the exception message.
      * 
-     * @param rejectedFilePath
-     *            the file that was not successfully rejected
+     * @param filePath
+     *            the file that was not successfully processed
      * @return the constructed exception message.
      */
-    private static String buildRejectionMessage(final Path rejectedFilePath) {
-        StringBuilder sb = new StringBuilder(REJECTION_MESSAGE_PREFIX);
-        sb.append(rejectedFilePath.toString()).append(REJECTION_MESSAGE_SUFFIX);
+    private static String buildProcessMessage(final Path filePath) {
+        StringBuilder sb = new StringBuilder(MESSAGE_PREFIX);
+        sb.append(filePath.toString()).append(MESSAGE_SUFFIX);
 
         return sb.toString();
     }

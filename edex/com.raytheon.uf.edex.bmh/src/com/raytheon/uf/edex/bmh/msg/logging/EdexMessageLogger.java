@@ -52,6 +52,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
  * Jan 06, 2015 3651       bkowal      Implemented {@link #logDaoError(BMH_ACTIVITY, Object, Throwable)}.
  * May 13, 2015 4429       rferrel     Changes for traceId.
  * May 21, 2015 4429       rjpeter     Added additional logging methods.
+ * Nov 16, 2015  5127      rjpeter     Added logParseHeader.
  * </pre>
  * 
  * @author bkowal
@@ -462,6 +463,11 @@ public class EdexMessageLogger implements IMessageLogger {
                 playbackTimeSeconds);
     }
 
+    @Override
+    public void logParseHeader(InputMessage msg, String header) {
+        this.getMessageLogger().logParseHeader(msg, header);
+    }
+
     /**
      * Returns a {@link DefaultMessageLogger} associated with the configured
      * mode.
@@ -472,5 +478,4 @@ public class EdexMessageLogger implements IMessageLogger {
     private DefaultMessageLogger getMessageLogger() {
         return messageLogger;
     }
-
 }

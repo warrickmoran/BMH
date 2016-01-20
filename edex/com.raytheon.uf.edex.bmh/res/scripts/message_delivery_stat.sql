@@ -25,6 +25,7 @@
  * May 21, 2015 4397       bkowal      Initial creation.
  * Jun 08, 2015 4397       bkowal      Added begin, end timestamp function parameters.
  * Jul 29, 2015 4686       bkowal      Exclude inactive messages.
+ * Nov 13, 2015 5127       rjpeter     Rename updatedate to lastupdatetime.
  **/
 ---
 --- This procedure will calculate the percentage of valid messages that were successfully
@@ -53,8 +54,8 @@ DECLARE
 		INNER JOIN input_msg i
 		ON v.transmissionstatus = 'ACCEPTED' AND
 		i.id = v.input_msg_id AND i.active = true AND 
-		i.updateDate >= begin_time AND
-		i.updateDate <= end_time AND
+		i.lastupdatetime >= begin_time AND
+		i.lastupdatetime <= end_time AND
 		i.effectiveTime < end_time;
 	---
 	--- Ensure that we only include transmitter group(s) that are currently
