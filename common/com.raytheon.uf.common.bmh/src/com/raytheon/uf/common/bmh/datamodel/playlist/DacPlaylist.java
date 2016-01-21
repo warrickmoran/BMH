@@ -55,6 +55,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 21, 2015  4429     rjpeter     Implement {@link ITraceable}.
  * Sep 22, 2015  4904     bkowal      Keep track of messages no longer in the playlist
  *                                    that have been expired before their time.
+ * Jan 25, 2016  5278     bkowal      Support {@link DacTriggerSpan}.
  * </pre>
  * 
  * @author bsteffen
@@ -93,6 +94,9 @@ public class DacPlaylist implements ITraceable {
 
     @XmlElement(name = "message")
     private List<DacPlaylistMessageId> messages = new ArrayList<>();
+    
+    @XmlElement(name = "trigger")
+    private List<DacTriggerSpan> triggers = new ArrayList<>();
 
     /*
      * These are {@link DacPlaylistMessage}s that have been replaced by other
@@ -133,8 +137,19 @@ public class DacPlaylist implements ITraceable {
      */
     public boolean isValid() {
         long currentTime = TimeUtil.currentTimeMillis();
-        return ((currentTime >= start.getTimeInMillis()) && (expired == null || currentTime <= expired
+        final boolean withinOverall = ((currentTime >= start.getTimeInMillis()) && (expired == null || currentTime <= expired
                 .getTimeInMillis()));
+        if (this.triggers.isEmpty()) {
+            return withinOverall;
+        }
+
+        for (DacTriggerSpan triggerSpan : this.triggers) {
+            if (triggerSpan.withinSpan(currentTime)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -223,6 +238,14 @@ public class DacPlaylist implements ITraceable {
 
     public void setMessages(List<DacPlaylistMessageId> messages) {
         this.messages = messages;
+    }
+
+    public List<DacTriggerSpan> getTriggers() {
+        return triggers;
+    }
+
+    public void setTriggers(List<DacTriggerSpan> triggers) {
+        this.triggers = triggers;
     }
 
     /**
