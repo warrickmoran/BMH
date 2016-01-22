@@ -36,9 +36,9 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jan 6, 2015  3942      rjpeter     Initial creation
- * Jul 28, 2015 4686      bkowal      Moved statistics to common.
- * 
+ * Jan 6, 2015  3942       rjpeter     Initial creation
+ * Jul 28, 2015 4686       bkowal      Moved statistics to common.
+ * Dec 21, 2015 5218       rjpeter     Added toString
  * </pre>
  * 
  * @author rjpeter
@@ -114,6 +114,17 @@ public class DacStatisticEvent extends StatisticsEvent {
     @Override
     public void finalizeEvent() {
         // not implemented
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(96)
+                .append("DacStatisticEvent [transmitterGroup=")
+                .append(transmitterGroup).append(", bufferSize=")
+                .append(bufferSize).append(", recoverablePacketErrors=")
+                .append(recoverablePacketErrors)
+                .append(", unrecoverablePacketErrors=")
+                .append(unrecoverablePacketErrors).append("]").toString();
     }
 
 }

@@ -23,7 +23,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Apr 24, 2015 4397       bkowal      Initial creation
  * Jul 28, 2015 4686       bkowal      Moved statistics to common.
  * Jul 29, 2015 4686       bkowal      Added {@link #broadcastId}.
- * 
+ * Dec 21, 2015 5218       rjpeter     Added toString
  * </pre>
  * 
  * @author bkowal
@@ -119,5 +119,13 @@ public class DeliveryTimeEvent extends StatisticsEvent {
      */
     public void setDeliveryTime(long deliveryTime) {
         this.deliveryTime = deliveryTime;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(64).append("DeliveryTimeEvent [broadcastId=")
+                .append(broadcastId).append(", transmitterGroup=")
+                .append(transmitterGroup).append(", deliveryTime=")
+                .append(deliveryTime).append("]").toString();
     }
 }

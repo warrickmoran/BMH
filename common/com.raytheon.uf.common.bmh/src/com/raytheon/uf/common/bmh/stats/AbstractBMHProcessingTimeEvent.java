@@ -40,7 +40,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Apr 20, 2015 4397       bkowal      Initial creation
  * Jun 24, 2015 4397       bkowal      Added an empty constructor.
  * Jul 28, 2015 4686       bkowal      Moved statistics to common.
- * 
+ * Dec 21, 2015 5218       rjpeter     Added toString
  * </pre>
  * 
  * @author bkowal
@@ -134,5 +134,14 @@ public abstract class AbstractBMHProcessingTimeEvent extends StatisticsEvent {
 
     public void setRequestTime(long requestTime) {
         this.requestTime = requestTime;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(64).append(getClass().getSimpleName())
+                .append(" [transmitterGroup=").append(transmitterGroup)
+                .append(", processingTime=").append(processingTime)
+                .append(", requestTime=").append(requestTime).append("]")
+                .toString();
     }
 }

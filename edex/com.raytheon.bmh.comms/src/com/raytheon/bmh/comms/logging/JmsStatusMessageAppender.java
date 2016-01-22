@@ -20,11 +20,11 @@
 package com.raytheon.bmh.comms.logging;
 
 import java.util.Date;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
-import javax.jms.JMSException;
+import java.util.concurrent.ConcurrentMap;
 
 import org.slf4j.Marker;
+
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
@@ -34,8 +34,8 @@ import com.raytheon.bmh.comms.AbstractJmsAlarm;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.message.StatusMessage;
-import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.status.BMHNotificationAction;
 import com.raytheon.uf.edex.bmh.status.BMHNotificationManager;
@@ -56,8 +56,7 @@ import com.raytheon.uf.edex.bmh.status.BMH_ACTION;
  * Nov 26, 2014  3821     bsteffen    Utilize the BMHNotificationManager
  * Jan 19, 2015  4002     bkowal      Added support for {@link MessageDelayedBroadcastNotification}.
  * Jun 01, 2015  4490     bkowal      Added {@link #bmhAlarmToCategoryMap}.
- * 
- * 
+ * Dec 21, 2015  5218     rjpeter     Made communicator volatile
  * </pre>
  * 
  * @author bsteffen
@@ -92,7 +91,7 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
                 .getLoggerName());
         if (bmhCategory == null) {
             Marker marker = event.getMarker();
-            if (marker != null && marker.contains("Dac Transmit")) {
+            if ((marker != null) && marker.contains("Dac Transmit")) {
                 bmhCategory = BMH_CATEGORY.DAC_TRANSMIT_ERROR;
             } else {
                 bmhCategory = BMH_CATEGORY.COMMS_MANAGER_ERROR;
@@ -115,11 +114,7 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
                 sm.setEventTime(new Date(event.getTimeStamp()));
                 JmsCommunicator communicator = JmsStatusMessageAppender.communicator;
                 if (communicator != null) {
-                    try {
-                        communicator.sendStatusMessage(sm);
-                    } catch (JMSException | SerializationException e) {
-                        addError("Unable to append message to jms.", e);
-                    }
+                    communicator.sendStatusMessage(sm);
                 }
             case ACTION_DEFAULT:
             case ACTION_LOG:
@@ -133,7 +128,7 @@ public class JmsStatusMessageAppender extends AppenderBase<ILoggingEvent> {
         this.layout = layout;
     }
 
-    private static JmsCommunicator communicator;
+    private static volatile JmsCommunicator communicator;
 
     private static final ConcurrentMap<String, BMH_CATEGORY> bmhAlarmToCategoryMap = new ConcurrentHashMap<>();
 
