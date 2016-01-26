@@ -44,6 +44,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Layout;
@@ -154,6 +155,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 01, 2015   4490     bkowal      No longer manually notify users for alarmable message
  *                                     notifications.
  * Jun 04, 2015   4490     rjpeter     Fix memory leak.
+ * Jan 26, 2016   5054     randerso    Allow dialog to be parented by display
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -229,6 +232,22 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
         BMHServers.saveServers();
     }
 
+    /**
+     * Construct top level dialog.
+     * 
+     * @param display
+     *            .
+     */
+    public BMHLauncherDlg(Display display) {
+        super(display, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
+        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+            practiceJob = new PracticeKeepAliveJob();
+            practiceJob.schedule();
+        }
+        BMHServers.saveServers();
+    }
+
     @Override
     protected Layout constructShellLayout() {
         // Create the main layout for the shell.
@@ -277,7 +296,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
                 List<String> openDialogs = new ArrayList<String>();
                 for (AbstractBMHDialog abd : dlgsToValidateCloseMap.values()) {
-                    if (abd == null || abd.isDisposed()) {
+                    if ((abd == null) || abd.isDisposed()) {
                         continue;
                     }
 
@@ -287,7 +306,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
 
                 if (openDialogs.size() > 0) {
                     e.doit = confirmCloseOpenDialogs(openDialogs);
-                    if (e.doit && CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
+                    if (e.doit && (CAVEMode.getMode() != CAVEMode.OPERATIONAL)) {
                         e.doit = confirmClosePracticeMode();
                     }
                 } else if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
@@ -388,7 +407,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 dlgsToValidateCloseMap.values());
         dlgsToValidateCloseMap.clear();
         for (AbstractBMHDialog abd : toClose) {
-            if (abd == null || abd.isDisposed()) {
+            if ((abd == null) || abd.isDisposed()) {
                 continue;
             }
 
@@ -584,7 +603,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new TransmitterConfigDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -610,7 +629,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new TransmitterAlignmentDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -642,7 +661,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new ListeningAreaDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -665,7 +684,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new ListeningZoneDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -725,7 +744,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new BroadcastProgramDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -759,7 +778,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new SuiteManagerDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -785,7 +804,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new MessageTypesDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -811,7 +830,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new MessageTypeAssocDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -846,7 +865,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new DemoMessageDialog(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -885,7 +904,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new BroadcastLiveDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -949,7 +968,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new LdadConfigDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -1011,7 +1030,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new DacConfigDlg(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -1037,7 +1056,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                     AbstractBMHDialog dlg = dlgsToValidateCloseMap
                             .get(dialogKey);
 
-                    if (dlg == null || dlg.isDisposed()) {
+                    if ((dlg == null) || dlg.isDisposed()) {
                         dlg = new VoiceConfigDialog(shell);
                         dlgsToValidateCloseMap.put(dialogKey, dlg);
                         dlg.addListener(SWT.Dispose, new DisposeListener(
@@ -1077,7 +1096,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             String dialogKey = DictionaryManagerDlg.class.getName();
             AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-            if (dlg == null || dlg.isDisposed()) {
+            if ((dlg == null) || dlg.isDisposed()) {
                 dlg = new DictionaryManagerDlg(shell);
                 dlgsToValidateCloseMap.put(dialogKey, dlg);
                 dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
@@ -1123,7 +1142,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             String dialogKey = DictionaryManagerDlg.class.getName();
             AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-            if (dlg == null || dlg.isDisposed()) {
+            if ((dlg == null) || dlg.isDisposed()) {
                 dlg = new DictionaryManagerDlg(shell);
                 dlgsToValidateCloseMap.put(dialogKey, dlg);
                 dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
@@ -1141,7 +1160,8 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      */
     private void launchLegacyDictionaryConverter() {
         if (isAuthorized(DlgInfo.CONVERT_LEGACY_DICTIONARY)) {
-            if (this.dictConverterDlg == null || dictConverterDlg.isDisposed()) {
+            if ((this.dictConverterDlg == null)
+                    || dictConverterDlg.isDisposed()) {
                 FileDialog dialog = new FileDialog(shell, SWT.SAVE);
                 dialog.setText(DlgInfo.CONVERT_LEGACY_DICTIONARY.getTitle());
                 String[] filterNames = new String[] { "Dictionary Files",
@@ -1152,7 +1172,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
                 dialog.setFilterExtensions(filterExtensions);
                 dialog.setFilterPath(filterPath);
                 String file = dialog.open();
-                if (file != null && file.length() > 0) {
+                if ((file != null) && (file.length() > 0)) {
                     this.dictConverterDlg = new LegacyDictionaryConverterDlg(
                             getShell(), file);
                     dictConverterDlg.open();
@@ -1168,7 +1188,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             String dialogKey = BroadcastCycleDlg.class.getName();
             AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-            if (dlg == null || dlg.isDisposed()) {
+            if ((dlg == null) || dlg.isDisposed()) {
                 dlg = new BroadcastCycleDlg(shell);
                 dlgsToValidateCloseMap.put(dialogKey, dlg);
                 dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
@@ -1184,7 +1204,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             String dialogKey = WeatherMessagesDlg.class.getName();
             AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-            if (dlg == null || dlg.isDisposed()) {
+            if ((dlg == null) || dlg.isDisposed()) {
                 dlg = new WeatherMessagesDlg(shell);
                 dlgsToValidateCloseMap.put(dialogKey, dlg);
                 dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
@@ -1200,7 +1220,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
             String dialogKey = EmergencyOverrideDlg.class.getName();
             AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-            if (dlg == null || dlg.isDisposed()) {
+            if ((dlg == null) || dlg.isDisposed()) {
                 dlg = new EmergencyOverrideDlg(shell);
                 dlgsToValidateCloseMap.put(dialogKey, dlg);
                 dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));
@@ -1261,7 +1281,7 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
         String dialogKey = ImportLegacyDbDlg.class.getName();
         AbstractBMHDialog dlg = dlgsToValidateCloseMap.get(dialogKey);
 
-        if (dlg == null || dlg.isDisposed()) {
+        if ((dlg == null) || dlg.isDisposed()) {
             dlg = new ImportLegacyDbDlg(shell);
             dlgsToValidateCloseMap.put(dialogKey, dlg);
             dlg.addListener(SWT.Dispose, new DisposeListener(dialogKey));

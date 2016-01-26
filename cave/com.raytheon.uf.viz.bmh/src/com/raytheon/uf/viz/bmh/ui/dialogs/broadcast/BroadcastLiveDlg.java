@@ -34,6 +34,7 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
@@ -64,7 +65,8 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.LiveBroadcastRecordPlaybac
  * Feb 05, 2015 3743       bsteffen    Allow subclasses to override loading of available groups.
  * May 12, 2015 4248       rjpeter     Fix misspelling.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
- * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
+ * Aug 25, 2015 4771       bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
+ * Jan 26, 2016 5054       randerso    Allow dialog to be parented by display
  * </pre>
  * 
  * @author bkowal
@@ -86,6 +88,11 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
 
     public BroadcastLiveDlg(Shell parentShell) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
+    }
+
+    public BroadcastLiveDlg(Display display) {
+        super(display, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
                 | CAVE.PERSPECTIVE_INDEPENDENT);
     }
 
@@ -155,7 +162,7 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
             return cld;
         }
 
-        if (transmitterGroups == null || transmitterGroups.isEmpty()) {
+        if ((transmitterGroups == null) || transmitterGroups.isEmpty()) {
             /*
              * System is not configured.
              */
