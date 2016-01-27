@@ -181,6 +181,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                   {@link ImportedByUtils} relocated to common.
  * Jun 18, 2015 4490     bkowal      Re-enable the expiration date/time spinners when a
  *                                   new message is started.
+ * Jan 25, 2016 5278     bkowal      Only display the tones prompt when an active message
+ *                                   is submitted.
  * </pre>
  * 
  * @author lvenable
@@ -1086,7 +1088,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             return;
         }
 
-        if (this.verifyTones() == false) {
+        /*
+         * Only verify tones if the message that the user is submitting is
+         * active.
+         */
+        if (this.activeRdo.getSelection() && this.verifyTones() == false) {
             return;
         }
 

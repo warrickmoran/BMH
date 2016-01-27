@@ -90,6 +90,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jun 01, 2015  #4490     bkowal       Use new {@link SAMEMessageTruncatedNotification} constructor.
  * Jun 02, 2015  #4369     rferrel      Send NoPlaybackMessageNotification when no messages to play.
  * Jun 16, 2015  4482      rjpeter      Reset packet logger on pause.
+ * Jan 21, 2015  5278      bkowal       Prevent rare audio NPE. Originally only happened due to
+ *                                      conflicting future playlists being allowed to remain.
  * </pre>
  * 
  * @author dgilling
@@ -234,6 +236,13 @@ public final class DataTransmitThread extends AbstractTransmitThread {
                     }
 
                     if (!keepRunning) {
+                        continue;
+                    }
+
+                    if (playbackData.getAudio() == null) {
+                        logger.error("Failed to retrieve audio for message: "
+                                + playbackData.getMessage()
+                                + ". The message will be skipped.");
                         continue;
                     }
 

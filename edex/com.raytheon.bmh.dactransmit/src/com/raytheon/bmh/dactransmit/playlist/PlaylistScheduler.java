@@ -35,7 +35,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
@@ -158,6 +157,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jun 04, 2015  4482      rjpeter      Create playlist directory on start.
  * Sep 22, 2015  4904      bkowal       Write replaced messages to the playlist as an
  *                                      expired message.
+ * Jan 21, 2015  5278      bkowal       Determine if future playlists can be replaced
+ *                                      by new incoming future playlists.
  * </pre>
  * 
  * @author dgilling
@@ -480,8 +481,9 @@ public final class PlaylistScheduler implements
                 }
                 audioData.setReturnTones(nextMessage.shouldPlayTones(TimeUtil
                         .newGmtCalendar()));
+                nextMessageData
+                        .setAudio(audioData, audioDataBuffer.isDynamic());
             }
-            nextMessageData.setAudio(audioData, audioDataBuffer.isDynamic());
         } else {
             if (warnNoMessages) {
                 logger.warn("There are currently no valid playlists or messages to play.");
@@ -697,6 +699,27 @@ public final class PlaylistScheduler implements
             }
         }
 
+        /*
+         * Determine if any active playlists need to be moved back into the
+         * future list due to the fact that playlists for higher level suites
+         * can include multiple playback segments based on distribution of
+         * trigger times.
+         */
+        for (Iterator<DacPlaylist> activeIter = activePlaylists.iterator(); activeIter
+                .hasNext();) {
+            DacPlaylist activePlaylist = activeIter.next();
+            if (activePlaylist.isValid() == false
+                    && activePlaylist.isExpired() == false) {
+                activeIter.remove();
+                /*
+                 * Reclassify this playlist as a future playlist. The current
+                 * playthrough has concluded.
+                 */
+                this.futurePlaylists.add(activePlaylist);
+                continue;
+            }
+        }
+
         for (Iterator<DacPlaylist> newIter = newPlaylists.iterator(); newIter
                 .hasNext();) {
             DacPlaylist newPlaylist = newIter.next();
@@ -816,13 +839,27 @@ public final class PlaylistScheduler implements
                             currentMessages = Collections.emptyList();
                         }
                         activePlaylists.remove(expiredActive);
+                    } else {
+                        expiredActive = findMatchingPlaylist(newPlaylist,
+                                this.futurePlaylists);
+                        if (expiredActive != null) {
+                            logger.info(
+                                    "Expiring future playlist: {} for suite: {}.",
+                                    expiredActive, newPlaylist.getSuite());
+                            expired.add(expiredActive);
+                            futurePlaylists.remove(expiredActive);
+                        }
                     }
                     expirePlaylists(expired);
                     return;
                 } else if (!newPlaylist.isValid()) {
-                    logger.debug("New playlist doesn't take affect immediately. Queueing...");
-                    futurePlaylists.add(newPlaylist);
-                    Collections.sort(futurePlaylists, QUEUE_ORDER);
+                    if (this.checkForReplacementPlaylist(newPlaylist,
+                            this.futurePlaylists)) {
+                        logger.debug(
+                                "New playlist: {} doesn't take affect immediately. Queueing...",
+                                newPlaylist);
+                        Collections.sort(futurePlaylists, QUEUE_ORDER);
+                    }
                     return;
                 }
 
@@ -857,52 +894,8 @@ public final class PlaylistScheduler implements
 
                     currentPlaylist = newPlaylist;
                 } else {
-                    DacPlaylist toReplace = findMatchingPlaylist(newPlaylist,
-                            activePlaylists);
-                    if (toReplace != null) {
-                        DacPlaylist expired = null;
-                        if (newPlaylist.getCreationTime().after(
-                                toReplace.getCreationTime())) {
-                            activePlaylists.remove(toReplace);
-                            activePlaylists.add(newPlaylist);
-                            if (newPlaylist.getTriggerBroadcastId() != null
-                                    && newPlaylist.getTriggerBroadcastId()
-                                            .equals(toReplace
-                                                    .getTriggerBroadcastId()) == false) {
-                                /*
-                                 * The playlist is not currently playing; but,
-                                 * it will be triggered soon.
-                                 */
-                                this.handlePotentialDelayedTriggerNotification(newPlaylist);
-                            }
-                            expired = toReplace;
-                        } else {
-                            logger.warn("Received an update to playlist "
-                                    + toReplace
-                                    + " that has an older creation date. Ignoring new playlist.");
-                            expired = newPlaylist;
-                        }
-
-                        if (!newPlaylist.getPath().equals(toReplace.getPath())) {
-                            logger.debug("Deleting "
-                                    + expired
-                                    + " because it is not active or not able to replace active.");
-                            expirePlaylist(expired);
-                        } else {
-                            logger.debug("Did not delete " + expired
-                                    + " because it was the same as active");
-                        }
-                        return;
-                    } else {
-                        activePlaylists.add(newPlaylist);
-                        if (newPlaylist.getTriggerBroadcastId() != null) {
-                            /*
-                             * The playlist is not currently playing; but, it
-                             * will be triggered soon.
-                             */
-                            this.handlePotentialDelayedTriggerNotification(newPlaylist);
-                        }
-                    }
+                    this.checkForReplacementPlaylist(newPlaylist,
+                            this.activePlaylists);
                 }
             }
 
@@ -915,9 +908,62 @@ public final class PlaylistScheduler implements
         }
     }
 
+    private boolean checkForReplacementPlaylist(DacPlaylist newPlaylist,
+            Collection<DacPlaylist> playlistCollection) {
+        boolean added = false;
+        DacPlaylist toReplace = findMatchingPlaylist(newPlaylist,
+                playlistCollection);
+        if (toReplace != null) {
+            DacPlaylist expired = null;
+            if (newPlaylist.getCreationTime()
+                    .after(toReplace.getCreationTime())) {
+                playlistCollection.remove(toReplace);
+                playlistCollection.add(newPlaylist);
+                if (newPlaylist.getTriggerBroadcastId() != null
+                        && newPlaylist.getTriggerBroadcastId().equals(
+                                toReplace.getTriggerBroadcastId()) == false) {
+                    /*
+                     * The playlist is not currently playing; but, it will be
+                     * triggered soon.
+                     */
+                    this.handlePotentialDelayedTriggerNotification(newPlaylist);
+                }
+                expired = toReplace;
+                added = true;
+            } else {
+                logger.warn("Received an update to playlist "
+                        + toReplace
+                        + " that has an older creation date. Ignoring new playlist.");
+                expired = newPlaylist;
+            }
+
+            if (!newPlaylist.getPath().equals(toReplace.getPath())) {
+                logger.debug("Deleting "
+                        + expired
+                        + " because it is not active or not able to replace active.");
+                expirePlaylist(expired);
+            } else {
+                logger.debug("Did not delete " + expired
+                        + " because it was the same as active");
+            }
+        } else {
+            playlistCollection.add(newPlaylist);
+            added = true;
+            if (newPlaylist.getTriggerBroadcastId() != null) {
+                /*
+                 * The playlist is not currently playing; but, it will be
+                 * triggered soon.
+                 */
+                this.handlePotentialDelayedTriggerNotification(newPlaylist);
+            }
+        }
+
+        return added;
+    }
+
     private static DacPlaylist findMatchingPlaylist(DacPlaylist playlist,
-            Set<DacPlaylist> playlistSet) {
-        for (DacPlaylist compare : playlistSet) {
+            Collection<DacPlaylist> playlistCollection) {
+        for (DacPlaylist compare : playlistCollection) {
             if ((playlist.getPriority() == compare.getPriority())
                     && (playlist.getSuite().equals(compare.getSuite()))) {
                 return compare;
@@ -1244,10 +1290,22 @@ public final class PlaylistScheduler implements
         cache.removeExpiredMessages(expiredPlaylist);
     }
 
+    /**
+     * Returns all currently active playlists as well as any playlists that may
+     * be active in the future.
+     * 
+     * @return a {@link Collection} of {@link Playlist}s.
+     */
     Collection<DacPlaylist> getActivePlaylists() {
         Collection<DacPlaylist> playlists = new HashSet<>();
         synchronized (playlistMessgeLock) {
             playlists.addAll(activePlaylists);
+            /*
+             * The future playlists are not actually active. However, they have
+             * the potential to become active in the future. So, we want to
+             * ensure that the associated messages are retained.
+             */
+            playlists.addAll(futurePlaylists);
         }
         return playlists;
     }

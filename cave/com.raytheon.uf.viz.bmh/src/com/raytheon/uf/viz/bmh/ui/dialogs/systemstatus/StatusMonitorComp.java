@@ -90,6 +90,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Mar 10, 2015  #4219     bsteffen     Reset min size on scrolledComp when transmitters change.
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * Dec 01, 2015  5113      bkowal       Report when a BMH Dac and a DAC are no longer in sync.
+ * Jan 25, 2016  4997      bkowal       Prevent potential NPE when no DACs are found.
  * 
  * </pre>
  * 
@@ -486,7 +487,7 @@ public class StatusMonitorComp extends Composite implements
                 dacList = dacResponse.getDacList();
                 desyncedDacs = dacResponse.getDesyncedDacs();
             } else {
-                dacList = null;
+                dacList = Collections.emptyList();
                 desyncedDacs = null;
             }
             final List<TransmitterGroup> tgList = getTransmitterGroups();
