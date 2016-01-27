@@ -208,6 +208,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 22, 2015  4481      bkowal      Display the timezone display id in the time zone field.
  * Jul 13, 2015  4636      bkowal      Handle initial maintenance playback statuses.
  * Jan 05, 2016  4997      bkowal      Allow toggling between transmitters/groups.
+ * Jan 27, 2016  5160      rjpeter     Left align MRD column.
  * </pre>
  * 
  * @author mpduff
@@ -1015,7 +1016,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         columns.add(new TableColumnData("Message Id", 100));
         columns.add(new TableColumnData("Message Title", 225));
         columns.add(new TableColumnData("Message Name", 175));
-        columns.add(new TableColumnData("MRD"));
+        columns.add(new TableColumnData("MRD", 20, SWT.LEFT));
         columns.add(new TableColumnData("Expiration Time (UTC)", 125));
         columns.add(new TableColumnData("Alert"));
         columns.add(new TableColumnData("SAME"));
@@ -1044,8 +1045,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                  * Determine if the audio stream needs to be reloaded either
                  * because the dac or the dac port has been altered.
                  */
-                reloadAudioStream = this.monitorThread != null
-                        && (this.selectedTransmitterGroupObject != null && ((transmitter
+                reloadAudioStream = (this.monitorThread != null)
+                        && ((this.selectedTransmitterGroupObject != null) && ((transmitter
                                 .getTransmitterGroup().getDac() != this.selectedTransmitterGroupObject
                                 .getDac()) || (this.monitorThread.getChannel() != transmitter
                                 .getDacPort())));

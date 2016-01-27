@@ -36,16 +36,16 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 22, 2014  #3490     lvenable     Initial creation
- * Oct 27, 2014   3764     mpduff       Fix validation
- * 
+ * Aug 22, 2014 3490       lvenable    Initial creation
+ * Oct 27, 2014 3764       mpduff      Fix validation
+ * Jan 27, 2015 5160       rjpeter     Reserve DMO message from renames.
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 
-public class MessgaeTypeAfosValidator implements IInputTextValidator {
+public class MessageTypeAfosValidator implements IInputTextValidator {
 
     /**
      * Set of existing names.
@@ -55,7 +55,7 @@ public class MessgaeTypeAfosValidator implements IInputTextValidator {
     /**
      * Constructor.
      */
-    public MessgaeTypeAfosValidator() {
+    public MessageTypeAfosValidator() {
 
     }
 
@@ -65,14 +65,14 @@ public class MessgaeTypeAfosValidator implements IInputTextValidator {
      * @param existingNames
      *            Existing names to check against.
      */
-    public MessgaeTypeAfosValidator(Set<String> existingNames) {
+    public MessageTypeAfosValidator(Set<String> existingNames) {
         this.existingNames = existingNames;
     }
 
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
-        if (text.matches("[A-Z0-9]+") == false || text.length() < 7
-                || text.length() > 9) {
+        if ((text.matches("[A-Z0-9]+") == false) || (text.length() < 7)
+                || (text.length() > 9)) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("The Message Type name must be 7-9 characters, capital letters or numbers.");
@@ -83,7 +83,7 @@ public class MessgaeTypeAfosValidator implements IInputTextValidator {
             return false;
         }
 
-        if (existingNames != null && existingNames.contains(text)) {
+        if ((existingNames != null) && existingNames.contains(text)) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("The Message Type name already exists.  Please enter another name.");
@@ -91,6 +91,13 @@ public class MessgaeTypeAfosValidator implements IInputTextValidator {
             DialogUtility.showMessageBox(parentShell,
                     SWT.ICON_WARNING | SWT.OK, "Existing Name", sb.toString());
 
+            return false;
+        }
+
+        if ("DMO".equals(text.subSequence(3, 6))) {
+            String message = "Invalid Message Type.\n\nDMO messages are reserved for use by Send Demo Message.";
+            DialogUtility.showMessageBox(parentShell, SWT.ICON_WARNING,
+                    "Invalid Message Type", message);
             return false;
         }
 

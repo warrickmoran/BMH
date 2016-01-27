@@ -183,6 +183,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                   new message is started.
  * Jan 25, 2016 5278     bkowal      Only display the tones prompt when an active message
  *                                   is submitted.
+ * Jan 27, 2016 5160     rjpeter     Filter out DMO messages.
  * </pre>
  * 
  * @author lvenable
@@ -561,12 +562,20 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                  * filtered out.
                  */
                 final MessageTypeDataManager mtdm = new MessageTypeDataManager();
-                final Set<String> staticAfosIds;
+                final Set<String> filteredIds = new HashSet<>();
                 try {
-                    staticAfosIds = mtdm.getStaticMessageAfosIds();
+                    filteredIds.addAll(mtdm.getStaticMessageAfosIds());
                 } catch (Exception e1) {
                     statusHandler
                             .error("Failed to retrieve the afos ids associated with static message types.",
+                                    e1);
+                    return;
+                }
+                try {
+                    filteredIds.addAll(mtdm.getDemoMsgAfosIds());
+                } catch (Exception e1) {
+                    statusHandler
+                            .error("Failed to retrieve the afos ids associated with demo message types.",
                                     e1);
                     return;
                 }
@@ -574,7 +583,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 SelectMessageTypeDlg selectMsgTypeDlg = new SelectMessageTypeDlg(
                         shell);
                 selectMsgTypeDlg.setFilteredMessageTypes(new ArrayList<>(
-                        staticAfosIds));
+                        filteredIds));
                 selectMsgTypeDlg.setCloseCallback(new ICloseCallback() {
                     @Override
                     public void dialogClosed(Object returnValue) {
@@ -1577,7 +1586,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                     .getExpirationTime());
             this.expirationDTF.setEnabled(true);
         } else {
-            if (this.userInputMessage.getId() != 0
+            if ((this.userInputMessage.getId() != 0)
                     && this.userInputMessage.isValidHeader()) {
                 this.noExpireChk.setSelection(true);
                 this.expirationDTF.setEnabled(false);
@@ -1746,7 +1755,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 .sendRequest(imRequest);
         List<InputMessage> inputMessages = imResponse.getInputMessageList();
 
-        if (inputMessages == null || inputMessages.isEmpty()) {
+        if ((inputMessages == null) || inputMessages.isEmpty()) {
             return inputAudioMessageData;
         }
 

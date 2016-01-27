@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -83,6 +84,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 02, 2015   4359     rferrel     Fix index exception in {@link #handleDeleteMessageType()}.
  * May 20, 2015   4490     bkowal      Display existing {@link MessageType} name in the rename dialog.
  * Jun 05, 2015   4490     rjpeter     Updated constructor.
+ * Jan 27, 2016   5160     rjpeter     Prevent editing of DMO messages.
  * </pre>
  * 
  * @author lvenable
@@ -348,8 +350,17 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         existingAfosIds.clear();
 
         if (messageTypeList != null) {
-            for (MessageType mt : messageTypeList) {
-                existingAfosIds.add(mt.getAfosid());
+            for (Iterator<MessageType> iter = messageTypeList.iterator(); iter
+                    .hasNext();) {
+                MessageType mt = iter.next();
+                String afosId = mt.getAfosid();
+
+                if ((afosId.length() >= 6)
+                        && "DMO".equals(afosId.substring(3, 6))) {
+                    iter.remove();
+                } else {
+                    existingAfosIds.add(mt.getAfosid());
+                }
             }
         }
     }
@@ -405,7 +416,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         cemd.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof MessageType) {
+                if ((returnValue != null)
+                        && (returnValue instanceof MessageType)) {
                     selectedAfosId = ((MessageType) returnValue).getAfosid();
                     retrieveDataFromDB();
                     populateMessageTypeTable(true);
@@ -419,7 +431,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      * Handle renaming a new message type.
      */
     private void handleRenameAction() {
-        MessgaeTypeAfosValidator mtValidator = new MessgaeTypeAfosValidator(
+        MessageTypeAfosValidator mtValidator = new MessageTypeAfosValidator(
                 existingAfosIds);
 
         String existingName = (this.getSelectedMessageType() == null) ? null
@@ -430,7 +442,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         inputDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue != null && returnValue instanceof String) {
+                if ((returnValue != null) && (returnValue instanceof String)) {
                     renameMessageType((String) returnValue);
                 }
             }
@@ -458,7 +470,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 error = true;
 
             }
-            if (error || mt == null) {
+            if (error || (mt == null)) {
                 String message = "Error retrieving message type from the database.  Cannot edit message type.";
                 DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
                         | SWT.OK, "Retrieve Error", message);
@@ -510,7 +522,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                     + mt.getAfosid() + "'!", e);
         }
 
-        if (triggeredPrograms == null || triggeredPrograms.isEmpty()) {
+        if ((triggeredPrograms == null) || triggeredPrograms.isEmpty()) {
             StringBuilder sb = new StringBuilder();
             sb.append("Do you wish to delete message type ")
                     .append(mt.getAfosid()).append("?");
@@ -670,8 +682,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private void selectMessageTypeInTableByAfosId() {
         // If the selected message type is null then select the first item in
         // the table and then set the selected message type to that item.
-        if (selectedAfosId == null && msgAvailTableComp.getItemCount() > 0
-                && messageTypeList.size() > 0) {
+        if ((selectedAfosId == null) && (msgAvailTableComp.getItemCount() > 0)
+                && (messageTypeList.size() > 0)) {
             msgAvailTableComp.select(0);
             selectedAfosId = messageTypeList.get(0).getAfosid();
             return;
