@@ -55,6 +55,9 @@ public final class MessagePlaybackPrediction {
 
     @DynamicSerializeElement
     private long broadcastId;
+    
+    @DynamicSerializeElement
+    private long timestamp;
 
     @DynamicSerializeElement
     private Calendar nextTransmitTime;
@@ -89,6 +92,7 @@ public final class MessagePlaybackPrediction {
         this.playedAlertTone = false;
         this.playedSameTone = false;
         this.dynamic = message.isDynamic();
+        this.timestamp = message.getTimestamp();
     }
 
     public MessagePlaybackPrediction(Calendar playbackTime,
@@ -108,6 +112,14 @@ public final class MessagePlaybackPrediction {
 
     public void setBroadcastId(long broadcastId) {
         this.broadcastId = broadcastId;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public Calendar getNextTransmitTime() {

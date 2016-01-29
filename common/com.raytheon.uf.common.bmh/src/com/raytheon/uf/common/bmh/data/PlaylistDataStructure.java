@@ -21,6 +21,7 @@ package com.raytheon.uf.common.bmh.data;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,6 +53,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 13, 2015     3844   bsteffen    Change included message to be PlaylistMessage
  * Mar 25, 2015     4290   bsteffen    Switch to global replacement.
  * Jan 28, 2016     5300   rjpeter     Updated to use copy construction instead of in place update.
+ * Jan 29, 2016     5300   bkowal      Compare update times when determining if a message has already
+ *                                     been loaded to ensure the latest version is stored locally.
  * </pre>
  * 
  * @author mpduff
@@ -246,7 +249,41 @@ public class PlaylistDataStructure implements IPlaylistData {
         Set<Long> rval = new HashSet<>();
         rval.addAll(getPredictionMap().keySet());
         rval.addAll(getPeriodicPredictionMap().keySet());
-        rval.removeAll(getPlaylistMap().keySet());
+        Iterator<Long> broadcastIdIterator = rval.iterator();
+        while (broadcastIdIterator.hasNext()) {
+            final Long broadcastId = broadcastIdIterator.next();
+            final BroadcastMsg msg = getPlaylistMap().get(broadcastId);
+            if (msg == null) {
+                /*
+                 * message has not previously been retrieved yet.
+                 */
+                continue;
+            }
+
+            /*
+             * check predictions
+             */
+            MessagePlaybackPrediction pred = getPredictionMap()
+                    .get(broadcastId);
+            if (pred == null) {
+                /*
+                 * check periodic predictions.
+                 */
+                pred = getPeriodicPredictionMap().get(broadcastId);
+            }
+            if (pred == null) {
+                // unlikely - message should not even be in the list.
+                broadcastIdIterator.remove();
+                continue;
+            }
+            /*
+             * ensure that the timestamps match.
+             */
+            if (msg.getUpdateDate().getTimeInMillis() == pred.getTimestamp()) {
+                // the message has not been updated since it was last retrieved.
+                broadcastIdIterator.remove();
+            }
+        }
         return rval;
     }
 
