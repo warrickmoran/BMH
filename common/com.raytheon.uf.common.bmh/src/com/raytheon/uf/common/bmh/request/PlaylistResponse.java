@@ -19,8 +19,11 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.Map;
+
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
-import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -35,7 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 15, 2014    3432    mpduff      Initial creation
  * Oct 21, 2014    3655    bkowal      Updated to use {@link IPlaylistData}.
- * 
+ * Jan 28, 2016 5300       rjpeter     Added broadcastData.
  * </pre>
  * 
  * @author mpduff
@@ -45,25 +48,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class PlaylistResponse {
 
     @DynamicSerializeElement
-    private Playlist playlist;
-
-    @DynamicSerializeElement
     private IPlaylistData playlistData;
 
-    /**
-     * @return the playlist
-     */
-    public Playlist getPlaylist() {
-        return playlist;
-    }
-
-    /**
-     * @param playlist
-     *            the playlist to set
-     */
-    public void setPlaylist(Playlist playlist) {
-        this.playlist = playlist;
-    }
+    @DynamicSerializeElement
+    private Map<BroadcastMsg, MessageType> broadcastData;
 
     /**
      * @return the playlistData
@@ -79,4 +67,20 @@ public class PlaylistResponse {
     public void setPlaylistData(IPlaylistData playlistData) {
         this.playlistData = playlistData;
     }
+
+    /**
+     * @return the broadcastData
+     */
+    public Map<BroadcastMsg, MessageType> getBroadcastData() {
+        return broadcastData;
+    }
+
+    /**
+     * @param broadcastData
+     *            the broadcastData to set
+     */
+    public void setBroadcastData(Map<BroadcastMsg, MessageType> broadcastData) {
+        this.broadcastData = broadcastData;
+    }
+
 }

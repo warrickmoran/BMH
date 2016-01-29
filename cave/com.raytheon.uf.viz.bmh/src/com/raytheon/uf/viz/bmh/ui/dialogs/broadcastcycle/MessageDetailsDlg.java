@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -89,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 10, 2015    4256     rferrel    Make message text read only.
  * Jun 12, 2015    4482     rjpeter    Added DO_NOT_BLOCK.
  * Jan 27, 2016    5160     rjpeter    Added MRD and fixed Time Zone.
+ * Jan 28, 2016    5300     rjpeter    Fixed transmitters to be based on broadcast messages.
  * </pre>
  * 
  * @author mpduff
@@ -241,8 +241,12 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label mrdValueLbl = new Label(comp, SWT.NONE);
-        mrdValueLbl.setText(this.broadcastMsg.getInputMessage()
-                .getMrd());
+        String mrd = this.broadcastMsg.getInputMessage().getMrd();
+        if (mrd == null) {
+            mrd = "";
+        }
+
+        mrdValueLbl.setText(mrd);
         mrdValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -266,13 +270,6 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         Label timeZoneValueLbl = new Label(comp, SWT.NONE);
         timeZoneValueLbl.setText(this.broadcastMsg.getTransmitterGroup()
                 .getTimeZone());
-
-        Iterator<TransmitterGroup> iter = messageType
-                .getDefaultTransmitterGroups().iterator();
-        if (iter.hasNext()) {
-            timeZoneValueLbl.setText(iter.next().getTimeZone());
-        }
-
         timeZoneValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -490,16 +487,18 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     private void populateTransmitterTable() throws Exception {
         TableData transmittertableData = getTransmitterTableData();
 
-        List<Transmitter> transmitterList = dataManager
-                .getTransmitterForMessageType(messageType);
+        List<TransmitterGroup> transmitterGroupList = dataManager
+                .getTransmitterGroupsForMessage(broadcastMsg);
 
-        for (Transmitter t : transmitterList) {
-            TableRowData row = new TableRowData();
-            TableCellData cell = new TableCellData(t.getLocation());
-            row.addTableCellData(cell);
-            cell = new TableCellData(t.getMnemonic());
-            row.addTableCellData(cell);
-            transmittertableData.addDataRow(row);
+        for (TransmitterGroup tg : transmitterGroupList) {
+            for (Transmitter t : tg.getTransmitterList()) {
+                TableRowData row = new TableRowData();
+                TableCellData cell = new TableCellData(t.getLocation());
+                row.addTableCellData(cell);
+                cell = new TableCellData(t.getMnemonic());
+                row.addTableCellData(cell);
+                transmittertableData.addDataRow(row);
+            }
         }
         transmitterTableComp.populateTable(transmittertableData);
     }

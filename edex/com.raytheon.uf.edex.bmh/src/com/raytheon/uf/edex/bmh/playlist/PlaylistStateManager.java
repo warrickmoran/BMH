@@ -19,18 +19,18 @@
  **/
 package com.raytheon.uf.edex.bmh.playlist;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
@@ -41,6 +41,7 @@ import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
@@ -85,7 +86,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * May 22, 2015   4481     bkowal      Set the dynamic flag on the {@link MessagePlaybackPrediction}.
  * Jun 02, 2015   4369     rferrel     Added method {@link #processNoPlaybackMessageNotification(NoPlaybackMessageNotification)}.
  * Jul 29, 2015   4686     bkowal      Removed setting of the broadcast flag on {@link BroadcastMsg}.
- * 
+ * Jan 28, 2016   5300     rjpeter     Fix PlaylistDataStructure memory leak.
  * </pre>
  * 
  * @author mpduff
@@ -215,6 +216,11 @@ public class PlaylistStateManager {
                             + tg + ".");
         }
 
+        /**
+         * Warning: the following code is almost an exact replication of the if
+         * statement in the handlePlaylistSwitchNotification method of
+         * PlaylistData.
+         */
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
         List<MessagePlaybackPrediction> periodicMessageList = notification
@@ -222,83 +228,45 @@ public class PlaylistStateManager {
 
         PlaylistDataStructure playlistData = playlistDataMap.get(tg);
         if (playlistData == null) {
-            playlistData = new PlaylistDataStructure();
-            playlistDataMap.put(tg, playlistData);
+            playlistData = new PlaylistDataStructure(messageList,
+                    periodicMessageList);
+        } else {
+            /*
+             * make a copy to avoid sync issues with already returned structures
+             * that may be serializing
+             */
+            playlistData = new PlaylistDataStructure(messageList,
+                    periodicMessageList, playlistData);
         }
-        Map<Long, MessagePlaybackPrediction> predictionMap = playlistData
-                .getPredictionMap();
 
         playlistData.setSuiteName(notification.getSuiteName());
         playlistData.setPlaybackCycleTime(notification.getPlaybackCycleTime());
-        predictionMap.clear();
-
-        for (MessagePlaybackPrediction mpp : messageList) {
-            predictionMap.put(mpp.getBroadcastId(), mpp);
+        Set<Long> missingIds = playlistData.getMissingBroadcastIds();
+        if (!missingIds.isEmpty()) {
+            playlistData.setBroadcastMsgData(getBroadcastData(missingIds));
         }
 
-        Map<Long, MessagePlaybackPrediction> periodicPredictionMap = playlistData
-                .getPeriodicPredictionMap();
-        periodicPredictionMap.clear();
-        if (periodicMessageList != null) {
-            for (MessagePlaybackPrediction mpp : periodicMessageList) {
-                periodicPredictionMap.put(mpp.getBroadcastId(), mpp);
+        playlistDataMap.put(tg, playlistData);
+    }
+
+    public Map<BroadcastMsg, MessageType> getBroadcastData(Set<Long> ids) {
+        if (CollectionUtil.isNullOrEmpty(ids)) {
+            return Collections.emptyMap();
+        }
+
+        Map<BroadcastMsg, MessageType> broadcastData = new HashMap<>(
+                ids.size(), 1);
+
+        for (Long id : ids) {
+            BroadcastMsg bMsg = broadcastMsgDao.getByID(id);
+
+            if (bMsg != null) {
+                broadcastData.put(bMsg,
+                        messageTypeDao.getByAfosId(bMsg.getAfosid()));
             }
         }
 
-        Map<Long, BroadcastMsg> playlistMap = playlistData.getPlaylistMap();
-        // remove unused messages
-        playlistMap.clear();
-
-        Map<Long, MessageType> messageTypeMap = playlistData
-                .getMessageTypeMap();
-
-        Playlist playlist = playlistDao
-                .getBySuiteAndGroupName(notification.getSuiteName(),
-                        notification.getTransmitterGroup());
-        /**
-         * Warning: the following if statement is almost an exact replication of
-         * the if statement in the handlePlaylistSwitchNotification method of
-         * PlaylistData.
-         */
-        if (playlist != null) {
-            for (BroadcastMsg message : playlist.getMessages()) {
-                long id = message.getId();
-                MessageType messageType = messageTypeDao.getByAfosId(message
-                        .getAfosid());
-                playlistMap.put(id, message);
-                messageTypeMap.put(id, messageType);
-            }
-        } else {
-            if (notification.getMessages().size() == 1) {
-                /*
-                 * A single message without a saved playlist would indicate that
-                 * the notification may be for an interrupt.
-                 */
-                try {
-                    // retrieve the associated broadcast message.
-                    long id = notification.getMessages().get(0)
-                            .getBroadcastId();
-                    BroadcastMsg broadcastMsg = this.broadcastMsgDao
-                            .getByID(id);
-                    if (broadcastMsg == null) {
-                        statusHandler.error(
-                                BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                                "Failed to find the broadcast msg for id: "
-                                        + id
-                                        + " associated with notification: "
-                                        + notification.toString() + ".");
-                        return;
-                    }
-                    MessageType messageType = messageTypeDao
-                            .getByAfosId(broadcastMsg.getAfosid());
-                    playlistMap.put(id, broadcastMsg);
-                    messageTypeMap.put(id, messageType);
-                } catch (Exception e) {
-                    statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
-                            "Error accessing BMH database", e);
-                }
-            }
-        }
+        return broadcastData;
     }
 
     public synchronized void processMessagePlaybackStatusNotification(
@@ -326,24 +294,8 @@ public class PlaylistStateManager {
             playlistDataMap.put(notification.getTransmitterGroup(),
                     playlistData);
         }
-        Map<Long, MessagePlaybackPrediction> predictionMap = playlistData
-                .getPredictionMap();
-
-        long id = notification.getBroadcastId();
-        MessagePlaybackPrediction pred = predictionMap.get(id);
-        if (pred == null) {
-            pred = new MessagePlaybackPrediction();
-            pred.setBroadcastId(id);
-            predictionMap.put(id, pred);
-        }
-
-        pred.setPlayCount(notification.getPlayCount());
-        pred.setLastTransmitTime(notification.getTransmitTime());
-        pred.setNextTransmitTime(null);
-        pred.setPlayedAlertTone(notification.isPlayedAlertTone());
-        pred.setPlayedSameTone(notification.isPlayedSameTone());
-        pred.setDynamic(notification.isDynamic());
-        setToneFlags(playlistData, id);
+        playlistData.updatePlaybackData(notification);
+        setToneFlags(playlistData, notification.getBroadcastId());
     }
 
     private void setToneFlags(PlaylistDataStructure playlistData,
@@ -358,7 +310,8 @@ public class PlaylistStateManager {
                 || interrupt) {
             if (broadcastMessage != null) {
                 if (tonesMatch(prediction, broadcastMessage)
-                        && interrupt == false && broadcastMessage.isDelivered()) {
+                        && (interrupt == false)
+                        && broadcastMessage.isDelivered()) {
                     return;
                 }
             }
@@ -374,7 +327,7 @@ public class PlaylistStateManager {
                     updated = true;
                 }
                 if (interrupt
-                        && interrupt != broadcastMessage.isPlayedInterrupt()) {
+                        && (interrupt != broadcastMessage.isPlayedInterrupt())) {
                     broadcastMessage.setPlayedInterrupt(interrupt);
                     updated = true;
                 }
@@ -387,21 +340,18 @@ public class PlaylistStateManager {
 
     private static boolean tonesMatch(MessagePlaybackPrediction prediction,
             BroadcastMsg broadcastMessage) {
-        return broadcastMessage.isPlayedAlertTone() == prediction
-                .isPlayedAlertTone()
-                && broadcastMessage.isPlayedSameTone() == prediction
-                        .isPlayedSameTone();
+        return (broadcastMessage.isPlayedAlertTone() == prediction
+                .isPlayedAlertTone())
+                && (broadcastMessage.isPlayedSameTone() == prediction
+                        .isPlayedSameTone());
     }
 
     public synchronized IPlaylistData getPlaylistDataStructure(
             String transmitterGrpName) {
-        // return a copy of the map to avoid concurrent issues during
-        // serialization
-        PlaylistDataStructure playlistData = null;
-        if (playlistDataMap.containsKey(transmitterGrpName)) {
-            playlistData = new PlaylistDataStructure(
-                    playlistDataMap.get(transmitterGrpName));
-        } else {
+        PlaylistDataStructure playlistData = playlistDataMap
+                .get(transmitterGrpName);
+
+        if (playlistData == null) {
             playlistData = new PlaylistDataStructure();
         }
 
