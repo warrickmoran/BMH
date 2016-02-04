@@ -55,6 +55,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 28, 2016     5300   rjpeter     Updated to use copy construction instead of in place update.
  * Jan 29, 2016     5300   bkowal      Compare update times when determining if a message has already
  *                                     been loaded to ensure the latest version is stored locally.
+ * Feb 04, 2016     5308   bkowal      Ensure that a message will not remain displayed as an interrupt
+ *                                     after the initial broadcast.
  * </pre>
  * 
  * @author mpduff
@@ -280,6 +282,17 @@ public class PlaylistDataStructure implements IPlaylistData {
                 broadcastIdIterator.remove();
                 continue;
             }
+
+            /*
+             * if this message is an interrupt and the played interrupt flag is
+             * currently unset, retrieve the broadcast msg because it should
+             * eventually be set.
+             */
+            if (msg.getInputMessage().getInterrupt()
+                    && msg.isPlayedInterrupt() == false) {
+                continue;
+            }
+
             /*
              * ensure that the timestamps match.
              */
