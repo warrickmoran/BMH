@@ -38,6 +38,7 @@ import com.raytheon.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
@@ -46,7 +47,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
@@ -101,6 +102,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
+ * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage.
  * </pre>
  * 
  * @author bsteffen
@@ -179,7 +181,7 @@ public class DacTransmitCommunicator extends Thread {
     protected void handleMessage(Object message) {
         if (message instanceof DacTransmitStatus) {
             DacTransmitStatus newStatus = (DacTransmitStatus) message;
-            if (lastStatus == null || !newStatus.equals(lastStatus)) {
+            if ((lastStatus == null) || !newStatus.equals(lastStatus)) {
                 lastStatus = newStatus;
                 if (newStatus.isConnectedToDac()) {
                     manager.dacConnectedLocal(groupName);
@@ -191,8 +193,8 @@ public class DacTransmitCommunicator extends Thread {
             MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) message;
             notification.setTransmitterGroup(groupName);
             manager.transmitDacStatus(notification);
-        } else if (message instanceof PlaylistSwitchNotification) {
-            PlaylistSwitchNotification notification = (PlaylistSwitchNotification) message;
+        } else if (message instanceof PlaylistNotification) {
+            PlaylistNotification notification = (PlaylistNotification) message;
             notification.setTransmitterGroup(groupName);
             manager.transmitDacStatus(notification);
         } else if (message instanceof DacHardwareStatusNotification) {
@@ -250,7 +252,7 @@ public class DacTransmitCommunicator extends Thread {
      * @See {@link #isDisconnectedFromDacTransmit()}
      */
     public boolean isConnectedToDacTransmit() {
-        return lastStatus != null && !disconnected;
+        return (lastStatus != null) && !disconnected;
     }
 
     /**
@@ -285,9 +287,9 @@ public class DacTransmitCommunicator extends Thread {
 
     public void setTransmitterAudioAmplitudes(short audioAmplitude,
             short sameAmplitude, short alertAmplitude) {
-        if (this.audioAmplitude != audioAmplitude
-                || this.sameAmplitude != sameAmplitude
-                || this.alertAmplitude != alertAmplitude) {
+        if ((this.audioAmplitude != audioAmplitude)
+                || (this.sameAmplitude != sameAmplitude)
+                || (this.alertAmplitude != alertAmplitude)) {
             this.send(new ChangeAmplitudeTarget(audioAmplitude, sameAmplitude,
                     alertAmplitude));
             this.audioAmplitude = audioAmplitude;
@@ -319,6 +321,10 @@ public class DacTransmitCommunicator extends Thread {
     }
 
     public void sendLiveBroadcastMsg(ILiveBroadcastMessage msg) {
+        send(msg);
+    }
+
+    public void sendPlaylistRequest(SendPlaylistMessage msg) {
         send(msg);
     }
 

@@ -46,6 +46,7 @@ import com.raytheon.bmh.dactransmit.playlist.PrioritizableCallable;
 import com.raytheon.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 import com.raytheon.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
@@ -53,7 +54,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -107,7 +108,8 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Oct 14, 2015  4984     rjpeter     Updated to set new transmitters and audio targets back to config.
  * Oct 26, 2015  5034     bkowal      Halt any active live broadcasts when communication is lost with
  *                                    the comms manager.
- * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
+ * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage and cache the last received PlaylistNotification.
  * </pre>
  * 
  * @author bsteffen
@@ -138,6 +140,14 @@ public final class CommsManagerCommunicator extends Thread {
     private transient boolean running = true;
 
     private final DacSession dacSession;
+
+    /**
+     * Last received PlaylistNotification. Note due to threading all changes are
+     * copy on write.
+     */
+    private volatile PlaylistNotification lastPlaylist;
+
+    private volatile LiveBroadcastSwitchNotification liveBroadcast;
 
     public CommsManagerCommunicator(DacSession dacSession) {
         super("CommsManagerReaderThread");
@@ -216,7 +226,7 @@ public final class CommsManagerCommunicator extends Thread {
                     }
                 }
             }
-            if (socket == null || scan) {
+            if ((socket == null) || scan) {
                 executorService.submit(backupPlaylistTask);
             }
             if (socket == null) {
@@ -296,6 +306,18 @@ public final class CommsManagerCommunicator extends Thread {
             scan = ((DacTransmitScanPlaylists) message).isScan();
         } else if (message instanceof ChangeTimeZone) {
             eventBus.post(message);
+        } else if (message instanceof SendPlaylistMessage) {
+            if (liveBroadcast != null) {
+                executorService
+                        .submit(new SendToCommsManagerTask(liveBroadcast));
+            } else if (lastPlaylist != null) {
+                executorService
+                        .submit(new SendToCommsManagerTask(lastPlaylist));
+            } else {
+                NoPlaybackMessageNotification msg = new NoPlaybackMessageNotification();
+                msg.setGroupName(config.getTransmitterGroup());
+                executorService.submit(new SendToCommsManagerTask(msg));
+            }
         } else {
             logger.error("Unrecognized message from comms manager of type "
                     + message.getClass().getSimpleName());
@@ -327,16 +349,29 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void sendPlaybackStatus(
             MessagePlaybackStatusNotification notification) {
+        if (lastPlaylist != null) {
+            lastPlaylist = lastPlaylist.merge(notification);
+        }
+
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
-    public void sendPlaylistSwitch(PlaylistSwitchNotification notification) {
+    public void sendPlaylistSwitch(PlaylistNotification notification) {
+        lastPlaylist = notification;
+        liveBroadcast = null;
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 
     @Subscribe
     public void sendPlaylistSwitch(LiveBroadcastSwitchNotification notification) {
+        if (LiveBroadcastSwitchNotification.STATE.STARTED.equals(notification
+                .getBroadcastState())) {
+            liveBroadcast = notification;
+        } else {
+            liveBroadcast = null;
+        }
+
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 
@@ -368,6 +403,8 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void handleNoPlaybackMessageNotification(
             NoPlaybackMessageNotification notification) {
+        lastPlaylist = null;
+        liveBroadcast = null;
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 

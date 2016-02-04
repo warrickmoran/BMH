@@ -52,6 +52,7 @@ import java.util.Map;
  * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
  * Nov 16, 2015 5127       rjpeter     Added MESSAGE_ARCHIVE_FAILED.
  * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
+ * Feb 04, 2016 5308       rjpeter     Removed MESSAGE_VALIDATION_DUPLICATE.
  * </pre>
  * 
  * @author bkowal
@@ -204,11 +205,6 @@ public enum BMH_CATEGORY {
      * the message.
      */
     MESSAGE_VALIDATION_UNASSIGNED(31, "MESSAGE_VALIDATION"),
-    /*
-     * indicates that a message failed validation because it was a duplicate of
-     * a message that had been previously processed.
-     */
-    MESSAGE_VALIDATION_DUPLICATE(32, "MESSAGE_VALIDATION"),
 
     /*
      * indicates that a message failed validation because it contained

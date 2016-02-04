@@ -9,19 +9,19 @@ import os
 
 import AbstractBMHParsingScenario as AbstractBMHParsingScenario
 
-class InvalidMsgDuplicate(AbstractBMHParsingScenario.AbstractBMHParsingScenario):
+class ValidMsgDuplicate(AbstractBMHParsingScenario.AbstractBMHParsingScenario):
     '''
     classdocs
     '''
 
-    _EXPECTED_RESULT = 'Message duplicate1 is successfully validated. Message duplicate2  ' \
-        'fails validation because it is a DUPLICATE message. Check EDEX logs to verify.'
+    _EXPECTED_RESULT = 'Message duplicate1 is successfully validated. Message duplicate2' \
+        ' replaces duplicate1 because it is a DUPLICATE message. Watch Broadcast Cycle Dialog to verify.'
 
     def __init__(self):
         '''
         Constructor
         '''
-        super(InvalidMsgDuplicate, self).__init__('Invalid Message Duplicate', 
+        super(ValidMsgDuplicate, self).__init__('Valid Message Duplicate', 
             self._EXPECTED_RESULT, None)
         
     def _prepareInputs(self, dataDirectory):

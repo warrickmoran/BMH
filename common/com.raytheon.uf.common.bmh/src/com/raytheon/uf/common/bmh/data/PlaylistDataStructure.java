@@ -99,22 +99,26 @@ public class PlaylistDataStructure implements IPlaylistData {
     @DynamicSerializeElement
     private long playbackCycleTime;
 
+    @DynamicSerializeElement
+    private long timeStamp;
+
     public PlaylistDataStructure() {
     }
 
     public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
-            List<MessagePlaybackPrediction> periodicMessages) {
-        this(messages, periodicMessages, null);
+            List<MessagePlaybackPrediction> periodicMessages, long timeStamp) {
+        this(messages, periodicMessages, null, timeStamp);
     }
 
     public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
             List<MessagePlaybackPrediction> periodicMessages,
-            PlaylistDataStructure that) {
+            PlaylistDataStructure that, long timeStamp) {
         this.predictionMap = new LinkedHashMap<>(messages.size());
         this.periodicPredictionMap = new LinkedHashMap<>(
                 periodicMessages.size());
         this.playlistMap = new HashMap<>();
         this.messageTypeMap = new HashMap<>();
+        this.timeStamp = timeStamp;
 
         for (MessagePlaybackPrediction pred : messages) {
             predictionMap.put(pred.getBroadcastId(), pred);
@@ -299,18 +303,27 @@ public class PlaylistDataStructure implements IPlaylistData {
     public synchronized void updatePlaybackData(
             MessagePlaybackStatusNotification notification) {
         long id = notification.getBroadcastId();
-        MessagePlaybackPrediction pred = new MessagePlaybackPrediction();
-        pred.setBroadcastId(id);
-        pred.setPlayCount(notification.getPlayCount());
-        pred.setLastTransmitTime(notification.getTransmitTime());
-        pred.setNextTransmitTime(null);
-        pred.setPlayedAlertTone(notification.isPlayedAlertTone());
-        pred.setPlayedSameTone(notification.isPlayedSameTone());
-        pred.setDynamic(notification.isDynamic());
+        MessagePlaybackPrediction pred = new MessagePlaybackPrediction(
+                notification);
         LinkedHashMap<Long, MessagePlaybackPrediction> newPredictionMap = new LinkedHashMap<>(
                 getPredictionMap());
         newPredictionMap.put(id, pred);
         predictionMap = newPredictionMap;
     }
 
+    /**
+     * @param timeStamp
+     *            the timeStamp to set
+     */
+    public void setTimeStamp(long timeStamp) {
+        this.timeStamp = timeStamp;
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public long getTimeStamp() {
+        return timeStamp;
+    }
 }

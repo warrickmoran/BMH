@@ -41,6 +41,7 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.dactransmit.ipc.DacMaintenanceRegister;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitRegister;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
@@ -82,6 +83,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
+ * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage.
  * </pre>
  * 
  * @author bsteffen
@@ -273,6 +275,24 @@ public class DacTransmitServer extends AbstractServer {
         if (communicators != null) {
             for (DacTransmitCommunicator communicator : communicators) {
                 communicator.sendLiveBroadcastMsg(msg);
+            }
+        }
+    }
+
+    /**
+     * Send the playlist request to the associated dac transmit.
+     * 
+     * @param key
+     *            the specified {@link DacTransmitKey}
+     * @param data
+     *            the specified data
+     */
+    public void sendToDac(SendPlaylistMessage msg) {
+        List<DacTransmitCommunicator> communicators = this.communicators
+                .get(msg.getTransmitterGroup());
+        if (communicators != null) {
+            for (DacTransmitCommunicator communicator : communicators) {
+                communicator.sendPlaylistRequest(msg);
             }
         }
     }

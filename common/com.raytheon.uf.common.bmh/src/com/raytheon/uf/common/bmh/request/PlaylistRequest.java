@@ -36,6 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Jan 28, 2016  5300     rjpeter     Added GET_PLAYLIST_DATA_FOR_IDS
+ * Feb 04, 2016  5308     rjpeter     Removed GET_PLAYLIST_DATA_FOR_TRANSMITTER
  * </pre>
  * 
  * @author mpduff
@@ -44,14 +45,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class PlaylistRequest extends AbstractBMHServerRequest {
     public enum PlaylistAction {
-        GET_PLAYLIST_DATA_FOR_TRANSMITTER, GET_PLAYLIST_DATA_FOR_IDS
+        GET_PLAYLIST_DATA_FOR_IDS
     }
 
     @DynamicSerializeElement
     private PlaylistAction action;
-
-    @DynamicSerializeElement
-    private String transmitterName;
 
     @DynamicSerializeElement
     private Set<Long> broadcastIds;
@@ -69,21 +67,6 @@ public class PlaylistRequest extends AbstractBMHServerRequest {
      */
     public void setAction(PlaylistAction action) {
         this.action = action;
-    }
-
-    /**
-     * @return the transmitterName
-     */
-    public String getTransmitterName() {
-        return transmitterName;
-    }
-
-    /**
-     * @param transmitterName
-     *            the transmitterName to set
-     */
-    public void setTransmitterName(String transmitterName) {
-        this.transmitterName = transmitterName;
     }
 
     /**
