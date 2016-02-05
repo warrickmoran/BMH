@@ -115,7 +115,8 @@ public class PlaylistStateManager {
     public synchronized void processMessagePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
         /* Update any tone flags in the database */
-        if (notification.isPlayedAlertTone() || notification.isPlayedSameTone()) {
+        if (notification.isPlayedAlertTone() || notification.isPlayedSameTone()
+                || (notification.getPlayCount() == 1)) {
             BroadcastMsg broadcastMessage = broadcastMsgDao
                     .getByID(notification.getBroadcastId());
             if (broadcastMessage != null) {
