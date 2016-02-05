@@ -88,6 +88,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 06, 2015  4463      bkowal      Default {@link #originator} to 'WXR'.
  * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jun 23, 2015  4572      bkowal      Added {@link #GET_MESSAGETYPES_FOR_AFOSIDS}.
+ * Jan 27, 2016  5160      rjpeter     Added {@link #GET_DEMO_AFOSIDS}.
  * </pre>
  * 
  * @author rjpeter
@@ -101,7 +102,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE, query = MessageType.GET_MESSAGETYPE_FOR_EMERGENCYOVERRIDE_QUERY),
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION, query = MessageType.GET_MESSAGETYPE_FOR_DESIGNATION_QUERY),
         @NamedQuery(name = MessageType.GET_REPLACEMENT_AFOSIDS, query = MessageType.GET_REPLACEMENT_AFOSIDS_QUERY),
-        @NamedQuery(name = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS, query = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY) })
+        @NamedQuery(name = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS, query = MessageType.GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY),
+        @NamedQuery(name = MessageType.GET_DEMO_AFOSIDS, query = MessageType.GET_DEMO_AFOSIDS_QUERY) })
 @Entity
 @DynamicSerialize
 @Table(name = "msg_type", uniqueConstraints = @UniqueConstraint(name = "uk_msg_type_afosid", columnNames = "afosid"))
@@ -146,6 +148,10 @@ public class MessageType {
     public static final String GET_REVERSE_REPLACEMENT_AFOSIDS = "getReverseReplacementAfosids";
 
     protected static final String GET_REVERSE_REPLACEMENT_AFOSIDS_QUERY = "Select m FROM MessageType m, MessageTypeSummary s WHERE s.afosid = :afosid and s in elements(m.replacementMsgs)";
+
+    public static final String GET_DEMO_AFOSIDS = "getDemoAfosids";
+
+    protected static final String GET_DEMO_AFOSIDS_QUERY = "Select m FROM MessageType m where substring(m.afosid, 4, 3) = 'DMO'";
 
     public static final int AFOS_ID_LENGTH = 9;
 

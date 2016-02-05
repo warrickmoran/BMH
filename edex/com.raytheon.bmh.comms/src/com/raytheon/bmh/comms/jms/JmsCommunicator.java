@@ -71,6 +71,7 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Apr 20, 2015  4407     bkowal      Cleanup of {@link PlaylistUpdateNotification}.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Dec 21, 2015  5218     rjpeter     Added SendThread.
+ * Jan 21, 2015  5276     rjpeter     Reconnect to QPID after disconnect.
  * </pre>
  * 
  * @author bsteffen
@@ -298,6 +299,7 @@ public class JmsCommunicator extends JmsNotificationManager {
                             message.topicName, e);
 
                     JmsCommunicator.this.disconnect();
+                    connect(false);
                 } catch (Throwable e) {
                     if (message != null) {
                         logger.error(

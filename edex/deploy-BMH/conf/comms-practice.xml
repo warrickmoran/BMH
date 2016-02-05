@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<commsConfig broadcastLivePort="58369" lineTapPort="58360" dacTransmitPort="58359" clusterPort="58358">
+<commsConfig port="18500">
 	<clusterHost dacInterface="eth0" ipAddress="px1"/>
 	<clusterHost dacInterface="eth0" ipAddress="px2"/>
 </commsConfig>

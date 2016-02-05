@@ -56,6 +56,8 @@ import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
+import com.raytheon.bmh.dactransmit.DacTransmitArgParser;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
@@ -75,8 +77,6 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.DacChannelConfig;
 import com.raytheon.uf.edex.bmh.comms.DacConfig;
-import com.raytheon.uf.edex.bmh.dactransmit.DacTransmitArgParser;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
 
 /**
  * 
@@ -141,6 +141,9 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
  * Oct 22, 2015  5010     bkowal      Restart a dac transmit process that runs out of heap space.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
+ * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * </pre>
  * 
  * @author bsteffen
@@ -204,6 +207,8 @@ public class CommsManager {
 
     private final SilenceAlarm silenceAlarm;
 
+    private final SocketListener socketListener;
+
     /**
      * This is the thread currently executing in a loop in the {@link #run()}
      * method. This thread sleeps and periodically wakes up to check connections
@@ -251,6 +256,12 @@ public class CommsManager {
                     + configPath);
         }
         try {
+            socketListener = new SocketListener(config.getPort());
+        } catch (IOException e) {
+            throw new IllegalStateException("Unable to start socket listener.",
+                    e);
+        }
+        try {
             transmitServer = new DacTransmitServer(this, config);
         } catch (IOException e) {
             throw new IllegalStateException(
@@ -263,14 +274,14 @@ public class CommsManager {
                     e);
         }
         try {
-            lineTapServer = new LineTapServer(config);
+            lineTapServer = new LineTapServer(this, config);
         } catch (IOException e) {
             throw new IllegalStateException("Unable to start line tap server.",
                     e);
         }
         try {
             this.broadcastStreamServer = new BroadcastStreamServer(
-                    clusterServer, transmitServer, config, this);
+                    clusterServer, transmitServer, this);
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Unable to start the broadcast stream server.", e);
@@ -288,6 +299,10 @@ public class CommsManager {
         }
 
         silenceAlarm = new SilenceAlarm(this);
+    }
+
+    public boolean getOperational() {
+        return operational;
     }
 
     /**
@@ -362,10 +377,7 @@ public class CommsManager {
                     "Cannot monitor config file, config changes will not take affect.",
                     e);
         }
-        transmitServer.start();
-        clusterServer.start();
-        lineTapServer.start();
-        broadcastStreamServer.start();
+        socketListener.start();
         if (jms != null) {
             jms.connect();
             addJmsConfigListener();
@@ -381,8 +393,7 @@ public class CommsManager {
         } catch (InterruptedException e1) {
             /* Just start processing right away. */
         }
-        while (transmitServer.isAlive() && lineTapServer.isAlive()
-                && clusterServer.isAlive() && broadcastStreamServer.isAlive()) {
+        while (socketListener.isAlive()) {
             sendStatus();
             int sleeptime = 0;
             clusterServer.attempClusterConnections(config);
@@ -411,8 +422,8 @@ public class CommsManager {
                                 allDacsRunning = false;
                             } else if (this.transmitServer
                                     .isConnectedToDacTransmit(transmitterGroup)
-                                    && this.transmitServer
-                                            .isConnectedToDac(transmitterGroup) == false) {
+                                    && (this.transmitServer
+                                            .isConnectedToDac(transmitterGroup) == false)) {
                                 Long start = this.disconnectedDacProcesses
                                         .get(transmitterGroup);
                                 long duration = 0;
@@ -559,31 +570,13 @@ public class CommsManager {
 
         logger.info("Reloading configuration file.");
 
-        if (newConfig.getDacTransmitPort() != config.getDacTransmitPort()) {
+        if (newConfig.getPort() != config.getPort()) {
             try {
-                transmitServer.changePort(newConfig.getDacTransmitPort());
+                socketListener.changePort(newConfig.getPort());
             } catch (IOException e) {
-                logger.error("Unable to switch dac transmit server port, port will remain: "
-                        + config.getDacTransmitPort());
-                newConfig.setDacTransmitPort(config.getDacTransmitPort());
-            }
-        }
-        if (newConfig.getLineTapPort() != config.getLineTapPort()) {
-            try {
-                lineTapServer.changePort(newConfig.getLineTapPort());
-            } catch (IOException e) {
-                logger.error("Unable to switch line tap server port, port will remain: "
-                        + config.getDacTransmitPort());
-                newConfig.setLineTapPort(config.getLineTapPort());
-            }
-        }
-        if (newConfig.getClusterPort() != config.getClusterPort()) {
-            try {
-                clusterServer.changePort(newConfig.getClusterPort());
-            } catch (IOException e) {
-                logger.error("Unable to switch cluster server port, port will remain: "
-                        + config.getClusterPort());
-                newConfig.setClusterPort(config.getClusterPort());
+                logger.error("Unable to switch comms manager server port, port will remain: "
+                        + config.getPort());
+                newConfig.setPort(config.getPort());
             }
         }
         if ((jms != null)
@@ -682,7 +675,7 @@ public class CommsManager {
         args.add("-" + DacTransmitArgParser.INPUT_DIR_OPTION_KEY);
         args.add(channel.getInputDirectory().toString());
         args.add("-" + DacTransmitArgParser.COMMS_MANAGER_PORT_OPTION_KEY);
-        args.add(Integer.toString(config.getDacTransmitPort()));
+        args.add(Integer.toString(config.getPort()));
         args.add("-" + DacTransmitArgParser.TRANSMISSION_AMPLITUDE_TARGET_KEY);
         args.add(Short.toString(channel.getAudioAmplitude()));
         args.add("-" + DacTransmitArgParser.SAME_AMPLITUDE_TARGET_KEY);
@@ -1006,7 +999,7 @@ public class CommsManager {
      *            the specified error.
      */
     private void checkRestartOnError(final String group, final String errorText) {
-        if (errorText == null || errorText.isEmpty()) {
+        if ((errorText == null) || errorText.isEmpty()) {
             return;
         }
 
@@ -1043,21 +1036,23 @@ public class CommsManager {
         return this.config;
     }
 
+    public SocketListener getSocketListener() {
+        return this.socketListener;
+    }
+
     /**
      * Shutdown this comms mamanger and all connected dac transmit processes.
      */
     public void shutdown() {
         logger.info("Comms manager is shutting down.");
+        socketListener.shutdown();
         transmitServer.shutdown();
         broadcastStreamServer.shutdown();
         clusterServer.shutdown();
         lineTapServer.shutdown();
         jms.close();
         try {
-            transmitServer.join();
-            broadcastStreamServer.join();
-            clusterServer.join();
-            transmitServer.join();
+            socketListener.join();
         } catch (InterruptedException e) {
             logger.error("Unexpected interruption while shutting down.", e);
         }

@@ -89,6 +89,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 08, 2015  4636     bkowal      Support same and alert decibel levels.
  * Jul 23, 2015  4676     bkowal      Use {@link JAXBManager}.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -158,10 +159,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             }
             CommsConfig config = new CommsConfig();
             if (prevConfig != null) {
-                config.setDacTransmitPort(prevConfig.getDacTransmitPort());
-                config.setLineTapPort(prevConfig.getLineTapPort());
-                config.setClusterPort(prevConfig.getClusterPort());
-                config.setBroadcastLivePort(prevConfig.getBroadcastLivePort());
+                config.setPort(prevConfig.getPort());
                 config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
                 config.setClusterHosts(prevConfig.getClusterHosts());
                 if (prevConfig.getDacs() != null) {
@@ -174,10 +172,7 @@ public class CommsConfigurator implements IContextStateProcessor {
                  * Change the default ports so it does not conflict with
                  * operational mode.
                  */
-                config.setDacTransmitPort(config.getDacTransmitPort() + 100);
-                config.setLineTapPort(config.getLineTapPort() + 100);
-                config.setClusterPort(config.getClusterPort() + 100);
-                config.setBroadcastLivePort(config.getBroadcastLivePort() + 100);
+                config.setPort(config.getPort() + 100);
                 config.setClusterHosts(this.getOperationalClusterHosts());
             }
 
@@ -356,7 +351,7 @@ public class CommsConfigurator implements IContextStateProcessor {
             while (iter.hasNext()) {
                 DacChannelConfig channel = iter.next();
                 String group = channel.getTransmitterGroup();
-                if (group == null || group.length() == 0) {
+                if ((group == null) || (group.length() == 0)) {
                     iter.remove();
                 }
             }

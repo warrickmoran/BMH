@@ -20,28 +20,27 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.msg.SuiteMessage;
-import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
-import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgRequest.BroadcastMessageAction;
 import com.raytheon.uf.common.bmh.request.BroadcastMsgResponse;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
-import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest.PlaylistAction;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
 import com.raytheon.uf.common.bmh.request.ProgramRequest;
@@ -50,14 +49,12 @@ import com.raytheon.uf.common.bmh.request.ProgramResponse;
 import com.raytheon.uf.common.bmh.request.SuiteRequest;
 import com.raytheon.uf.common.bmh.request.SuiteRequest.SuiteAction;
 import com.raytheon.uf.common.bmh.request.SuiteResponse;
+import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageRequest.TransmitterLanguageRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterLanguageResponse;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest;
 import com.raytheon.uf.common.bmh.request.TransmitterRequest.TransmitterRequestAction;
 import com.raytheon.uf.common.bmh.request.TransmitterResponse;
-import com.raytheon.uf.common.bmh.request.ZoneAreaRequest;
-import com.raytheon.uf.common.bmh.request.ZoneAreaRequest.ZoneAreaAction;
-import com.raytheon.uf.common.bmh.request.ZoneAreaResponse;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
@@ -87,7 +84,8 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * Apr 14, 2015    4394    bkowal      Added {@link #getConfiguredTransmitterGroupList()}.
  * May 04, 2015    4449    bkowal      Added {@link #isMessageScheduledForBroadcast(String, long)}.
  * May 22, 2015    4481    bkowal      Added {@link #getStaticMsgTypeForAfosIdAndTransmitterGrp(String, TransmitterGroup)}.
- * 
+ * Jan 28, 2016    5300    rjpeter     Added {@link #getTransmitterGroupsForMessage(BroadcastMsg)} 
+ *                                      and {@link #getPlaylistDataForBroadcastIds(Set)}.
  * </pre>
  * 
  * @author mpduff
@@ -249,74 +247,34 @@ public class BroadcastCycleDataManager {
     }
 
     /**
-     * Get transmitters playing this {@link MessageType}
+     * Get transmitter groups playing the {@link InputMessage} associated with
+     * this {@link BroadcastMsg}.
      * 
-     * @param messageType
-     *            The MessageType
+     * @param message
+     *            The BroadcastMsg
      * 
-     * @return List of Transmitters playing the MessageType
+     * @return List of TransmitterGroups playing the InputMessage
      * @throws Exception
      */
-    public List<Transmitter> getTransmitterForMessageType(
-            MessageType messageType) throws Exception {
-        List<Transmitter> transList = new ArrayList<>();
-        ProgramRequest pRequest = new ProgramRequest();
-        pRequest.setAction(ProgramAction.AllPrograms);
-        ProgramResponse pResponse = (ProgramResponse) BmhUtils
-                .sendRequest(pRequest);
-        List<Program> programList = pResponse.getProgramList();
+    public List<TransmitterGroup> getTransmitterGroupsForMessage(
+            BroadcastMsg message) throws Exception {
+        BroadcastMsgRequest request = new BroadcastMsgRequest();
+        request.setAction(BroadcastMessageAction.GET_MESSAGE_BY_INPUT_ID);
+        request.setMessageId((long) message.getInputMessage().getId());
+        BroadcastMsgResponse response = (BroadcastMsgResponse) BmhUtils
+                .sendRequest(request);
+        List<BroadcastMsg> msgList = response.getMessageList();
+        List<TransmitterGroup> rval = new ArrayList<>(msgList.size());
+        for (BroadcastMsg msg : msgList) {
+            TransmitterGroup group = msg.getTransmitterGroup();
 
-        List<Program> assocProgs = new ArrayList<>();
-        ProgramFor: for (Program p : programList) {
-            List<Suite> suitesInProgram = p.getSuites();
-            for (Suite progSuite : suitesInProgram) {
-                for (SuiteMessage sm : progSuite.getSuiteMessages()) {
-                    if (messageType.getAfosid().equals(sm.getAfosid())) {
-                        assocProgs.add(p);
-                        continue ProgramFor;
-                    }
-                }
+            if (!rval.contains(group)) {
+                rval.add(group);
             }
         }
 
-        for (Program p : assocProgs) {
-            for (TransmitterGroup tg : p.getTransmitterGroups()) {
-                transList.addAll(tg.getTransmitters());
-            }
-        }
-
-        return transList;
-    }
-
-    /**
-     * Get {@link Area}s for the provided {@link MessageType}
-     * 
-     * @param messageType
-     *            The MessageType
-     * @return The Area
-     * @throws Exception
-     */
-    public List<Area> getAreasForMessageType(MessageType messageType)
-            throws Exception {
-        List<Transmitter> transmitterList = getTransmitterForMessageType(messageType);
-
-        ZoneAreaRequest req = new ZoneAreaRequest();
-        req.setAction(ZoneAreaAction.GetAreas);
-        ZoneAreaResponse response = (ZoneAreaResponse) BmhUtils
-                .sendRequest(req);
-        List<Area> areaList = response.getAreaList();
-
-        Set<Area> returnList = new HashSet<>();
-
-        for (Transmitter t : transmitterList) {
-            for (Area a : areaList) {
-                if (a.getTransmitters().contains(t)) {
-                    returnList.add(a);
-                }
-            }
-        }
-
-        return new ArrayList<Area>(returnList);
+        Collections.sort(rval, new PositionComparator());
+        return rval;
     }
 
     /**
@@ -391,15 +349,14 @@ public class BroadcastCycleDataManager {
         return response.getPlaylistData();
     }
 
-    public Playlist getPlaylist(String suiteName, String groupName)
-            throws Exception {
+    public Map<BroadcastMsg, MessageType> getPlaylistDataForBroadcastIds(
+            Set<Long> broadcastIds) throws Exception {
         PlaylistRequest request = new PlaylistRequest();
-        request.setAction(PlaylistAction.GET_PLAYLIST_BY_SUITE_GROUP);
-        request.setSuiteName(suiteName);
-        request.setGroupName(groupName);
+        request.setAction(PlaylistAction.GET_PLAYLIST_DATA_FOR_IDS);
+        request.setBroadcastIds(broadcastIds);
         PlaylistResponse response = (PlaylistResponse) BmhUtils
                 .sendRequest(request);
-        return response.getPlaylist();
+        return response.getBroadcastData();
     }
 
     public StaticMessageType getStaticMsgTypeForAfosIdAndTransmitterGrp(

@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -88,6 +87,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 05, 2015    4222     bkowal     Handle messages that never expire.
  * Mar 10, 2015    4256     rferrel    Make message text read only.
  * Jun 12, 2015    4482     rjpeter    Added DO_NOT_BLOCK.
+ * Jan 27, 2016    5160     rjpeter    Added MRD and fixed Time Zone.
+ * Jan 28, 2016    5300     rjpeter    Fixed transmitters to be based on broadcast messages.
  * </pre>
  * 
  * @author mpduff
@@ -234,15 +235,19 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         nameValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
-        Label dispositionLbl = new Label(comp, SWT.NONE);
-        dispositionLbl.setText("Disposition: ");
-        dispositionLbl.setLayoutData(gd);
+        Label mrdLbl = new Label(comp, SWT.NONE);
+        mrdLbl.setText("MRD: ");
+        mrdLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
-        Label dispositionValueLbl = new Label(comp, SWT.NONE);
-        // TODO dispositionValueLbl.setText(message.getDisposition());
-        dispositionValueLbl.setText("Message Disposition");
-        dispositionValueLbl.setLayoutData(gd);
+        Label mrdValueLbl = new Label(comp, SWT.NONE);
+        String mrd = this.broadcastMsg.getInputMessage().getMrd();
+        if (mrd == null) {
+            mrd = "";
+        }
+
+        mrdValueLbl.setText(mrd);
+        mrdValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label periodicityLbl = new Label(comp, SWT.NONE);
@@ -263,15 +268,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label timeZoneValueLbl = new Label(comp, SWT.NONE);
-        // TODO - where does this come from?
-        timeZoneValueLbl.setText("CST");
-
-        Iterator<TransmitterGroup> iter = messageType
-                .getDefaultTransmitterGroups().iterator();
-        if (iter.hasNext()) {
-            timeZoneValueLbl.setText(iter.next().getTimeZone());
-        }
-
+        timeZoneValueLbl.setText(this.broadcastMsg.getTransmitterGroup()
+                .getTimeZone());
         timeZoneValueLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
@@ -443,8 +441,8 @@ public class MessageDetailsDlg extends CaveSWTDialog {
              * Determine all areas associated with any specified transmitters
              * that were specified as destinations for this message.
              */
-            if (inputMsg.getSelectedTransmitters() != null
-                    && inputMsg.getSelectedTransmitters().isEmpty() == false) {
+            if ((inputMsg.getSelectedTransmitters() != null)
+                    && (inputMsg.getSelectedTransmitters().isEmpty() == false)) {
                 for (Transmitter t : inputMsg.getSelectedTransmitters()) {
                     areas.addAll(dataManager.getAreasForTransmitter(t));
                 }
@@ -489,16 +487,18 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     private void populateTransmitterTable() throws Exception {
         TableData transmittertableData = getTransmitterTableData();
 
-        List<Transmitter> transmitterList = dataManager
-                .getTransmitterForMessageType(messageType);
+        List<TransmitterGroup> transmitterGroupList = dataManager
+                .getTransmitterGroupsForMessage(broadcastMsg);
 
-        for (Transmitter t : transmitterList) {
-            TableRowData row = new TableRowData();
-            TableCellData cell = new TableCellData(t.getLocation());
-            row.addTableCellData(cell);
-            cell = new TableCellData(t.getMnemonic());
-            row.addTableCellData(cell);
-            transmittertableData.addDataRow(row);
+        for (TransmitterGroup tg : transmitterGroupList) {
+            for (Transmitter t : tg.getTransmitterList()) {
+                TableRowData row = new TableRowData();
+                TableCellData cell = new TableCellData(t.getLocation());
+                row.addTableCellData(cell);
+                cell = new TableCellData(t.getMnemonic());
+                row.addTableCellData(cell);
+                transmittertableData.addDataRow(row);
+            }
         }
         transmitterTableComp.populateTable(transmittertableData);
     }
@@ -572,7 +572,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
     private String getPeriodicity() {
         String periodicity = this.broadcastMsg.getInputMessage()
                 .getPeriodicity();
-        if (periodicity == null || periodicity.isEmpty()) {
+        if ((periodicity == null) || periodicity.isEmpty()) {
             return "00:00:00:00";
         }
         final String COLON = ":";

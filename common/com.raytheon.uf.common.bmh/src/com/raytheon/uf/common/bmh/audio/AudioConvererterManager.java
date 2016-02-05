@@ -19,8 +19,15 @@
  **/
 package com.raytheon.uf.common.bmh.audio;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Queue;
 import java.util.Set;
 
 import com.raytheon.uf.common.bmh.audio.impl.PcmAudioConverter;
@@ -45,6 +52,8 @@ import com.raytheon.uf.common.status.UFStatus;
  * Dec 16, 2014 3880       bkowal      Do not register the {@link IAudioConverter}
  *                                     if it is not compatible.
  * Feb 09, 2015 4091       bkowal      Made {@link #initialize()} protected.
+ * Jan 14, 2015 5177       bkowal      Support chaining multiple {@link IAudioConverter}s
+ *                                     together.
  * 
  * </pre>
  * 
@@ -58,13 +67,21 @@ public class AudioConvererterManager {
 
     private static final AudioConvererterManager instance = new AudioConvererterManager();
 
-    private Map<BMHAudioFormat, IAudioConverter> registeredAudioConverters;
+    /**
+     * Keep track of audio conversions that are not supported because the
+     * registration of a future converter may provide the needed intermediary
+     * conversion(s) that makes the overall conversion possible.
+     */
+    private final Set<ChainedConversionKey> unsupportedConversionPaths = new HashSet<>();
+
+    private final Map<BMHAudioFormat, IAudioConverter> registeredAudioConverters = new HashMap<>();
+
+    private final Map<ChainedConversionKey, IAudioConverter> chainedAudioConverters = new HashMap<>();
 
     /**
      * Constructor
      */
     protected AudioConvererterManager() {
-        this.registeredAudioConverters = new HashMap<>();
         this.initialize();
         statusHandler.info("Initialization Complete!");
     }
@@ -128,7 +145,235 @@ public class AudioConvererterManager {
                     .info("Successfully registered an audio converter for the "
                             + converter.getOutputFormat().toString()
                             + " format.");
+
+            this.buildVerifyConversionChains(converter);
         }
+    }
+
+    private void buildVerifyConversionChains(final IAudioConverter converter) {
+        /*
+         * Determine if any of the known unsupported conversions have been
+         * resolved by the addition of the additional converter.
+         */
+        if (this.unsupportedConversionPaths.isEmpty() == false) {
+            Iterator<ChainedConversionKey> audioFormatIterator = this.unsupportedConversionPaths
+                    .iterator();
+            while (audioFormatIterator.hasNext()) {
+                ChainedConversionKey key = audioFormatIterator.next();
+                if (this.permutateConversionChain(key.getOrigin(),
+                        key.getDestination())) {
+                    audioFormatIterator.remove();
+                }
+            }
+        }
+
+        for (BMHAudioFormat supportedFormat : this.getSupportedFormats()) {
+            if (supportedFormat == converter.getOutputFormat()) {
+                continue;
+            }
+
+            if (converter.getSupportedSourceFormats().contains(supportedFormat)) {
+                StringBuilder sb = new StringBuilder(
+                        "Found audio conversion path: ");
+                sb.append(supportedFormat.name()).append(" -> ")
+                        .append(converter.getOutputFormat().name()).append(".");
+                statusHandler.info(sb.toString());
+            } else {
+                StringBuilder sb = new StringBuilder(
+                        "Unable to apply a direct conversion from: ");
+                sb.append(supportedFormat.name()).append(" to ")
+                        .append(converter.getOutputFormat().name())
+                        .append(" ...");
+                statusHandler.info(sb.toString());
+                if (this.permutateConversionChain(supportedFormat,
+                        converter.getOutputFormat()) == false) {
+                    unsupportedConversionPaths.add(new ChainedConversionKey(
+                            supportedFormat, converter.getOutputFormat()));
+                }
+            }
+        }
+
+        /*
+         * Check the other side of the conversion.
+         */
+        for (IAudioConverter otherConverter : this.registeredAudioConverters
+                .values()) {
+            if (otherConverter.getOutputFormat() == converter.getOutputFormat()) {
+                continue;
+            }
+
+            if (otherConverter.getSupportedSourceFormats().contains(
+                    converter.getOutputFormat())) {
+                StringBuilder sb = new StringBuilder(
+                        "Found audio conversion path: ");
+                sb.append(converter.getOutputFormat().name()).append(" -> ")
+                        .append(otherConverter.getOutputFormat().name())
+                        .append(".");
+                statusHandler.info(sb.toString());
+            } else {
+                StringBuilder sb = new StringBuilder(
+                        "Unable to apply a direct conversion from: ");
+                sb.append(converter.getOutputFormat().name()).append(" to ")
+                        .append(otherConverter.getOutputFormat().name())
+                        .append(" ...");
+                statusHandler.info(sb.toString());
+                if (this.permutateConversionChain(converter.getOutputFormat(),
+                        otherConverter.getOutputFormat()) == false) {
+                    unsupportedConversionPaths.add(new ChainedConversionKey(
+                            converter.getOutputFormat(), otherConverter
+                                    .getOutputFormat()));
+                }
+            }
+        }
+    }
+
+    private boolean permutateConversionChain(final BMHAudioFormat srcFormat,
+            final BMHAudioFormat destFormat) {
+        /*
+         * Attempt to find the shortest path from the source format to the
+         * destination format. There is no point in ever cycling during the
+         * conversion in which case the audio ends up in a format that it had
+         * previously been. So, the initial set of formats that will be
+         * considered will consist of all recognized formats excluding the
+         * source format and the destination format.
+         */
+        Set<BMHAudioFormat> availableFormats = new HashSet<>(
+                this.getSupportedFormats());
+        availableFormats.remove(srcFormat);
+        availableFormats.remove(destFormat);
+
+        // Base case: no intermediary formats remain.
+        if (availableFormats.isEmpty()) {
+            StringBuilder sb = new StringBuilder(
+                    "No audio conversion path exists for: ");
+            sb.append(srcFormat.name()).append(" -> ")
+                    .append(destFormat.name()).append(".");
+            return false;
+        }
+        // Nth case(s)
+        /*
+         * multiple potential paths exist, so we will explore a subset of the
+         * permutations that do not terminate early due to incompatible formats.
+         */
+
+        /*
+         * initially, we will just examine each element individually. If that
+         * does not work, the next step will be to start building permutations.
+         */
+        List<AudioFormatSequence> nextSequencesToCheck = new ArrayList<>();
+        Iterator<BMHAudioFormat> intermediaryIterator = availableFormats
+                .iterator();
+        while (intermediaryIterator.hasNext()) {
+            BMHAudioFormat intermediaryFormat = intermediaryIterator.next();
+            final boolean sourceSupported = this.registeredAudioConverters
+                    .get(intermediaryFormat).getSupportedSourceFormats()
+                    .contains(srcFormat);
+            if (sourceSupported == false) {
+                /*
+                 * No point in continuing this check because there is no way to
+                 * convert the source format to the intermediary format.
+                 */
+                continue;
+            }
+            /*
+             * Keep track of the intermediary as a potential beginning for the
+             * sequence.
+             */
+            nextSequencesToCheck
+                    .add(new AudioFormatSequence(intermediaryFormat));
+            final boolean conversionSupported = this.registeredAudioConverters
+                    .get(destFormat).getSupportedSourceFormats()
+                    .contains(intermediaryFormat);
+            if (conversionSupported) {
+                StringBuilder sb = new StringBuilder(
+                        "Found audio conversion path: ");
+                sb.append(srcFormat.name()).append(" -> ")
+                        .append(intermediaryFormat.name()).append(" -> ")
+                        .append(destFormat.name()).append(".");
+                statusHandler.info(sb.toString());
+
+                final List<BMHAudioFormat> audioPath = new ArrayList<>(1);
+                audioPath.add(intermediaryFormat);
+
+                this.constructChainedConverter(srcFormat, destFormat, audioPath);
+                return true;
+            }
+        }
+
+        if (nextSequencesToCheck.isEmpty()) {
+            StringBuilder sb = new StringBuilder(
+                    "No audio conversion path exists for: ");
+            sb.append(srcFormat.name()).append(" -> ")
+                    .append(destFormat.name()).append(".");
+            statusHandler.info(sb.toString());
+            return false;
+        }
+
+        AudioFormatSequence matchingSequence = null;
+        while (nextSequencesToCheck.isEmpty() == false
+                && matchingSequence == null) {
+            Queue<AudioFormatSequence> sequenceQueue = new ArrayDeque<>(
+                    nextSequencesToCheck);
+            nextSequencesToCheck.clear();
+
+            while (sequenceQueue.isEmpty() == false) {
+                AudioFormatSequence sequenceToCheck = sequenceQueue.poll();
+                List<AudioFormatSequence> continuingSequenceList = sequenceToCheck
+                        .continueSequence(this.registeredAudioConverters
+                                .values());
+                if (continuingSequenceList.isEmpty()) {
+                    continue;
+                }
+
+                for (AudioFormatSequence continuingSequence : continuingSequenceList) {
+                    if (continuingSequence.sequenceFinished(destFormat)) {
+                        matchingSequence = continuingSequence;
+                        break;
+                    }
+                }
+                nextSequencesToCheck.addAll(continuingSequenceList);
+            }
+        }
+
+        if (matchingSequence == null) {
+            StringBuilder sb = new StringBuilder(
+                    "No audio conversion path exists for: ");
+            sb.append(srcFormat.name()).append(" -> ")
+                    .append(destFormat.name()).append(".");
+            statusHandler.info(sb.toString());
+            return false;
+        }
+
+        List<BMHAudioFormat> conversionSequence = matchingSequence
+                .getSequence();
+
+        /*
+         * Build a log statement announcing the recently discovered conversion
+         * path.
+         */
+        StringBuilder sb = new StringBuilder("Found audio conversion path: ");
+        sb.append(srcFormat.name());
+        for (BMHAudioFormat sequenceFormat : conversionSequence) {
+            sb.append(" -> ").append(sequenceFormat.name());
+        }
+        statusHandler.info(sb.toString());
+
+        this.constructChainedConverter(srcFormat, destFormat,
+                conversionSequence);
+        return true;
+    }
+
+    private void constructChainedConverter(final BMHAudioFormat srcFormat,
+            final BMHAudioFormat destFormat,
+            final List<BMHAudioFormat> conversionSequence) {
+        List<IAudioConverter> audioPath = new LinkedList<>();
+        for (BMHAudioFormat bmhAudioFormat : conversionSequence) {
+            audioPath.add(this.registeredAudioConverters.get(bmhAudioFormat));
+        }
+
+        this.chainedAudioConverters.put(new ChainedConversionKey(srcFormat,
+                destFormat), new ChainedAudioConverter(srcFormat, destFormat,
+                audioPath));
     }
 
     /**
@@ -175,7 +420,22 @@ public class AudioConvererterManager {
         }
 
         /* Does the converter support the provided input audio type? */
-        converter.verifySupportedAudioFormat(sourceFormat);
+        UnsupportedAudioFormatException ex = null;
+        try {
+            converter.verifySupportedAudioFormat(sourceFormat);
+        } catch (UnsupportedAudioFormatException e) {
+            ex = e;
+        }
+
+        if (ex != null) {
+            // Determine if a chained audio converter can be used.
+            ChainedConversionKey key = new ChainedConversionKey(sourceFormat,
+                    destinationFormat);
+            converter = this.chainedAudioConverters.get(key);
+            if (converter == null) {
+                throw ex;
+            }
+        }
 
         return converter.convertAudio(source, sourceFormat);
     }

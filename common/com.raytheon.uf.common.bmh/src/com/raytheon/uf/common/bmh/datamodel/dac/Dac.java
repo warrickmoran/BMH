@@ -29,6 +29,8 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderColumn;
 import javax.persistence.SequenceGenerator;
@@ -61,11 +63,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jul 01, 2015 4602      rjpeter     Port order matters.
  * Nov 05, 2015  5092     bkowal      Associate a {@link Dac} with a fully configured
  *                                    {@link DacChannel} instead of just a port number.
+ * Nov 09, 2015  5113     bkowal      Created named queries to validate uniqueness. Defined
+ *                                    default values.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+@NamedQueries({ @NamedQuery(name = Dac.VALIDATE_DAC_UNIQUENESS, query = Dac.VALIDATE_DAC_UNIQUENESS_QUERY) })
 @Entity
 @Table(name = "dac_address", uniqueConstraints = {
         @UniqueConstraint(name = "uk_dac_address_name", columnNames = { "name" }),
@@ -76,6 +81,24 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class Dac {
     static final String GEN = "DAC Generator";
 
+    public static final String VALIDATE_DAC_UNIQUENESS = "validateDacUniqueness";
+
+    protected static final String VALIDATE_DAC_UNIQUENESS_QUERY = "FROM Dac d WHERE d.id != :dacId AND (d.name = :name OR d.address = :address OR (d.receiveAddress = :receiveAddress AND d.receivePort = :receivePort))";
+
+    public static final int DAC_NAME_LENGTH = 40;
+
+    public static final int IP_LENGTH = 39;
+
+    public static final String DEFAULT_NET_MASK = "255.255.255.0";
+
+    public static final String DEFAULT_GATEWAY = "10.2.69.254";
+
+    public static final int DEFAULT_BROADCAST_BUFFER = 5;
+
+    public static final int BROADCAST_BUFFER_MIN = 0;
+
+    public static final int BROADCAST_BUFFER_MAX = 255;
+
     public static final String DEFAULT_RECEIVE_ADDRESS = System.getProperty(
             "DefaultDacReceiveAddress", "239.255.86.75");
 
@@ -84,25 +107,25 @@ public class Dac {
     @DynamicSerializeElement
     private int id;
 
-    @Column(length = 40, nullable = false)
+    @Column(length = DAC_NAME_LENGTH, nullable = false)
     @DynamicSerializeElement
     private String name;
 
     /* 39 is long enough for IPv6 */
-    @Column(length = 39, nullable = false)
+    @Column(length = IP_LENGTH, nullable = false)
     @DynamicSerializeElement
     private String address;
 
-    @Column(length = 39, nullable = false)
+    @Column(length = IP_LENGTH, nullable = false)
     @DynamicSerializeElement
-    private String netMask = "255.255.255.0";
+    private String netMask = DEFAULT_NET_MASK;
 
-    @Column(length = 39, nullable = false)
+    @Column(length = IP_LENGTH, nullable = false)
     @DynamicSerializeElement
-    private String gateway = "10.2.69.254";
+    private String gateway = DEFAULT_GATEWAY;
 
     @Column(nullable = false)
-    private int broadcastBuffer = 5;
+    private int broadcastBuffer = DEFAULT_BROADCAST_BUFFER;
 
     @Column
     @DynamicSerializeElement
@@ -176,6 +199,13 @@ public class Dac {
      *            the broadcastBuffer to set
      */
     public void setBroadcastBuffer(int broadcastBuffer) {
+        if (broadcastBuffer < BROADCAST_BUFFER_MIN
+                || broadcastBuffer > BROADCAST_BUFFER_MAX) {
+            throw new IllegalArgumentException(
+                    "The specified buffer size must be in the range: "
+                            + BROADCAST_BUFFER_MIN + " to "
+                            + BROADCAST_BUFFER_MAX + "!");
+        }
         this.broadcastBuffer = broadcastBuffer;
     }
 

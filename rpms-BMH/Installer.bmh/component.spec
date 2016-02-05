@@ -64,7 +64,19 @@ fi
 
 %pre
 %post
+# register the service script; multiple add class will not fail
+/sbin/chkconfig --add comms_manager
+
 %preun
+if [ "${1}" = "1" ]; then
+   # still a package installed indicating upgrade; do nothing
+   exit 0
+fi
+if [ -f /etc/init.d/comms_manager ]; then
+   # unregister the service script
+   /sbin/chkconfig --del comms_manager
+fi
+
 %postun
 
 %clean
@@ -83,6 +95,8 @@ rm -rf ${RPM_BUILD_ROOT}
 %config(noreplace) /awips2/bmh/conf/notification.properties
 %config(noreplace) /awips2/bmh/conf/unacceptableWords.eng.txt
 %config(noreplace) /awips2/bmh/conf/unacceptableWords.spa.txt
+%config(noreplace) /awips2/bmh/conf/neospeechCorrect.eng.txt
+%config(noreplace) /awips2/bmh/conf/neospeechCorrect.spa.txt
 %dir /awips2/bmh/logs
 
 %defattr(755,awips,fxalpha,755)

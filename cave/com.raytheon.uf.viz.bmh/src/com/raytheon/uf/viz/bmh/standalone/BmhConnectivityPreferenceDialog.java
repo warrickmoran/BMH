@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.standalone;
 
-import java.io.OutputStream;
-import java.net.Socket;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,15 +27,12 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.layout.GridData;
-import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 
-import com.raytheon.uf.common.bmh.comms.LineTapRequest;
 import com.raytheon.uf.common.bmh.request.GetBmhServersRequest;
 import com.raytheon.uf.common.localization.msgs.GetServersResponse;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.core.VizServers;
 import com.raytheon.uf.viz.core.comm.ConnectivityManager;
@@ -48,7 +41,6 @@ import com.raytheon.uf.viz.core.exception.VizException;
 import com.raytheon.uf.viz.core.localization.ConnectivityPreferenceDialog;
 import com.raytheon.uf.viz.core.localization.TextOrCombo;
 import com.raytheon.uf.viz.core.requests.ThriftClient;
-import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.ModeListener;
 
 /**
@@ -72,6 +64,7 @@ import com.raytheon.viz.ui.dialogs.ModeListener;
  * Aug 20, 2015  4768      bkowal      Line Tap Server is now required when connecting directly
  *                                     to BMH.
  * Aug 21, 2015  4768      rjpeter     Direct connect also needs broadcast server.
+ * Nov 11, 2015  5114      rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -92,21 +85,16 @@ public class BmhConnectivityPreferenceDialog extends
 
     private String bmhServer;
 
-    private TextOrCombo broadcastServerEntry;
+    private String commsManager;
 
-    private String lineTapServer;
-
-    private TextOrCombo lineTapServerEntry;
-
-    private String broadcastServer;
+    private TextOrCombo commsManagerEntry;
 
     private GetServersResponse validatedServers;
 
     public BmhConnectivityPreferenceDialog() {
         super(false, "BMH Connectivity Preferences");
         bmhServer = BMHServers.getSavedBmhServer();
-        broadcastServer = BMHServers.getSavedBroadcastServer();
-        lineTapServer = BMHServers.getSavedLineTapServer();
+        commsManager = BMHServers.getSavedCommsManager();
     }
 
     @Override
@@ -126,15 +114,11 @@ public class BmhConnectivityPreferenceDialog extends
         gd.horizontalIndent = 20;
         label.setLayoutData(gd);
 
-        Composite edexComp = new Composite(textBoxComp, SWT.NONE);
-        GridLayout gl = new GridLayout(2, false);
-        gl.marginHeight = 0;
-        gl.marginWidth = 0;
-        edexComp.setLayout(gl);
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        edexComp.setLayoutData(gd);
+        gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
 
-        bmhServerCheck = new Button(edexComp, SWT.CHECK | SWT.LEFT);
+        bmhServerCheck = new Button(textBoxComp, SWT.CHECK | SWT.LEFT);
+        gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+        bmhServerCheck.setLayoutData(gd);
         bmhServerCheck.setSelection(useBmhServer);
         bmhServerCheck.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -146,7 +130,13 @@ public class BmhConnectivityPreferenceDialog extends
             }
         });
 
-        bmhServerEntry = new TextOrCombo(edexComp, SWT.BORDER,
+        label = new Label(textBoxComp, SWT.RIGHT);
+        label.setText("BMH EDEX:");
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, true);
+        gd.horizontalIndent = 20;
+        label.setLayoutData(gd);
+
+        bmhServerEntry = new TextOrCombo(textBoxComp, SWT.BORDER,
                 BMHServers.getSavedBmhServerOptions());
         gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
         bmhServerEntry.widget.setLayoutData(gd);
@@ -155,34 +145,14 @@ public class BmhConnectivityPreferenceDialog extends
         bmhServerEntry.widget.setEnabled(useBmhServer);
 
         label = new Label(textBoxComp, SWT.RIGHT);
-        label.setText("Line Tap Server:");
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, true);
-        gd.horizontalIndent = 20;
-        // gd.horizontalSpan = 2;
-        label.setLayoutData(gd);
-
-        lineTapServerEntry = new TextOrCombo(textBoxComp, SWT.BORDER,
-                BMHServers.getSavedBmhLineTapServerOptions());
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-        lineTapServerEntry.widget.setLayoutData(gd);
-        lineTapServerEntry.setText(lineTapServer);
-        lineTapServerEntry.addSelectionListener(new EntrySelectionListener());
-        lineTapServerEntry.widget.setEnabled(useBmhServer);
-
-        label = new Label(textBoxComp, SWT.RIGHT);
         label.setText("Only Broadcast Live:");
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, true);
         gd.horizontalIndent = 20;
         label.setLayoutData(gd);
 
-        Composite emergencyComp = new Composite(textBoxComp, SWT.NONE);
-        gl = new GridLayout(2, false);
-        gl.marginHeight = 0;
-        gl.marginWidth = 0;
-        emergencyComp.setLayout(gl);
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        emergencyComp.setLayoutData(gd);
-        onlyBroadcastLiveCheck = new Button(emergencyComp, SWT.CHECK | SWT.LEFT);
+        onlyBroadcastLiveCheck = new Button(textBoxComp, SWT.CHECK | SWT.LEFT);
+        gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+        onlyBroadcastLiveCheck.setLayoutData(gd);
         onlyBroadcastLiveCheck.setSelection(onlyBroadcastLive);
         onlyBroadcastLiveCheck.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -194,25 +164,19 @@ public class BmhConnectivityPreferenceDialog extends
             }
         });
 
-        broadcastServerEntry = new TextOrCombo(emergencyComp, SWT.BORDER,
-                BMHServers.getSavedBroadcastServerOptions());
+        label = new Label(textBoxComp, SWT.RIGHT);
+        label.setText("CommsManager:");
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, true);
+        gd.horizontalIndent = 20;
+        label.setLayoutData(gd);
+
+        commsManagerEntry = new TextOrCombo(textBoxComp, SWT.BORDER,
+                BMHServers.getSavedCommsManagerOptions());
         gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
-        broadcastServerEntry.widget.setLayoutData(gd);
-        broadcastServerEntry.setText(broadcastServer);
-        broadcastServerEntry.addSelectionListener(new EntrySelectionListener());
-        broadcastServerEntry.widget
-                .setEnabled(useBmhServer | onlyBroadcastLive);
-        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            /*
-             * Since broadcast live is using a server that does not behave
-             * differently in practice mode we have no way to ensure they are
-             * not affecting operations so this option is disabled.
-             */
-            label.setVisible(false);
-            ((GridData) label.getLayoutData()).exclude = true;
-            emergencyComp.setVisible(false);
-            ((GridData) emergencyComp.getLayoutData()).exclude = true;
-        }
+        commsManagerEntry.widget.setLayoutData(gd);
+        commsManagerEntry.setText(commsManager);
+        commsManagerEntry.addSelectionListener(new EntrySelectionListener());
+        commsManagerEntry.widget.setEnabled(useBmhServer | onlyBroadcastLive);
     }
 
     @Override
@@ -221,11 +185,10 @@ public class BmhConnectivityPreferenceDialog extends
             status = null;
             details = null;
             bmhServer = bmhServerEntry.getText();
-            lineTapServer = lineTapServerEntry.getText();
-            broadcastServer = broadcastServerEntry.getText();
+            commsManager = commsManagerEntry.getText();
             validatedServers = null;
 
-            if (siteText != null && !siteText.isDisposed()) {
+            if ((siteText != null) && !siteText.isDisposed()) {
                 String site = siteText.getText().trim();
                 this.setSite(site);
                 validateSite();
@@ -236,10 +199,10 @@ public class BmhConnectivityPreferenceDialog extends
 
             ConnectivityResult results = validateBmhServer(bmhServer);
             appendDetails(buildDetails(results));
-            if (!results.hasConnectivity && status == null) {
+            if (!results.hasConnectivity && (status == null)) {
                 status = buildErrorMessage(results);
             }
-            if (bmhServerEntry != null && !bmhServerEntry.widget.isDisposed()) {
+            if ((bmhServerEntry != null) && !bmhServerEntry.widget.isDisposed()) {
                 bmhServerEntry.widget
                         .setBackground(getTextColor(results.hasConnectivity));
             }
@@ -250,31 +213,14 @@ public class BmhConnectivityPreferenceDialog extends
                 return false;
             }
 
-            results = validateLineTapServer(lineTapServer);
+            results = validateCommsManager(commsManager);
             appendDetails(buildDetails(results));
-            if (!results.hasConnectivity && status == null) {
+            if (!results.hasConnectivity && (status == null)) {
                 status = buildErrorMessage(results);
             }
-            if (lineTapServerEntry != null
-                    && !lineTapServerEntry.widget.isDisposed()) {
-                lineTapServerEntry.widget
-                        .setBackground(getTextColor(results.hasConnectivity));
-            }
-            everythingGood = results.hasConnectivity;
-            updateStatus(everythingGood, status, details);
-
-            if (everythingGood == false) {
-                return false;
-            }
-
-            results = validateBroadcastServer(broadcastServer);
-            appendDetails(buildDetails(results));
-            if (!results.hasConnectivity && status == null) {
-                status = buildErrorMessage(results);
-            }
-            if (broadcastServerEntry != null
-                    && !broadcastServerEntry.widget.isDisposed()) {
-                broadcastServerEntry.widget
+            if ((commsManagerEntry != null)
+                    && !commsManagerEntry.widget.isDisposed()) {
+                commsManagerEntry.widget
                         .setBackground(getTextColor(results.hasConnectivity));
             }
             everythingGood = results.hasConnectivity;
@@ -284,16 +230,16 @@ public class BmhConnectivityPreferenceDialog extends
         } else if (onlyBroadcastLive) {
             status = null;
             details = null;
-            broadcastServer = broadcastServerEntry.getText();
+            commsManager = commsManagerEntry.getText();
             validatedServers = null;
-            ConnectivityResult results = validateBroadcastServer(broadcastServer);
+            ConnectivityResult results = validateCommsManager(commsManager);
             appendDetails(buildDetails(results));
-            if (!results.hasConnectivity && status == null) {
+            if (!results.hasConnectivity && (status == null)) {
                 status = buildErrorMessage(results);
             }
-            if (broadcastServerEntry != null
-                    && !broadcastServerEntry.widget.isDisposed()) {
-                broadcastServerEntry.widget
+            if ((commsManagerEntry != null)
+                    && !commsManagerEntry.widget.isDisposed()) {
+                commsManagerEntry.widget
                         .setBackground(getTextColor(results.hasConnectivity));
             }
 
@@ -316,7 +262,8 @@ public class BmhConnectivityPreferenceDialog extends
             if (!results.hasConnectivity) {
                 status = buildErrorMessage(results);
             }
-            if (localizationSrv != null && !localizationSrv.widget.isDisposed()) {
+            if ((localizationSrv != null)
+                    && !localizationSrv.widget.isDisposed()) {
                 localizationSrv.widget
                         .setBackground(getTextColor(results.hasConnectivity));
             }
@@ -346,42 +293,11 @@ public class BmhConnectivityPreferenceDialog extends
         return results;
     }
 
-    private ConnectivityResult validateLineTapServer(String lineTapServer) {
-        ConnectivityResult results = new ConnectivityResult(false,
-                lineTapServer);
-        if (lineTapServer == null) {
+    private ConnectivityResult validateCommsManager(String commsManager) {
+        ConnectivityResult results = new ConnectivityResult(false, commsManager);
+        if (commsManager == null) {
             results.exception = new NullPointerException(
-                    "No Line Tap Server Avaialble");
-            return results;
-        }
-
-        URI commsURI = null;
-        try {
-            commsURI = new URI(lineTapServer);
-        } catch (URISyntaxException e) {
-            results.exception = e;
-            return results;
-        }
-
-        try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
-            LineTapRequest test = new LineTapRequest();
-            socket.setTcpNoDelay(true);
-            OutputStream outputStream = socket.getOutputStream();
-            SerializationUtil.transformToThriftUsingStream(test, outputStream);
-            results.hasConnectivity = true;
-        } catch (Exception e) {
-            results.exception = e;
-        }
-
-        return results;
-    }
-
-    private ConnectivityResult validateBroadcastServer(String broadcastServer) {
-        ConnectivityResult results = new ConnectivityResult(false,
-                broadcastServer);
-        if (broadcastServer == null) {
-            results.exception = new NullPointerException(
-                    "No Broadcast Server Avaialble");
+                    "No Comms Manager Avaialble");
             return results;
         }
         try {
@@ -395,8 +311,10 @@ public class BmhConnectivityPreferenceDialog extends
                 serverLocations = new HashMap<>();
             }
 
-            serverLocations.put(BMHServers.BROADCAST_SERVER, broadcastServer);
+            serverLocations.put(BMHServers.getCommsManagerKey(), commsManager);
             VizServers.getInstance().setServerLocations(serverLocations);
+
+            // This also validates correct mode
             StandaloneBroadcastLiveDlg.getGroups();
 
             if (validatedServers == null) {
@@ -414,9 +332,7 @@ public class BmhConnectivityPreferenceDialog extends
 
     protected void updateCheckboxes() {
         bmhServerEntry.widget.setEnabled(useBmhServer);
-        lineTapServerEntry.widget.setEnabled(useBmhServer);
-        broadcastServerEntry.widget.setEnabled(useBmhServer
-                || onlyBroadcastLive);
+        commsManagerEntry.widget.setEnabled(useBmhServer || onlyBroadcastLive);
         super.setLocalizationEnabled(!(useBmhServer || onlyBroadcastLive));
         super.siteText.setEnabled(!onlyBroadcastLive);
         validate();
@@ -442,10 +358,8 @@ public class BmhConnectivityPreferenceDialog extends
                 serverLocations = new HashMap<>(1, 1.0f);
             }
             serverLocations.put(BMHServers.BMH_SERVER, this.bmhServer);
-            serverLocations.put(BMHServers.getLineTapServerKey(),
-                    this.lineTapServer);
-            serverLocations.put(BMHServers.BROADCAST_SERVER,
-                    this.broadcastServer);
+            serverLocations.put(BMHServers.getCommsManagerKey(),
+                    this.commsManager);
             this.validatedServers.setServerLocations(serverLocations);
         }
 

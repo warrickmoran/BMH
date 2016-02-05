@@ -19,11 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.Map;
+import java.util.Set;
+
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.request.PlaylistRequest;
 import com.raytheon.uf.common.bmh.request.PlaylistResponse;
-import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
 
@@ -41,7 +45,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 21, 2014  3655     bkowal      Updated to use {@link IPlaylistData}.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
- * 
+ * Jan 28, 2016  5300     rjpeter     Handle GET_PLAYLIST_DATA_FOR_IDS.
  * </pre>
  * 
  * @author mpduff
@@ -64,8 +68,8 @@ public class PlaylistHandler extends
     public Object handleRequest(PlaylistRequest request) {
         PlaylistResponse response = null;
         switch (request.getAction()) {
-        case GET_PLAYLIST_BY_SUITE_GROUP:
-            response = getPlaylistBySuiteAndGroup(request);
+        case GET_PLAYLIST_DATA_FOR_IDS:
+            response = getPlaylistDataForIds(request);
             break;
         case GET_PLAYLIST_DATA_FOR_TRANSMITTER:
             response = getPlaylistDataForTransmitter(request);
@@ -79,28 +83,26 @@ public class PlaylistHandler extends
         return response;
     }
 
-    private PlaylistResponse getPlaylistBySuiteAndGroup(PlaylistRequest request) {
+    private PlaylistResponse getPlaylistDataForIds(PlaylistRequest request) {
         PlaylistResponse response = new PlaylistResponse();
-        PlaylistDao dao = new PlaylistDao(request.isOperational(),
-                this.getMessageLogger(request));
-        Playlist playlist = dao.getBySuiteAndGroupName(request.getSuiteName(),
-                request.getGroupName());
-        response.setPlaylist(playlist);
-
+        Set<Long> ids = request.getBroadcastIds();
+        PlaylistStateManager playlistState = getPlaylistState(request
+                .isOperational());
+        Map<BroadcastMsg, MessageType> broadcastData = playlistState
+                .getBroadcastData(ids);
+        response.setBroadcastData(broadcastData);
         return response;
     }
 
-    private PlaylistResponse getPlaylistDataForTransmitter(
-            PlaylistRequest request) {
-        PlaylistResponse response = new PlaylistResponse();
+    private PlaylistStateManager getPlaylistState(boolean operational) {
         PlaylistStateManager playlistState = null;
-        if (request.isOperational()) {
+        if (operational) {
             playlistState = playlistStateManager;
         } else {
             playlistState = practicePlaylistStateManager;
         }
         if (playlistState == null) {
-            if (request.isOperational()) {
+            if (operational) {
                 throw new IllegalStateException(
                         "No operational playlist state manager is available for handling playlist requests. ");
             } else {
@@ -109,6 +111,16 @@ public class PlaylistHandler extends
             }
 
         }
+
+        return playlistState;
+    }
+
+    private PlaylistResponse getPlaylistDataForTransmitter(
+            PlaylistRequest request) {
+        PlaylistResponse response = new PlaylistResponse();
+        PlaylistStateManager playlistState = getPlaylistState(request
+                .isOperational());
+
         IPlaylistData data = playlistState.getPlaylistDataStructure(request
                 .getTransmitterName());
         response.setPlaylistData(data);

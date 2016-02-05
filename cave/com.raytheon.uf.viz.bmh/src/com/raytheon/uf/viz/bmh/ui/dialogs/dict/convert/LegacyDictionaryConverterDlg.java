@@ -23,7 +23,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.io.FileUtils;
 import org.eclipse.swt.SWT;
@@ -50,6 +52,7 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.legacy.ImportLegacyDictionaryResponse;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -64,6 +67,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.NewDictionaryDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.PronunciationBuilderDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.LegacyDictionaryConverter.WordType;
+import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme.ParseType;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -93,6 +97,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * May 20, 2015     4490   bkowal      Specify {@link Language} when synthesizing text.
  * Jun 11, 2015     4552   bkowal      Specify the {@link Language} when playing a phoneme.
  * Jun 12, 2015     4482   rjpeter     Added DO_NOT_BLOCK.
+ * Dec 10, 2015     5112   bkowal      Exclude words that NeoSpeech pronounces correctly and/or are
+ *                                     already in the national dictionary.
  * </pre>
  * 
  * @author mpduff
@@ -532,49 +538,134 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
      * Populate the table
      */
     private void populateTable() {
+        if (dictionaryFile.exists() == false) {
+            return;
+        }
+
         List<String> lines = null;
-        if (dictionaryFile.exists()) {
-            try {
-                lines = FileUtils.readLines(dictionaryFile);
-            } catch (IOException e) {
-                statusHandler
-                        .error("Unable to read "
-                                + dictionaryFile.getAbsolutePath(), e);
-                return;
-            }
+        try {
+            lines = FileUtils.readLines(dictionaryFile);
+        } catch (IOException e) {
+            statusHandler.error(
+                    "Unable to read " + dictionaryFile.getAbsolutePath(), e);
+            return;
+        }
 
-            tableData = new TableData(columns);
+        /*
+         * Retrieve information about words that should be skipped during the
+         * conversion.
+         */
+        ImportLegacyDictionaryResponse response = null;
+        try {
+            response = this.dictionaryManager
+                    .getNationalCorrectWords((selectedDictionary == null) ? Language.ENGLISH
+                            : selectedDictionary.getLanguage());
+        } catch (Exception e) {
+            statusHandler
+                    .error("Failed to retrieve existing national dictionary information.",
+                            e);
+            return;
+        }
 
-            for (String line : lines) {
+        final Set<String> correctWords = (response == null || response
+                .getCorrectWords() == null) ? new HashSet<String>(1, 1.0f)
+                : response.getCorrectWords();
+        final Dictionary nationalDictionary = (response == null) ? null
+                : response.getNationalDictionary();
+
+        tableData = new TableData(columns);
+
+        for (String line : lines) {
+            /*
+             * Ignore comment lines starting with #, the first line of each
+             * dictionary file (starts with \!), and blank lines
+             */
+            if (!line.startsWith("#") && !line.startsWith("\\!")
+                    && !line.isEmpty()) {
+                String[] lineParts = null;
+                // Substitution line detected
+                if (line.contains(",")) {
+                    // Split on ',' if sub file, else check for space
+                    lineParts = line.split(",");
+                } else {
+                    // Split on whitespace
+                    lineParts = line.split("\\s");
+                }
+
                 /*
-                 * Ignore comment lines starting with #, the first line of each
-                 * dictionary file (starts with \!), and blank lines
+                 * Determine if NeoSpeech already correctly handles the word or
+                 * if there is already an exact match for it in the National
+                 * Dictionary.
                  */
-                if (!line.startsWith("#") && !line.startsWith("\\!")
-                        && !line.isEmpty()) {
-                    String[] lineParts = null;
-                    // Substitution line detected
-                    if (line.contains(",")) {
-                        // Split on ',' if sub file, else check for space
-                        lineParts = line.split(",");
-                    } else {
-                        // Split on whitespace
-                        lineParts = line.split("\\s");
+                if (correctWords.contains(lineParts[0])) {
+                    /*
+                     * NeoSpeech already pronounces the word correctly, skip it.
+                     */
+                    continue;
+                }
+                String matchText = lineParts[0].trim();
+                // Check for Dynamic Indicators.
+                if (matchText
+                        .contains(LegacyPhonemeParser.DYNAMIC_NUMERIC_CHAR)) {
+                    matchText = matchText.replaceAll(
+                            LegacyPhonemeParser.DYNAMIC_NUMERIC_CHAR,
+                            Word.DYNAMIC_NUMERIC_CHAR);
+                }
+                if (nationalDictionary != null
+                        && nationalDictionary.containsWord(matchText)) {
+                    final Word nationalWord = nationalDictionary
+                            .getWord(matchText);
+                    /*
+                     * Determine if the substitutions match. First, check for a
+                     * direct match.
+                     */
+                    if (nationalWord.getSubstitute()
+                            .equals(lineParts[1].trim())) {
+                        continue;
                     }
 
-                    TableRowData row = new TableRowData();
-                    TableCellData cell = new TableCellData(NO);
-                    row.addTableCellData(cell);
-                    cell = new TableCellData(lineParts[0]);
-                    row.addTableCellData(cell);
-                    cell = new TableCellData(lineParts[1]);
-                    row.addTableCellData(cell);
-                    tableData.addDataRow(row);
+                    /*
+                     * If there is no direct match, check for a phoneme match.
+                     */
+                    WordType wordType = WordType.PRONUNCIATION;
+                    if (matchText.contains(Word.DYNAMIC_NUMERIC_CHAR)) {
+                        wordType = WordType.DYNAMIC;
+                    } else if (matchText.contains(".")) {
+                        wordType = WordType.URL;
+                    }
+                    String phonemeStr = converter.convertWordOrPhoneme(
+                            matchText, wordType.getType(), lineParts[1]);
+                    List<ParsedPhoneme> phonemes = new LegacyPhonemeParser()
+                            .parse(phonemeStr);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < phonemes.size(); i++) {
+                        ParsedPhoneme phoneme = phonemes.get(i);
+                        if (phoneme.getType() == ParseType.Text
+                                || phoneme.getType() == ParseType.Dynamic) {
+                            sb.append(phoneme.getParsedValue());
+                        } else if (phoneme.getType() == ParseType.Phoneme) {
+                            sb.append(BmhUtils.PHONEME_OPEN)
+                                    .append(phoneme.getParsedValue())
+                                    .append(BmhUtils.PHONEME_CLOSE);
+                        }
+                    }
+                    if (sb.toString().equals(nationalWord.getSubstitute())) {
+                        continue;
+                    }
                 }
-            }
 
-            this.tableComp.populateTable(tableData);
+                TableRowData row = new TableRowData();
+                TableCellData cell = new TableCellData(NO);
+                row.addTableCellData(cell);
+                cell = new TableCellData(lineParts[0]);
+                row.addTableCellData(cell);
+                cell = new TableCellData(lineParts[1]);
+                row.addTableCellData(cell);
+                tableData.addDataRow(row);
+            }
         }
+
+        this.tableComp.populateTable(tableData);
     }
 
     /**
@@ -882,6 +973,12 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
 
         @Override
         protected void handleTableSelection(SelectionEvent e) {
+            if (table.getSelectionIndex() < 0) {
+                /*
+                 * occurs when Ctrl+F is pressed while focus is on the table.
+                 */
+                return;
+            }
             TableItem[] tableItems = table.getSelection();
             selectedIndex = table.getSelectionIndex();
             tableSelectionAction(tableItems[0]);

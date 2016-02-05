@@ -28,6 +28,7 @@ import javax.persistence.ManyToOne;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 
 import org.hibernate.annotations.ForeignKey;
 
@@ -53,6 +54,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_VOICE_IDENTIFIERS}.
  * Jan 13, 2015 3809       bkowal      Added {@link #GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY}.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Dec 03, 2015 5158       bkowal      Added {@link #GET_DEFAULT_VOICE_FOR_LANGUAGE}.
+ * Dec 08, 2015 5159       bkowal      Added {@link #GET_VOICE_FOR_DICTIONARY}.
  * </pre>
  * 
  * @author rjpeter
@@ -60,7 +63,9 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @NamedQueries({
         @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS, query = TtsVoice.GET_VOICE_IDENTIFIERS_QUERY),
-        @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, query = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY) })
+        @NamedQuery(name = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE, query = TtsVoice.GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY),
+        @NamedQuery(name = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE, query = TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE_QUERY),
+        @NamedQuery(name = TtsVoice.GET_VOICE_FOR_DICTIONARY, query = TtsVoice.GET_VOICE_FOR_DICTIONARY_QUERY) })
 @Entity
 @Table(name = "tts_voice")
 @DynamicSerialize
@@ -73,6 +78,24 @@ public class TtsVoice {
     public static final String GET_VOICE_IDENTIFIERS_FOR_LANGUAGE = "getVoiceIdentifiersForLanguage";
 
     protected static final String GET_VOICE_IDENTIFIERS_FOR_LANGUAGE_QUERY = "SELECT v.voiceNumber, v.voiceName FROM TtsVoice v WHERE v.language = :language";
+
+    /*
+     * For now there is only one {@link TtsVoice} for each {@link Language}, so
+     * this query is essentially nothing more than a retrieve TtsVoice by
+     * Language. However, if there is ever a time when BMH needs to support more
+     * than one TtsVoice for a particular Language, there will need to be a way
+     * to specify which TtsVoice is the default for a particular Language. The
+     * default TtsVoice is used when the Language specified in the header of a
+     * BMH message does not match the TtsVoice associated with the message type
+     * associated with the BMH message.
+     */
+    public static final String GET_DEFAULT_VOICE_FOR_LANGUAGE = "getDefaultVoiceForLanguage";
+
+    protected static final String GET_DEFAULT_VOICE_FOR_LANGUAGE_QUERY = "SELECT v FROM TtsVoice v WHERE v.language = :language";
+
+    public static final String GET_VOICE_FOR_DICTIONARY = "getVoiceForDictionary";
+
+    protected static final String GET_VOICE_FOR_DICTIONARY_QUERY = "SELECT v from TtsVoice v WHERE v.dictionary = :dictionary";
 
     @Id
     @Column
@@ -100,6 +123,15 @@ public class TtsVoice {
     @ForeignKey(name = "fk_tts_voice_to_dict")
     @DynamicSerializeElement
     private Dictionary dictionary;
+
+    /**
+     * {@link #removedDictionary} is used to ensure that static messages are
+     * updated correctly in response to {@link TtsVoice}-level
+     * {@link Dictionary} changes.
+     */
+    @Transient
+    @DynamicSerializeElement
+    private Dictionary removedDictionary;
 
     public int getVoiceNumber() {
         return voiceNumber;
@@ -146,6 +178,21 @@ public class TtsVoice {
      */
     public void setDictionary(Dictionary dictionary) {
         this.dictionary = dictionary;
+    }
+
+    /**
+     * @return the removedDictionary
+     */
+    public Dictionary getRemovedDictionary() {
+        return removedDictionary;
+    }
+
+    /**
+     * @param removedDictionary
+     *            the removedDictionary to set
+     */
+    public void setRemovedDictionary(Dictionary removedDictionary) {
+        this.removedDictionary = removedDictionary;
     }
 
     @Override

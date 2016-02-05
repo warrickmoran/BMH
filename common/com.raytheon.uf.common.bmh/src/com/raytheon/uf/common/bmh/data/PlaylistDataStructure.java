@@ -20,12 +20,16 @@
 package com.raytheon.uf.common.bmh.data;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -47,8 +51,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 13, 2015     3843   bsteffen    Add periodic predictions
  * Jan 13, 2015     3844   bsteffen    Change included message to be PlaylistMessage
  * Mar 25, 2015     4290   bsteffen    Switch to global replacement.
- * 
- * 
+ * Jan 28, 2016     5300   rjpeter     Updated to use copy construction instead of in place update.
  * </pre>
  * 
  * @author mpduff
@@ -66,7 +69,7 @@ public class PlaylistDataStructure implements IPlaylistData {
      * Broadcast Message ID -> MessagePlaybackPrediction
      */
     @DynamicSerializeElement
-    private LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
+    private volatile LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
 
     /**
      * Broadcast Message ID -> MessagePlaybackPrediction Contains predicitions
@@ -94,6 +97,59 @@ public class PlaylistDataStructure implements IPlaylistData {
     private long playbackCycleTime;
 
     public PlaylistDataStructure() {
+    }
+
+    public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
+            List<MessagePlaybackPrediction> periodicMessages) {
+        this(messages, periodicMessages, null);
+    }
+
+    public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
+            List<MessagePlaybackPrediction> periodicMessages,
+            PlaylistDataStructure that) {
+        this.predictionMap = new LinkedHashMap<>(messages.size());
+        this.periodicPredictionMap = new LinkedHashMap<>(
+                periodicMessages.size());
+        this.playlistMap = new HashMap<>();
+        this.messageTypeMap = new HashMap<>();
+
+        for (MessagePlaybackPrediction pred : messages) {
+            predictionMap.put(pred.getBroadcastId(), pred);
+        }
+
+        for (MessagePlaybackPrediction pred : periodicMessages) {
+            periodicPredictionMap.put(pred.getBroadcastId(), pred);
+        }
+
+        if (that != null) {
+            /* Copy over the referenced broadcast msgs and msg types */
+            Map<Long, BroadcastMsg> thatPlaylistMap = that.getPlaylistMap();
+            Map<Long, MessageType> thatMsgTypeMap = that.getMessageTypeMap();
+
+            for (MessagePlaybackPrediction pred : messages) {
+                Long broadcastId = pred.getBroadcastId();
+                BroadcastMsg bMsg = thatPlaylistMap.get(broadcastId);
+                if (bMsg != null) {
+                    playlistMap.put(broadcastId, bMsg);
+                }
+                MessageType msgType = thatMsgTypeMap.get(broadcastId);
+                if (msgType != null) {
+                    messageTypeMap.put(broadcastId, msgType);
+                }
+            }
+
+            for (MessagePlaybackPrediction pred : periodicMessages) {
+                Long broadcastId = pred.getBroadcastId();
+                BroadcastMsg bMsg = thatPlaylistMap.get(broadcastId);
+                if (bMsg != null) {
+                    playlistMap.put(broadcastId, bMsg);
+                }
+                MessageType msgType = thatMsgTypeMap.get(broadcastId);
+                if (msgType != null) {
+                    messageTypeMap.put(broadcastId, msgType);
+                }
+            }
+        }
 
     }
 
@@ -185,4 +241,39 @@ public class PlaylistDataStructure implements IPlaylistData {
     public void setPlaybackCycleTime(long playbackCycleTime) {
         this.playbackCycleTime = playbackCycleTime;
     }
+
+    public Set<Long> getMissingBroadcastIds() {
+        Set<Long> rval = new HashSet<>();
+        rval.addAll(getPredictionMap().keySet());
+        rval.addAll(getPeriodicPredictionMap().keySet());
+        rval.removeAll(getPlaylistMap().keySet());
+        return rval;
+    }
+
+    public void setBroadcastMsgData(Map<BroadcastMsg, MessageType> broadcastData) {
+        for (Map.Entry<BroadcastMsg, MessageType> entry : broadcastData
+                .entrySet()) {
+            BroadcastMsg bMsg = entry.getKey();
+            playlistMap.put(bMsg.getId(), bMsg);
+            messageTypeMap.put(bMsg.getId(), entry.getValue());
+        }
+    }
+
+    public synchronized void updatePlaybackData(
+            MessagePlaybackStatusNotification notification) {
+        long id = notification.getBroadcastId();
+        MessagePlaybackPrediction pred = new MessagePlaybackPrediction();
+        pred.setBroadcastId(id);
+        pred.setPlayCount(notification.getPlayCount());
+        pred.setLastTransmitTime(notification.getTransmitTime());
+        pred.setNextTransmitTime(null);
+        pred.setPlayedAlertTone(notification.isPlayedAlertTone());
+        pred.setPlayedSameTone(notification.isPlayedSameTone());
+        pred.setDynamic(notification.isDynamic());
+        LinkedHashMap<Long, MessagePlaybackPrediction> newPredictionMap = new LinkedHashMap<>(
+                getPredictionMap());
+        newPredictionMap.put(id, pred);
+        predictionMap = newPredictionMap;
+    }
+
 }

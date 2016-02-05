@@ -35,6 +35,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 27, 2014  3173     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
  * Oct 19, 2014  3699     mpduff      Added Dac object
+ * Nov 09, 2015  5113     bkowal      Added {@link DacRequestAction#ValidateUnique}.
  * 
  * </pre>
  * 
@@ -44,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class DacRequest extends AbstractBMHServerRequest {
     public enum DacRequestAction {
-        GetAllDacs, DeleteDac, SaveDac
+        GetAllDacs, DeleteDac, SaveDac, ValidateUnique
     }
 
     @DynamicSerializeElement

@@ -93,6 +93,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jun 24, 2015  4490     bkowal      Retrieve and display {@link TtsVoice}s instead of
  *                                    {@link TransmitterLanguage}s.
  * Nov 16, 2015  5127     rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
+ * Jan 04, 2016  4997     bkowal      Correctly label transmitter groups.
  * </pre>
  * 
  * @author bsteffen
@@ -189,7 +190,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         tranmistterGroup.setLayout(new GridLayout(1, false));
         GridData gd = new GridData(SWT.NONE, SWT.FILL, false, true);
         tranmistterGroup.setLayoutData(gd);
-        tranmistterGroup.setText("Transmitter:");
+        tranmistterGroup.setText("Transmitter Group:");
         transmitterSelectionList = new org.eclipse.swt.widgets.List(
                 tranmistterGroup, SWT.BORDER | SWT.V_SCROLL | SWT.SINGLE);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -374,7 +375,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     protected boolean validate() {
         String failureMessage = null;
         if (getSelectedTransmitterGroup() == null) {
-            failureMessage = "Please select a transmitter.";
+            failureMessage = "Please select a transmitter group.";
         } else if (getSelectedVoice() == null) {
             failureMessage = "Please select a voice.";
         } else if (getMessage().isEmpty()) {
@@ -403,7 +404,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             messageType = getMessageType(selection);
         } catch (Exception e) {
             statusHandler.handle(Priority.WARN,
-                    "Failed to submit the weather message.", e);
+                    "Failed to submit the demo message.", e);
             MessageBox mb = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
             mb.setText("Demo message Failure.");
             mb.setMessage("Unable to send demo message. Failed to find or create message type.");
@@ -436,7 +437,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             BmhUtils.sendRequest(request);
         } catch (Exception e) {
             statusHandler.handle(Priority.WARN,
-                    "Failed to submit the weather message.", e);
+                    "Failed to submit the demo message.", e);
             MessageBox mb = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
             mb.setText("Demo message Failure.");
             mb.setMessage("Failed to submit the demo message.");
@@ -569,7 +570,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
                             new PopulateVoicesTask(vdm.getAllVoices()));
                 } catch (Throwable e) {
                     statusHandler.error(
-                            "Unable to retrieve list of transmitters.", e);
+                            "Unable to retrieve list of voices for transmitter group: "
+                                    + this.transmitterGroup.getName() + ".", e);
                 }
             }
             return Status.OK_STATUS;

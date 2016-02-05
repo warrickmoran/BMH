@@ -19,7 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.table;
 
-import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Color;
 
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
@@ -32,6 +31,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * 05/27/2014      3289    mpduff      Initial Version.
+ * Jan 27, 2016 5160       rjpeter     Removed cellAlignment.
  * </pre>
  */
 
@@ -95,11 +95,6 @@ public class TableCellData {
     private Color backgroundColor = null;
 
     /**
-     * Cell data alignment (SWT.LEFT, SWT.CENTER, SWT.RIGHT)
-     */
-    private int cellAlignment = SWT.LEFT;
-
-    /**
      * Constructor for displaying text data.
      * 
      * @param cellText
@@ -122,7 +117,7 @@ public class TableCellData {
         this.numericValue = value;
         dataType = DataType.NUMBER;
 
-        if (numberFormatString != null && numberFormatString.length() > 0) {
+        if ((numberFormatString != null) && (numberFormatString.length() > 0)) {
             this.numberFormatString = numberFormatString;
         }
     }
@@ -137,7 +132,7 @@ public class TableCellData {
         this.numericValue = value.doubleValue();
         this.displayAsInt = true;
         dataType = DataType.NUMBER;
-        if (numberFormatString != null && numberFormatString.length() > 0) {
+        if ((numberFormatString != null) && (numberFormatString.length() > 0)) {
             this.numberFormatString = numberFormatString;
         }
     }
@@ -358,25 +353,6 @@ public class TableCellData {
      */
     public void setBooleanValue(boolean booleanValue) {
         this.booleanValue = booleanValue;
-    }
-
-    /**
-     * Get the cell's alignment value (SWT.LEFT, SET.CENTER, SWT.RIGHT)
-     * 
-     * @return the cellAlignment
-     */
-    public int getCellAlignment() {
-        return cellAlignment;
-    }
-
-    /**
-     * Set the cell's alignment value (SWT.LEFT, SET.CENTER, SWT.RIGHT)
-     * 
-     * @param cellAlignment
-     *            the cellAlignment to set
-     */
-    public void setCellAlignment(int cellAlignment) {
-        this.cellAlignment = cellAlignment;
     }
 
     /**

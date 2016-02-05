@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -36,10 +37,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Jul 25, 2014  #3286     dgilling     Initial creation
- * Aug 06, 2014  #3286     dgilling     Rename getMessageIds() to getPlaylist().
- * Jan 13, 2015  #3843     bsteffen     Add periodic predictions
- * 
+ * Jul 25, 2014  #3286     dgilling    Initial creation
+ * Aug 06, 2014  #3286     dgilling    Rename getMessageIds() to getPlaylist().
+ * Jan 13, 2015  #3843     bsteffen    Add periodic predictions
+ * Jan 28, 2016   5300     rjpeter     Return emptyList instead of null.
  * </pre>
  * 
  * @author dgilling
@@ -125,6 +126,10 @@ public class PlaylistSwitchNotification {
     }
 
     public List<MessagePlaybackPrediction> getMessages() {
+        if (messages == null) {
+            return Collections.emptyList();
+        }
+
         return messages;
     }
 
@@ -133,6 +138,10 @@ public class PlaylistSwitchNotification {
     }
 
     public List<MessagePlaybackPrediction> getPeriodicMessages() {
+        if (periodicMessages == null) {
+            return Collections.emptyList();
+        }
+
         return periodicMessages;
     }
 

@@ -65,6 +65,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.ValidatedMessage.TransmissionSta
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacTriggerSpan;
 import com.raytheon.uf.common.bmh.datamodel.playlist.Playlist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Area;
@@ -210,6 +211,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Sep 22, 2015  4904     bkowal      Propagate replaced messages to the playlist.
  * Sep 24, 2015  4924     bkowal      Catch any error encountered when producing a
  *                                    {@link DacPlaylistMessage}.
+ * Jan 26, 2016  5278     bkowal      Include all triggers in a playlist.                                   
  * </pre>
  * 
  * @author bsteffen
@@ -801,7 +803,7 @@ public class PlaylistManager implements IContextStateProcessor {
             StringBuilder sb = new StringBuilder(msgHeader);
             sb.append("Setting transmission status to ").append(
                     TransmissionStatus.EXPIRED.name());
-            sb.append("for non-broadcast, expired message: ")
+            sb.append(" for non-broadcast, expired message: ")
                     .append(validatedMsg.getId()).append(".");
             statusHandler.info(sb.toString());
         }
@@ -812,10 +814,10 @@ public class PlaylistManager implements IContextStateProcessor {
             ProgramSuite programSuite, boolean forced,
             AbstractBMHProcessingTimeEvent event, ITraceable traceable,
             BroadcastMsg replacedMessage) {
-        List<Calendar> triggerTimes = playlist.setTimes(
+        List<DacTriggerSpan> triggerSpans = playlist.setTimes(
                 programSuite.getTriggers(), forced);
 
-        if (triggerTimes.isEmpty()) {
+        if (triggerSpans.isEmpty()) {
             /*
              * setTimes only returns no triggers if the list should not be
              * played.
@@ -824,28 +826,16 @@ public class PlaylistManager implements IContextStateProcessor {
         } else {
             playlistDao.saveOrUpdate(playlist);
         }
-        if (triggerTimes.isEmpty()) {
+        if (triggerSpans.isEmpty()) {
             return writePlaylistFile(playlist, playlist.getModTime(), event,
-                    traceable, replacedMessage);
-        } else if (triggerTimes.size() == 1) {
-            return writePlaylistFile(playlist, triggerTimes.get(0), event,
                     traceable, replacedMessage);
         } else {
             /*
-             * If there are multiple triggers, need to write one file per
-             * trigger so that the dac transmit process knows enough about
-             * triggers to always play the list which triggered most recently.
+             * If there are multiple triggers, all need to be written to the
+             * playlist.
              */
-            Calendar endTime = playlist.getEndTime();
-            for (int i = 0; i < (triggerTimes.size() - 1); i += 1) {
-                playlist.setEndTime(triggerTimes.get(0));
-                writePlaylistFile(playlist, triggerTimes.get(i), event,
-                        traceable, replacedMessage);
-                playlist.setStartTime(triggerTimes.get(i));
-            }
-            playlist.setEndTime(endTime);
-            return writePlaylistFile(playlist, playlist.getStartTime(), event,
-                    traceable, replacedMessage);
+            return writePlaylistFile(playlist, triggerSpans.get(0).getStart(),
+                    event, traceable, replacedMessage, triggerSpans);
         }
     }
 
@@ -898,7 +888,16 @@ public class PlaylistManager implements IContextStateProcessor {
     private DacPlaylist writePlaylistFile(Playlist playlist,
             Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event,
             ITraceable traceable, BroadcastMsg replacedMessage) {
+        return this.writePlaylistFile(playlist, latestTriggerTime, event,
+                traceable, replacedMessage, null);
+    }
+
+    private DacPlaylist writePlaylistFile(Playlist playlist,
+            Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event,
+            ITraceable traceable, BroadcastMsg replacedMessage,
+            List<DacTriggerSpan> triggerSpans) {
         DacPlaylist dacList = convertPlaylistForDAC(playlist, traceable);
+        dacList.setTriggers(triggerSpans);
         if (replacedMessage != null) {
             DacPlaylistMessageId id = new DacPlaylistMessageId(
                     replacedMessage.getId());

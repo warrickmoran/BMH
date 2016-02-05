@@ -20,17 +20,22 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.WordRequest;
 import com.raytheon.uf.common.bmh.request.WordResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.WordDao;
 import com.raytheon.uf.edex.database.DataAccessLayerException;
 import com.raytheon.uf.edex.database.query.DatabaseQuery;
@@ -53,8 +58,10 @@ import com.raytheon.uf.edex.database.query.DatabaseQuery;
  * Oct 16, 2014  3636     rferrel     Implement logging.
  * Jan 05, 2015  3618     bkowal      Notify other components of dictionary
  *                                    modifications using a 
- *                                    {@link NationalDictionaryConfigNotification}.
+ *                                    {@link LanguageDictionaryConfigNotification}.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Dec 03, 2015  5159     bkowal      Potentially trigger message re-generation even when a non-national
+ *                                    {@link Dictionary} is altered.
  * </pre>
  * 
  * @author mpduff
@@ -66,7 +73,12 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
     @Override
     public Object handleRequest(WordRequest request) throws Exception {
         WordResponse response = new WordResponse();
-        NationalDictionaryConfigNotification notification = null;
+        LanguageDictionaryConfigNotification notification = null;
+        List<TransmitterLanguageConfigNotification> notifications = Collections
+                .emptyList();
+        final TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
+                request.isOperational());
+        final TtsVoiceDao ttsVoiceDao = new TtsVoiceDao(request.isOperational());
 
         switch (request.getAction()) {
         case Query:
@@ -75,31 +87,78 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
         case Save:
             response = saveWord(request);
             if (request.getWord().getDictionary() != null
-                    && request.getWord().getDictionary().isNational()) {
-                notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update, request);
+                    && (ttsVoiceDao.isVoiceDictionary(request.getWord()
+                            .getDictionary()) || request.getWord()
+                            .getDictionary().isNational())) {
+                notification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Update, request, request.getWord()
+                                .getDictionary().isNational());
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
+                notification.setUpdatedWord(request.getWord().getWord());
+            } else {
+                /*
+                 * Determine if the {@link Dictionary} is associated with a
+                 * {@link TransmitterLanguage}.
+                 */
+                notifications = transmitterLanguageDao
+                        .determineAffectedTransmitterLanguages(request
+                                .getWord().getDictionary(),
+                                ConfigChangeType.Update, request, request
+                                        .getWord().getWord());
             }
             break;
         case Delete:
             if (request.getWord().getDictionary() != null
-                    && request.getWord().getDictionary().isNational()) {
-                notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Delete, request);
+                    && (ttsVoiceDao.isVoiceDictionary(request.getWord()
+                            .getDictionary()) || request.getWord()
+                            .getDictionary().isNational())) {
+                notification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Delete, request, request.getWord()
+                                .getDictionary().isNational());
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
+                /*
+                 * If a word is removed from a {@link Dictionary}, any messages
+                 * that contain the word should be updated because the
+                 * substitution associated with the word should no longer be
+                 * applied to the message.
+                 */
+                notification.setUpdatedWord(request.getWord().getWord());
+            } else {
+                /*
+                 * Determine if the {@link Dictionary} is associated with a
+                 * {@link TransmitterLanguage}.
+                 */
+                notifications = transmitterLanguageDao
+                        .determineAffectedTransmitterLanguages(request
+                                .getWord().getDictionary(),
+                                ConfigChangeType.Update, request, request
+                                        .getWord().getWord());
             }
             deleteWord(request);
             break;
         case Replace:
             response = replaceWord(request);
             if (request.getWord().getDictionary() != null
-                    && request.getWord().getDictionary().isNational()) {
-                notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update, request);
+                    && (ttsVoiceDao.isVoiceDictionary(request.getWord()
+                            .getDictionary()) || request.getWord()
+                            .getDictionary().isNational())) {
+                notification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Update, request, request.getWord()
+                                .getDictionary().isNational());
                 notification.setLanguage(request.getWord().getDictionary()
                         .getLanguage());
+            } else {
+                /*
+                 * Determine if the {@link Dictionary} is associated with a
+                 * {@link TransmitterLanguage}.
+                 */
+                notifications = transmitterLanguageDao
+                        .determineAffectedTransmitterLanguages(request
+                                .getWord().getDictionary(),
+                                ConfigChangeType.Update, request, request
+                                        .getWord().getWord());
             }
             break;
         default:
@@ -111,6 +170,12 @@ public class WordHandler extends AbstractBMHServerRequestHandler<WordRequest> {
 
         BmhMessageProducer.sendConfigMessage(notification,
                 request.isOperational());
+        if (notifications.isEmpty() == false) {
+            for (TransmitterLanguageConfigNotification tlNotification : notifications) {
+                BmhMessageProducer.sendConfigMessage(tlNotification,
+                        request.isOperational());
+            }
+        }
 
         return response;
     }

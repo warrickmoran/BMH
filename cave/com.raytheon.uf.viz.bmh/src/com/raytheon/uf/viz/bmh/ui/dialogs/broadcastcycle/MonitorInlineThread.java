@@ -56,6 +56,7 @@ import com.raytheon.uf.viz.bmh.BMHServers;
  *                                    already known.
  * Jun 17, 2015  4482     rjpeter     Only process in 160 byte chunks.
  * Jun 18, 2015  4490     bkowal      Added {@link #getChannel()}.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -90,7 +91,7 @@ public class MonitorInlineThread extends Thread {
 
     @Override
     public void run() {
-        String commsLoc = BMHServers.getLineTapServer();
+        String commsLoc = BMHServers.getCommsManager();
         if (commsLoc == null) {
             Exception e = new IllegalStateException(
                     "No address for comms manager, unable to monitor "

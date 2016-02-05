@@ -30,6 +30,13 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
 import com.raytheon.bmh.comms.broadcast.SAMEDurationTruncatedAlarm;
 import com.raytheon.bmh.comms.broadcast.WtchOrWrnNotBroadcastAlarm;
+import com.raytheon.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
+import com.raytheon.bmh.dactransmit.ipc.ChangeTimeZone;
+import com.raytheon.bmh.dactransmit.ipc.ChangeTransmitters;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitCriticalError;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitShutdown;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
@@ -45,13 +52,6 @@ import com.raytheon.uf.common.bmh.notify.status.DacHardwareStatusNotification;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.stats.LiveBroadcastLatencyEvent;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTimeZone;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.ChangeTransmitters;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitCriticalError;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitScanPlaylists;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
 
 /**
  * 
@@ -100,6 +100,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitStatus;
  * Jul 28, 2015  4686     bkowal      Moved statistics to common.
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
+ * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * </pre>
  * 
  * @author bsteffen

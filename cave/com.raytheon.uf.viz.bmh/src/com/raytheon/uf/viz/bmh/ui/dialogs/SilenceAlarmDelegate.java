@@ -48,6 +48,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * ------------ ---------- ----------- --------------------------
  * Feb 27, 2015 4141       bkowal      Initial creation
  * Mar 31, 2015 4248       rjpeter     Removed TransmitterGroupPositionComparator.
+ * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * </pre>
  * 
  * @author bkowal
@@ -78,7 +79,7 @@ public class SilenceAlarmDelegate {
 
         CheckScrollListDlg silenceAlarmDialog = new CheckScrollListDlg(
                 parentShell, DlgInfo.DISABLES_SILENCE_ALARM.getTitle(),
-                "Select Transmitter to Disable:", cld, true);
+                "Select Transmitter Group to Disable:", cld, true);
         silenceAlarmDialog.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {

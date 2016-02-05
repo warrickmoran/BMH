@@ -104,6 +104,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 22, 2015  4429     rjpeter     Updated setTimes to handle null expireTimes.
  * Jun 15, 2015  4490     bkowal      All valid messages in a General Suite can now trigger a
  *                                    Suite change.
+ * Jan 25, 2016  5278     bkowal      Support {@link DacTriggerSpan}.
  * </pre>
  * 
  * @author bsteffen
@@ -221,16 +222,16 @@ public class Playlist {
         return endTime;
     }
 
+    public void setEndTime(Calendar endTime) {
+        this.endTime = endTime;
+    }
+
     public Long getTriggerBroadcastId() {
         return triggerBroadcastId;
     }
 
     public void setTriggerBroadcastId(Long triggerBroadcastId) {
         this.triggerBroadcastId = triggerBroadcastId;
-    }
-
-    public void setEndTime(Calendar endTime) {
-        this.endTime = endTime;
     }
 
     /**
@@ -387,7 +388,7 @@ public class Playlist {
      *         start time of a trigger type message. Only the most recent past
      *         trigger time is included, along with all future trigger times.
      */
-    public List<Calendar> setTimes(Set<MessageTypeSummary> triggers,
+    public List<DacTriggerSpan> setTimes(Set<MessageTypeSummary> triggers,
             boolean forced) {
         Set<String> triggerAfosids = new HashSet<>(triggers == null ? 0
                 : triggers.size(), 1.0f);
@@ -422,17 +423,23 @@ public class Playlist {
         }
 
         Calendar startTime = null;
-        List<Calendar> triggerTimes = new LinkedList<>();
+        List<DacTriggerSpan> triggerSpans = new LinkedList<>();
         Calendar endTime = null;
         boolean hasNullEnd = false;
         for (BroadcastMsg message : messages) {
-            if (triggerAfosids.contains(message.getAfosid())) {
+            /*
+             * only consider potential trigger times for messages that are
+             * active.
+             */
+            if (triggerAfosids.contains(message.getAfosid())
+                    && message.isActive()) {
                 Calendar messageStart = message.getEffectiveTime();
                 Calendar messageEnd = message.getExpirationTime();
                 if ((startTime == null) || startTime.after(messageStart)) {
                     startTime = messageStart;
                 }
-                triggerTimes.add(messageStart);
+                triggerSpans.add(new DacTriggerSpan(message.getId(),
+                        messageStart, messageEnd));
                 if (endTime == null || endTime.before(messageEnd)) {
                     endTime = messageEnd;
                 }
@@ -463,14 +470,15 @@ public class Playlist {
         }
 
         if (forced || suite.getType() == SuiteType.GENERAL) {
-            return Collections.singletonList(modTime);
+            return Collections.singletonList(new DacTriggerSpan(null, modTime,
+                    null));
         }
-        Collections.sort(triggerTimes);
-        Iterator<Calendar> it = triggerTimes.iterator();
-        Calendar mostRecentPastTrigger = null;
+        Collections.sort(triggerSpans);
+        Iterator<DacTriggerSpan> it = triggerSpans.iterator();
+        DacTriggerSpan mostRecentPastTrigger = null;
         while (it.hasNext()) {
-            Calendar next = it.next();
-            if (modTime.after(next)) {
+            DacTriggerSpan next = it.next();
+            if (modTime.after(next.getStart())) {
                 it.remove();
                 mostRecentPastTrigger = next;
             } else {
@@ -478,9 +486,9 @@ public class Playlist {
             }
         }
         if (mostRecentPastTrigger != null) {
-            triggerTimes.add(0, mostRecentPastTrigger);
+            triggerSpans.add(0, mostRecentPastTrigger);
         }
-        return triggerTimes;
+        return triggerSpans;
     }
 
     /**

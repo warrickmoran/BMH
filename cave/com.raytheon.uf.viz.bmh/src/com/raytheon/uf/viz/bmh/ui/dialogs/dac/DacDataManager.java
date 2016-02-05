@@ -22,6 +22,8 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.request.DacConfigRequest;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacRequest.DacRequestAction;
 import com.raytheon.uf.common.bmh.request.DacResponse;
@@ -39,6 +41,9 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Oct 18, 2014     3699   mpduff      Initial creation
  * Oct 23, 2014     3687   bsteffen    add methods to get name and id.
  * Nov 7, 2014      3630   bkowal      add method to get entire dac object by id.
+ * Nov 09, 2015     5113   bkowal      Added {@link #validateDacUniqueness(Dac)}.
+ * Nov 12, 2015     5113   bkowal      Added {@link #configureSaveDac(Dac, boolean, String)}.
+ * Nov 23, 2015     5113   bkowal      Added {@link #syncWithDAC(Dac)}.
  * 
  * </pre>
  * 
@@ -55,12 +60,15 @@ public class DacDataManager {
      * @throws Exception
      */
     public List<Dac> getDacs() throws Exception {
+        DacResponse response = this.getDacsAndSyncStatus();
+        return response.getDacList();
+    }
+
+    public DacResponse getDacsAndSyncStatus() throws Exception {
         DacRequest request = new DacRequest();
         request.setAction(DacRequestAction.GetAllDacs);
 
-        DacResponse response = (DacResponse) BmhUtils.sendRequest(request);
-
-        return response.getDacList();
+        return (DacResponse) BmhUtils.sendRequest(request);
     }
 
     public Integer getDacIdByName(String name) throws Exception {
@@ -110,6 +118,50 @@ public class DacDataManager {
     }
 
     /**
+     * Automatically re-configures a DAC associated with the specified
+     * {@link Dac} record. The specified {@link Dac} will also be saved.
+     * 
+     * @param dac
+     *            the {@link Dac} to save; provides configuration information to
+     *            use to configure a {@link Dac}.
+     * @param reboot
+     *            boolean flag indicating whether the DAC should be rebooted
+     *            post re-configuration
+     * @param configAddress
+     *            the address of the DAC to configure. Will be the {@link Dac}
+     *            address if the associated DAC was previously configured.
+     * @throws Exception
+     */
+    public DacConfigResponse configureSaveDac(Dac dac, final boolean reboot,
+            final String configAddress) throws Exception {
+        DacConfigRequest request = new DacConfigRequest();
+        request.setAction(DacRequestAction.SaveDac);
+        request.setDac(dac);
+        request.setReboot(reboot);
+        request.setConfigAddress(configAddress);
+        return (DacConfigResponse) BmhUtils.sendRequest(request);
+    }
+
+    /**
+     * Updates a {@link Dac} so that it will match the associated DAC. Should be
+     * utilized to synchronize a DAC and {@link Dac} when the out-of-sync
+     * notifications are received.
+     * 
+     * @param dac
+     *            the {@link Dac} to sync
+     * @return the synchronized {@link Dac} if successful as well as an updated
+     *         list of de-synced {@link Dac}s.
+     * @throws Exception
+     */
+    public DacConfigResponse syncWithDAC(Dac dac) throws Exception {
+        DacConfigRequest request = new DacConfigRequest();
+        request.setAction(DacRequestAction.SaveDac);
+        request.setDac(dac);
+        request.setSync(true);
+        return (DacConfigResponse) BmhUtils.sendRequest(request);
+    }
+
+    /**
      * Delete the {@link Dac}
      * 
      * @param dac
@@ -121,5 +173,13 @@ public class DacDataManager {
         request.setAction(DacRequestAction.DeleteDac);
         request.setDac(dac);
         BmhUtils.sendRequest(request);
+    }
+
+    public List<Dac> validateDacUniqueness(final Dac dac) throws Exception {
+        DacRequest request = new DacRequest();
+        request.setAction(DacRequestAction.ValidateUnique);
+        request.setDac(dac);
+        DacResponse response = (DacResponse) BmhUtils.sendRequest(request);
+        return response.getDacList();
     }
 }
