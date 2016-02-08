@@ -46,6 +46,7 @@ import com.raytheon.uf.edex.bmh.playlist.PlaylistStateManager;
  * Oct 21, 2014  3655     bkowal      Updated to use {@link IPlaylistData}.
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Jan 28, 2016  5300     rjpeter     Handle GET_PLAYLIST_DATA_FOR_IDS.
+ * Feb 04, 2016  5308     rjpeter     Removed GET_PLAYLIST_DATA_FOR_TRANSMITTER.
  * </pre>
  * 
  * @author mpduff
@@ -70,9 +71,6 @@ public class PlaylistHandler extends
         switch (request.getAction()) {
         case GET_PLAYLIST_DATA_FOR_IDS:
             response = getPlaylistDataForIds(request);
-            break;
-        case GET_PLAYLIST_DATA_FOR_TRANSMITTER:
-            response = getPlaylistDataForTransmitter(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -113,18 +111,6 @@ public class PlaylistHandler extends
         }
 
         return playlistState;
-    }
-
-    private PlaylistResponse getPlaylistDataForTransmitter(
-            PlaylistRequest request) {
-        PlaylistResponse response = new PlaylistResponse();
-        PlaylistStateManager playlistState = getPlaylistState(request
-                .isOperational());
-
-        IPlaylistData data = playlistState.getPlaylistDataStructure(request
-                .getTransmitterName());
-        response.setPlaylistData(data);
-        return response;
     }
 
     public void setPlaylistStateManager(

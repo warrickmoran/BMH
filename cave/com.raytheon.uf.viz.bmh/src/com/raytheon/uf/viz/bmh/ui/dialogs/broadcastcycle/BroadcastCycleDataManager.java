@@ -86,6 +86,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
  * May 22, 2015    4481    bkowal      Added {@link #getStaticMsgTypeForAfosIdAndTransmitterGrp(String, TransmitterGroup)}.
  * Jan 28, 2016    5300    rjpeter     Added {@link #getTransmitterGroupsForMessage(BroadcastMsg)} 
  *                                      and {@link #getPlaylistDataForBroadcastIds(Set)}.
+ * Feb 04, 2016    5308    rjpeter     Remove getPlaylistDataForTransmitter.
  * </pre>
  * 
  * @author mpduff
@@ -335,18 +336,6 @@ public class BroadcastCycleDataManager {
         }
 
         return assocSuites;
-    }
-
-    public IPlaylistData getPlaylistDataForTransmitter(String transmitterName)
-            throws Exception {
-        PlaylistRequest request = new PlaylistRequest();
-        request.setAction(PlaylistAction.GET_PLAYLIST_DATA_FOR_TRANSMITTER);
-        request.setTransmitterName(transmitterName);
-
-        PlaylistResponse response = (PlaylistResponse) BmhUtils
-                .sendRequest(request);
-
-        return response.getPlaylistData();
     }
 
     public Map<BroadcastMsg, MessageType> getPlaylistDataForBroadcastIds(

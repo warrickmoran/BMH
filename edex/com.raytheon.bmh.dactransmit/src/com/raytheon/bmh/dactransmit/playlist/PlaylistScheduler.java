@@ -63,7 +63,7 @@ import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
 import com.raytheon.uf.common.bmh.notify.SAMEMessageTruncatedNotification;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -633,7 +633,7 @@ public final class PlaylistScheduler implements
                              * have a single message, we'll just loop back to
                              * the beginning at the next call to nextMessage()
                              * and generate an updated
-                             * PlaylistSwitchNotification.
+                             * PlaylistNotification.
                              */
                             nextMessage = cache.getMessage(currentMessages
                                     .get(0));
@@ -1259,7 +1259,7 @@ public final class PlaylistScheduler implements
             }
         }
 
-        PlaylistSwitchNotification notification = new PlaylistSwitchNotification(
+        PlaylistNotification notification = new PlaylistNotification(
                 playlist.getSuite(), playlist.getTransmitterGroup(),
                 predictions, cycleTime);
         if (!periodicMessages.isEmpty()) {

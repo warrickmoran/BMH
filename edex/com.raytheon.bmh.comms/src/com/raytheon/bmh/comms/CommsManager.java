@@ -56,9 +56,11 @@ import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.jms.JmsCommunicator;
 import com.raytheon.bmh.comms.linetap.LineTapServer;
+import com.raytheon.bmh.comms.playlist.PlaylistServer;
 import com.raytheon.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
@@ -144,6 +146,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
+ * Jan 04, 2016  5308     rjpeter     Added PlaylistServer.
  * </pre>
  * 
  * @author bsteffen
@@ -202,6 +205,8 @@ public class CommsManager {
     private final LineTapServer lineTapServer;
 
     private final ClusterServer clusterServer;
+
+    private final PlaylistServer playlistServer;
 
     private final BroadcastStreamServer broadcastStreamServer;
 
@@ -286,6 +291,15 @@ public class CommsManager {
             throw new IllegalStateException(
                     "Unable to start the broadcast stream server.", e);
         }
+
+        try {
+            this.playlistServer = new PlaylistServer(clusterServer,
+                    transmitServer, this);
+        } catch (IOException e) {
+            throw new IllegalStateException(
+                    "Unable to start the playlist server.", e);
+        }
+
         try {
             if (config.getJmsConnection() != null) {
                 jms = new JmsCommunicator(config, operational);
@@ -1032,6 +1046,10 @@ public class CommsManager {
         broadcastStreamServer.handleBroadcastMsgExternal(msg);
     }
 
+    public void forwardPlaylistRequestMessage(SendPlaylistMessage msg) {
+        transmitServer.sendToDac(msg);
+    }
+
     public CommsConfig getCurrentConfigState() {
         return this.config;
     }
@@ -1050,6 +1068,7 @@ public class CommsManager {
         broadcastStreamServer.shutdown();
         clusterServer.shutdown();
         lineTapServer.shutdown();
+        playlistServer.shutdown();
         jms.close();
         try {
             socketListener.join();

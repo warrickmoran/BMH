@@ -30,7 +30,7 @@ import bmh.test.suite.scenario.parsing.ValidMsgIncludesSAMEOnly as ValidMsgInclu
 import bmh.test.suite.scenario.parsing.ValidMsgIncludesTones as ValidMsgIncludesTones
 import bmh.test.suite.scenario.parsing.InvalidMsgUnacceptable as InvalidMsgUnacceptable
 import bmh.test.suite.scenario.parsing.InvalidMsgAttackVector as InvalidMsgAttackVector
-import bmh.test.suite.scenario.parsing.InvalidMsgDuplicate as InvalidMsgDuplicate
+import bmh.test.suite.scenario.parsing.ValidMsgDuplicate as ValidMsgDuplicate
 import bmh.test.suite.scenario.parsing.InvalidMsgNonNumericMrd as InvalidMsgNonNumericMrd
 import bmh.test.suite.scenario.parsing.InvalidMsgNoBegin as InvalidMsgNoBegin
 import bmh.test.suite.scenario.parsing.NonWarnTriggerAlreadyExpired as NonWarnTriggerAlreadyExpired
@@ -113,7 +113,7 @@ class TestRunner(object):
         self._bmhScenarios.append(ValidMsgIncludesTones.ValidMsgIncludesTones())
         self._bmhScenarios.append(InvalidMsgUnacceptable.InvalidMsgUnacceptable())
         self._bmhScenarios.append(InvalidMsgAttackVector.InvalidMsgAttackVector())
-        self._bmhScenarios.append(InvalidMsgDuplicate.InvalidMsgDuplicate())
+        self._bmhScenarios.append(ValidMsgDuplicate.ValidMsgDuplicate())
         self._bmhScenarios.append(InvalidMsgNonNumericMrd.InvalidMsgNonNumericMrd())
         self._bmhScenarios.append(InvalidMsgNoBegin.InvalidMsgNoBegin())
         self._bmhScenarios.append(NonWarnTriggerAlreadyExpired.NonWarnTriggerAlreadyExpired())

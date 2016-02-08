@@ -32,6 +32,7 @@ import com.google.common.primitives.Ints;
 import com.raytheon.bmh.dactransmit.ipc.DacMaintenanceRegister;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitStatus;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
@@ -47,7 +48,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 28, 2015 4394       bkowal      Initial creation
- * 
+ * Feb 04, 2016 5308       rjpeter     Handle SendPlaylistMessage.
  * </pre>
  * 
  * @author bkowal
@@ -71,6 +72,8 @@ public class CommsManagerMaintenanceCommunicator extends Thread {
     private DacTransmitStatus statusToSend = new DacTransmitStatus(false);
 
     private transient boolean running = true;
+
+    private volatile MaintenanceMessagePlayback lastPlayback;
 
     public CommsManagerMaintenanceCommunicator(
             DacMaintenanceSession dacMaintenanceSession, String transmitterGroup) {
@@ -165,12 +168,14 @@ public class CommsManagerMaintenanceCommunicator extends Thread {
     }
 
     public void forwardPlaybackNotification(MaintenanceMessagePlayback playback) {
+        lastPlayback = playback;
+
         this.sendMessageToCommsManager(playback);
     }
 
     private void disconnect() {
         synchronized (sendLock) {
-            if (socket != null && socket.isClosed() == false) {
+            if ((socket != null) && (socket.isClosed() == false)) {
                 try {
                     try {
                         SerializationUtil.transformToThriftUsingStream(
@@ -192,7 +197,7 @@ public class CommsManagerMaintenanceCommunicator extends Thread {
 
     private void sendMessageToCommsManager(final Object message) {
         synchronized (sendLock) {
-            if (socket != null && socket.isClosed() == false) {
+            if ((socket != null) && (socket.isClosed() == false)) {
                 try {
                     SerializationUtil.transformToThriftUsingStream(message,
                             socket.getOutputStream());
@@ -207,5 +212,10 @@ public class CommsManagerMaintenanceCommunicator extends Thread {
     }
 
     private void handleMessage(Object message) {
+        if (message instanceof SendPlaylistMessage) {
+            if (lastPlayback != null) {
+                sendMessageToCommsManager(lastPlayback);
+            }
+        }
     }
 }

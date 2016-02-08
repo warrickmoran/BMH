@@ -35,12 +35,10 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
 import com.raytheon.uf.common.time.SimulatedTime;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
-import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
 import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
-import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
@@ -59,6 +57,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jan 06, 2015  3651     bkowal      Support AbstractBMHPersistenceLoggingDao.
  * Dec 03, 2015  5158     bkowal      Validate that the message is associated with a
  *                                    recognized {@link Language}.
+ * Feb 04, 2016  5308     rjpeter     Remove duplicate handling.
  * </pre>
  * 
  * @author bsteffen
@@ -68,8 +67,6 @@ public class TransmissionValidator {
 
     protected static final BMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(TransmissionValidator.class);
-
-    private final InputMessageDao inputMessageDao;
 
     private final MessageTypeDao messageTypeDao = new MessageTypeDao();
 
@@ -81,17 +78,11 @@ public class TransmissionValidator {
 
     private final TtsVoiceDao ttsVoiceDao = new TtsVoiceDao();
 
-    public TransmissionValidator(final IMessageLogger messageLogger) {
-        inputMessageDao = new InputMessageDao(messageLogger);
-    }
-
     public void validate(ValidatedMessage message) {
         InputMessage input = message.getInputMessage();
         try {
             if (isExpired(input)) {
                 message.setTransmissionStatus(TransmissionStatus.EXPIRED);
-            } else if (inputMessageDao.checkDuplicate(input)) {
-                message.setTransmissionStatus(TransmissionStatus.DUPLICATE);
             } else if (checkConfiguration(input)) {
                 message.setTransmissionStatus(TransmissionStatus.UNDEFINED);
             } else {

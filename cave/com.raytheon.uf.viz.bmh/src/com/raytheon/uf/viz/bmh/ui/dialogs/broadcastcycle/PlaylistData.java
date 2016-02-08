@@ -19,6 +19,10 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.io.IOException;
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -30,6 +34,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -41,10 +46,14 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
+import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -95,6 +104,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Aug 03, 2015   4686     bkowal      Do not display messages that expire before their next periodic
  *                                     broadcast.
  * Jan 28, 2016   5300     rjpeter     Fixed PlaylistDataStructure memory leak.
+ * Feb 04, 2016   5308     rjpeter     Ask comms manager for playlist data if none in memory.
  * </pre>
  * 
  * @author mpduff
@@ -148,12 +158,12 @@ public class PlaylistData {
     }
 
     /**
-     * Handle the {@link PlaylistSwitchNotification}
+     * Handle the {@link PlaylistNotification}
      * 
      * @param notification
      */
     public void handlePlaylistSwitchNotification(
-            PlaylistSwitchNotification notification) {
+            PlaylistNotification notification) {
         String tg = notification.getTransmitterGroup();
         List<MessagePlaybackPrediction> messageList = notification
                 .getMessages();
@@ -163,10 +173,19 @@ public class PlaylistData {
         PlaylistDataStructure playlistData = playlistDataMap.get(tg);
         if (playlistData == null) {
             playlistData = new PlaylistDataStructure(messageList,
-                    periodicMessageList);
+                    periodicMessageList, notification.getTimestamp());
         } else {
+            if (playlistData.getTimeStamp() > notification.getTimestamp()) {
+                /*
+                 * handle race condition where an outdated notification is
+                 * received out of order
+                 */
+                return;
+            }
+
             playlistData = new PlaylistDataStructure(messageList,
-                    periodicMessageList, playlistData);
+                    periodicMessageList, playlistData,
+                    notification.getTimestamp());
         }
 
         playlistData.setSuiteName(notification.getSuiteName());
@@ -533,14 +552,55 @@ public class PlaylistData {
     }
 
     /**
-     * Add data for a transmitter.
+     * If no data for transmitter, request it from CommsManager.
      * 
      * @param transmitterGrpName
      * @param dataStruct
      */
-    public void setData(String transmitterGrpName,
-            PlaylistDataStructure dataStruct) {
-        playlistDataMap.put(transmitterGrpName, dataStruct);
+    public PlaylistDataStructure getPlaylistData(String transmitterGrpName)
+            throws CommsCommunicationException {
+        PlaylistDataStructure rval = playlistDataMap.get(transmitterGrpName);
+
+        if (rval == null) {
+            String commsLoc = BMHServers.getCommsManager();
+            if (commsLoc == null) {
+                throw new CommsCommunicationException(
+                        "No address has been specified for comms manager "
+                                + BMHServers.getCommsManagerKey() + ".");
+            }
+
+            URI commsURI = null;
+            try {
+                commsURI = new URI(commsLoc);
+            } catch (URISyntaxException e) {
+                throw new CommsCommunicationException(
+                        "Invalid address specified for comms manager "
+                                + BMHServers.getCommsManagerKey() + ": "
+                                + commsLoc + ".", e);
+            }
+
+            try (Socket socket = new Socket(commsURI.getHost(),
+                    commsURI.getPort())) {
+                socket.setTcpNoDelay(true);
+                try {
+                    SerializationUtil.transformToThriftUsingStream(
+                            new SendPlaylistMessage(transmitterGrpName),
+                            socket.getOutputStream());
+                } catch (SerializationException | IOException e) {
+                    throw new CommsCommunicationException(
+                            "Failed to send playlist request for "
+                                    + transmitterGrpName + " to comms manager "
+                                    + BMHServers.getCommsManager() + ".", e);
+                }
+            } catch (IOException e) {
+                throw new CommsCommunicationException(
+                        "Failed to connect to comms manager "
+                                + BMHServers.getCommsManagerKey() + ": "
+                                + commsLoc + ".", e);
+            }
+        }
+
+        return rval;
     }
 
     /**
@@ -551,5 +611,6 @@ public class PlaylistData {
      */
     public void purgeData(String transmitterGrpName) {
         playlistDataMap.remove(transmitterGrpName);
+        broadcastOverrideMap.remove(transmitterGrpName);
     }
 }

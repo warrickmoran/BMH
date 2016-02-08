@@ -63,7 +63,6 @@ import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
-import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -83,7 +82,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
@@ -209,6 +208,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 13, 2015  4636      bkowal      Handle initial maintenance playback statuses.
  * Jan 05, 2016  4997      bkowal      Allow toggling between transmitters/groups.
  * Jan 27, 2016  5160      rjpeter     Left align MRD column.
+ * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
  * </pre>
  * 
  * @author mpduff
@@ -817,68 +817,42 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void initialTablePopulation() {
         try {
-            IPlaylistData playlistDataRecord = this.dataManager
-                    .getPlaylistDataForTransmitter(selectedTransmitterGrp);
+            INonStandardBroadcast notification = playlistData
+                    .getNonStandardBroadcast(selectedTransmitterGrp);
             PlaylistDataStructure dataStruct = null;
-            LiveBroadcastSwitchNotification liveNotification = null;
-            MaintenanceMessagePlayback maintNotification = null;
-            if (playlistDataRecord instanceof PlaylistDataStructure) {
-                dataStruct = (PlaylistDataStructure) playlistDataRecord;
-            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
-                liveNotification = (LiveBroadcastSwitchNotification) playlistDataRecord;
-                dataStruct = liveNotification.getActualPlaylist();
-            } else if (playlistDataRecord instanceof MaintenanceMessagePlayback) {
-                maintNotification = (MaintenanceMessagePlayback) playlistDataRecord;
-                this.playlistData
-                        .handleMaintenanceNotification((MaintenanceMessagePlayback) playlistDataRecord);
-            }
-
-            if (dataStruct != null) {
+            if (notification == null) {
                 if (selectedTransmitterGrp != null) {
-                    playlistData.setData(selectedTransmitterGrp, dataStruct);
+                    dataStruct = playlistData
+                            .getPlaylistData(selectedTransmitterGrp);
                 }
-                this.selectedSuite = dataStruct.getSuiteName();
-            }
 
-            if ((liveNotification == null) && (dataStruct != null)) {
-                if (this.selectedSuite != null) {
-                    suiteValueLbl.setText(this.selectedSuite);
-                } else {
-                    /*
-                     * A Transmitter in maintenance mode or that is disabled
-                     * will not have an associated suite.
-                     */
-                    suiteValueLbl.setText(StringUtils.EMPTY);
-                }
-                cycleDurValueLbl.setText(timeFormatter.format(new Date(
-                        dataStruct.getPlaybackCycleTime())));
-                suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
-
-                if (selectedTransmitterGrp != null) {
-                    tableData = playlistData
-                            .getUpdatedTableData(selectedTransmitterGrp);
-                }
+                tableData = playlistData
+                        .getUpdatedTableData(selectedTransmitterGrp);
                 tableComp.populateTable(tableData);
                 if (tableData.getTableRowCount() > 0) {
                     tableComp.select(0);
                 }
+
                 handleTableSelection();
             } else {
-                INonStandardBroadcast notification = null;
-                if (liveNotification != null) {
-                    playlistData
-                            .handleLiveBroadcastSwitchNotification(liveNotification);
-                    notification = liveNotification;
-                } else {
-                    this.playlistData
-                            .handleMaintenanceNotification(maintNotification);
-                    notification = maintNotification;
-                }
-                TableData tableData = playlistData
-                        .getNonStandardTableData(notification);
+                tableData = playlistData.getNonStandardTableData(notification);
                 this.updateDisplayForNonStandardBroadcast(tableData,
                         notification);
             }
+
+            if (dataStruct != null) {
+                this.selectedSuite = dataStruct.getSuiteName();
+                suiteValueLbl.setText(selectedSuite == null ? StringUtils.EMPTY
+                        : selectedSuite);
+                cycleDurValueLbl.setText(timeFormatter.format(new Date(
+                        dataStruct.getPlaybackCycleTime())));
+            } else {
+                this.selectedSuite = null;
+                suiteValueLbl.setText(StringUtils.EMPTY);
+                cycleDurValueLbl.setText(StringUtils.EMPTY);
+            }
+
+            suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
         }
@@ -1088,18 +1062,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.retrieveProgram();
 
         messageTextArea.setText("");
-        INonStandardBroadcast notification = playlistData
-                .getNonStandardBroadcast(selectedTransmitterGrp);
-        if (notification == null) {
-            initialTablePopulation();
-            tableData = playlistData
-                    .getUpdatedTableData(selectedTransmitterGrp);
-            tableComp.populateTable(tableData);
-            handleTableSelection();
-        } else {
-            tableData = playlistData.getNonStandardTableData(notification);
-            this.updateDisplayForNonStandardBroadcast(tableData, notification);
-        }
+        initialTablePopulation();
         if (reloadAudioStream) {
             handleMonitorInlineEvent();
         }
@@ -1589,8 +1552,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         for (NotificationMessage message : messages) {
             try {
                 Object o = message.getMessagePayload();
-                if (o instanceof PlaylistSwitchNotification) {
-                    final PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
+                if (o instanceof PlaylistNotification) {
+                    final PlaylistNotification notification = (PlaylistNotification) o;
                     playlistData.handlePlaylistSwitchNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {

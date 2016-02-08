@@ -20,8 +20,7 @@
 package com.raytheon.bmh.dactransmit.playlist;
 
 import java.io.IOException;
-import java.io.Writer;
-import java.nio.charset.Charset;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -40,10 +39,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 import javax.xml.bind.JAXB;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.bmh.dactransmit.dacsession.DacSession;
@@ -55,6 +52,7 @@ import com.raytheon.bmh.dactransmit.ipc.ChangeTimeZone;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
+import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageMetadata;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -124,6 +122,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      matches the db. Add additional logging for purging.
  * Oct 06, 2015 4904       bkowal       Handle the case when the last purge time is not set.
  * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
+ * Feb 04, 2016 5308       bkowal       Utilize {@link DacPlaylistMessageMetadata}.
  * </pre>
  * 
  * @author dgilling
@@ -220,7 +219,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                  */
                 logger.info("Completing initial load of {}.",
                         message.toString());
-                this.checkMessageMetadata(playlist, message, index, false);
+                this.checkMessage(playlist, message, index, false);
 
                 /*
                  * This is intended to cause higher priority lists to get
@@ -237,7 +236,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                  * If the audio has been previously retrieved. Determine if any
                  * metadata updates are required.
                  */
-                if (this.checkMessageMetadata(playlist, message, index, true)) {
+                if (this.checkMessage(playlist, message, index, true)) {
                     ++index;
                 }
             }
@@ -279,48 +278,49 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         this.cachedMessages.get(message).setExpire(message.getExpire());
     }
 
-    private boolean checkMessageMetadata(DacPlaylist playlist,
+    private boolean checkMessage(DacPlaylist playlist,
             DacPlaylistMessageId message, int index, final boolean checkAudio) {
         DacPlaylistMessage dacMessage = this.cachedMessages.get(message);
         if (dacMessage == null) {
             return false;
         }
+        dacMessage.setExpire(message.getExpire());
+        boolean audioUpdated = false;
         if (message.getTimestamp() != dacMessage.getTimestamp()) {
             logger.info("Updating metadata for {}.", message.toString());
 
             /*
              * a metadata update is required.
              */
-            DacPlaylistMessage updatedDacMessage = this.readMessageMetadata(
-                    message, false);
+            DacPlaylistMessageMetadata updatedMetadata = this
+                    .readMessageMetadata(message);
+
+            audioUpdated = checkAudio
+                    && (dacMessage.getSoundFiles().equals(
+                            updatedMetadata.getSoundFiles()) == false);
+
             /*
-             * Override all information that is not persisted across metadata
-             * writes.
+             * The previous metadata can now be merged.
              */
-            updatedDacMessage.setPlayCount(dacMessage.getPlayCount());
-            updatedDacMessage.setLastTransmitTime(dacMessage
-                    .getLastTransmitTime());
-            updatedDacMessage.setMessageBroadcastNotificationSent(dacMessage
-                    .isMessageBroadcastNotificationSent());
-            updatedDacMessage
-                    .setPlayedAlertTone(dacMessage.isPlayedAlertTone());
-            updatedDacMessage.setPlayedSameTone(dacMessage.isPlayedSameTone());
-
-            try {
-                this.persistMergedMessageMetadata(message, updatedDacMessage);
-            } catch (IOException e) {
-                logger.error("Failed to write updated metadata for {}.",
-                        message.toString(), e);
+            DacPlaylistMessageMetadata originalMetadata = dacMessage
+                    .getMetadata();
+            if (originalMetadata != null) {
+                try {
+                    Files.delete(originalMetadata.getPath());
+                    logger.info("Deleted old message metadata file: "
+                            + originalMetadata.getPath().toString() + ".");
+                } catch (Exception e) {
+                    logger.error("Failed to purge old message metadata file: "
+                            + originalMetadata.getPath().toString() + ".", e);
+                }
             }
-
-            this.cachedMessages.replace(message, updatedDacMessage);
+            dacMessage.setMetadata(updatedMetadata);
+            dacMessage.setTimestamp(message.getTimestamp());
 
             /*
              * Determine if an audio re-retrieval is necessary.
              */
-            if (checkAudio
-                    && dacMessage.getSoundFiles().equals(
-                            updatedDacMessage.getSoundFiles()) == false) {
+            if (audioUpdated) {
                 logger.info("Updating audio for {}.", message.toString());
 
                 Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
@@ -338,12 +338,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                             "Successfully removed cache file for broadcast: {}.",
                             message.toString());
                 }
-
-                return true;
             }
         }
 
-        return false;
+        return audioUpdated;
     }
 
     /**
@@ -471,9 +469,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return true if the file does exist; false, otherwise
      */
     public boolean doesMessageFileExist(DacPlaylistMessageId id) {
-        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
-                + id.getTimestamp() + ".xml");
-        return Files.exists(messagePath);
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId()
+                + ".xml");
+        Path messageMetadataPath = messageDirectory.resolve(id.getBroadcastId()
+                + "_" + id.getTimestamp() + ".xml");
+        return Files.exists(messageMetadataPath) && Files.exists(messagePath);
     }
 
     /**
@@ -487,7 +487,10 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     public DacPlaylistMessage getMessage(DacPlaylistMessageId id) {
         DacPlaylistMessage message = cachedMessages.get(id);
         if (message == null) {
-            message = this.readMessageMetadata(id, true);
+            message = this.readMessage(id);
+            DacPlaylistMessageMetadata messageMetadata = this
+                    .readMessageMetadata(id);
+            message.setMetadata(messageMetadata);
 
             cachedMessages.put(id, message);
             message.setExpire(id.getExpire());
@@ -496,17 +499,26 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         return message;
     }
 
-    private DacPlaylistMessage readMessageMetadata(DacPlaylistMessageId id,
-            final boolean persistUpdates) {
-        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
-                + id.getTimestamp() + ".xml");
+    private DacPlaylistMessage readMessage(DacPlaylistMessageId id) {
+        Path messagePath = messageDirectory.resolve(id.getBroadcastId()
+                + ".xml");
         DacPlaylistMessage message = JAXB.unmarshal(messagePath.toFile(),
                 DacPlaylistMessage.class);
         message.setPath(messagePath);
-        if (CollectionUtil.isNullOrEmpty(message.getSoundFiles()) == false) {
-            for (String soundFile : message.getSoundFiles()) {
+        return message;
+    }
+
+    private DacPlaylistMessageMetadata readMessageMetadata(
+            DacPlaylistMessageId id) {
+        Path messageMetadataPath = messageDirectory.resolve(id.getBroadcastId()
+                + "_" + id.getTimestamp() + ".xml");
+        DacPlaylistMessageMetadata messageMetadata = JAXB.unmarshal(
+                messageMetadataPath.toFile(), DacPlaylistMessageMetadata.class);
+        messageMetadata.setPath(messageMetadataPath);
+        if (CollectionUtil.isNullOrEmpty(messageMetadata.getSoundFiles()) == false) {
+            for (String soundFile : messageMetadata.getSoundFiles()) {
                 if (Files.isDirectory(Paths.get(soundFile))) {
-                    message.setDynamic(true);
+                    messageMetadata.setDynamic(true);
                     break;
                 }
             }
@@ -515,45 +527,37 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         /*
          * Fulfill the statistics requirement.
          */
-        if (message.isRecognized()) {
+        if (messageMetadata.isRecognized()) {
             /*
              * Statistics have already been generated for this version of the
              * message.
              */
-            return message;
+            return messageMetadata;
         }
 
         /*
          * Generate a Delivery Time statistic.
          */
         DeliveryTimeEvent event = new DeliveryTimeEvent();
-        event.setBroadcastId(message.getBroadcastId());
+        event.setBroadcastId(messageMetadata.getBroadcastId());
         event.setDeliveryTime(TimeUtil.newGmtCalendar().getTimeInMillis()
-                - message.getInitialRecognitionTime());
+                - messageMetadata.getInitialRecognitionTime());
 
         this.dacSession.handleDeliveryTimeStat(event);
 
-        message.setRecognized(true);
-        if (persistUpdates) {
-            try {
-                this.persistMergedMessageMetadata(id, message);
-            } catch (IOException e) {
-                logger.error("Failed to write updated metadata for {}.",
-                        id.toString(), e);
-            }
+        messageMetadata.setRecognized(true);
+        /*
+         * Write updated metadata only due to statistics.
+         */
+        try (OutputStream os = Files.newOutputStream(messageMetadataPath)) {
+            JAXB.marshal(messageMetadata, os);
+        } catch (Exception e) {
+            logger.error("Failed to update message metadata file: "
+                    + messageMetadataPath.toString()
+                    + ". Duplicate statistics may be generated.", e);
         }
 
-        return message;
-    }
-
-    private void persistMergedMessageMetadata(DacPlaylistMessageId id,
-            DacPlaylistMessage message) throws IOException {
-        Path messagePath = messageDirectory.resolve(id.getBroadcastId() + "_"
-                + id.getTimestamp() + ".xml");
-        try (Writer writer = Files.newBufferedWriter(messagePath,
-                Charset.defaultCharset())) {
-            JAXB.marshal(message, writer);
-        }
+        return messageMetadata;
     }
 
     /**
@@ -792,6 +796,22 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         if (message != null) {
             cachedFiles.remove(message);
         }
+
+        /*
+         * With all references to this version of the message being removed, we
+         * no longer need the last read version of the metadata on disk.
+         */
+        if (message.getMetadata() != null
+                && Files.exists(message.getMetadata().getPath())) {
+            try {
+                Files.delete(message.getMetadata().getPath());
+                logger.info("Deleted old message metadata file: "
+                        + message.getMetadata().getPath().toString() + ".");
+            } catch (IOException e) {
+                logger.error("Failed to purge old message metadata file: "
+                        + message.getMetadata().getPath().toString() + ".", e);
+            }
+        }
     }
 
     private class PurgeTask implements PrioritizableCallable<Object> {
@@ -851,8 +871,16 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         public Object call() {
             try {
                 for (DacPlaylistMessageId messageId : playlist.getMessages()) {
-                    if (!doesMessageFileExist(messageId)
-                            || isExpired(messageId)) {
+                    /*
+                     * The message metadata file will have already been removed
+                     * for this message if it has been updated. So, the rare
+                     * case in which message metadata does not exist on disk and
+                     * this is the last time the message has been referenced in
+                     * a playlist will be handled by the periodic purge task
+                     * because this message will not be present in active
+                     * messages.
+                     */
+                    if (isExpired(messageId)) {
                         purgeAudio(messageId);
                     }
                 }

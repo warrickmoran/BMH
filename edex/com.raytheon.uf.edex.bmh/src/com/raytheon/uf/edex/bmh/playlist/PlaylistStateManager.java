@@ -21,34 +21,23 @@ package com.raytheon.uf.edex.bmh.playlist;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
-import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
-import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.INonStandardBroadcast;
-import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
-import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
-import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
-import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
-import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 
 /**
- * Playlist state tracking manager to track state of the playlists for the GUIs
+ * Updates broadcast flags in the database.
  * 
  * 
  * 
@@ -87,6 +76,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Jun 02, 2015   4369     rferrel     Added method {@link #processNoPlaybackMessageNotification(NoPlaybackMessageNotification)}.
  * Jul 29, 2015   4686     bkowal      Removed setting of the broadcast flag on {@link BroadcastMsg}.
  * Jan 28, 2016   5300     rjpeter     Fix PlaylistDataStructure memory leak.
+ * Feb 04, 2016   5308     rjpeter     Removed Playlist caching.
  * </pre>
  * 
  * @author mpduff
@@ -94,159 +84,12 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  */
 
 public class PlaylistStateManager {
-    private static final BMHStatusHandler statusHandler = BMHStatusHandler
-            .getInstance(PlaylistStateManager.class);
-
-    /** Map of Transmitter -> PlaylistData for that transmitter */
-    private final Map<String, PlaylistDataStructure> playlistDataMap = new HashMap<>();
-
-    private final ConcurrentMap<String, INonStandardBroadcast> broadcastOverrideMap = new ConcurrentHashMap<>();
-
-    private PlaylistDao playlistDao;
-
     private MessageTypeDao messageTypeDao;
 
     private BroadcastMsgDao broadcastMsgDao;
 
     public PlaylistStateManager() {
 
-    }
-
-    public synchronized void processLiveBroadcastSwitchNotification(
-            LiveBroadcastSwitchNotification notification) {
-        statusHandler
-                .info("Received a Live Broadcast Switch Notification for Transmitter "
-                        + notification.getTransmitterGroup() + ".");
-        if (notification.getBroadcastState() == STATE.STARTED) {
-            this.broadcastOverrideMap.put(notification.getTransmitterGroup()
-                    .getName(), notification);
-        } else {
-            if (this.broadcastOverrideMap.remove(notification
-                    .getTransmitterGroup().getName()) != null) {
-                statusHandler
-                        .info("Evicting Live Broadcast information for Transmitter "
-                                + notification.getTransmitterGroup() + ".");
-            }
-        }
-    }
-
-    public synchronized void processMaintenanceMessagePlayback(
-            MaintenanceMessagePlayback playback) {
-        statusHandler
-                .info("Received a Maintenance Message Playback notification for Transmitter "
-                        + playback.getTransmitterGroup() + ".");
-        this.broadcastOverrideMap.put(playback.getTransmitterGroup(), playback);
-    }
-
-    public synchronized void processNoPlaybackMessageNotification(
-            NoPlaybackMessageNotification notification) {
-        String group = notification.getGroupName();
-        statusHandler
-                .info("Received a No Playback Message notification for Transmitter "
-                        + group);
-        if (this.broadcastOverrideMap.remove(group) != null) {
-            statusHandler
-                    .info("Evicting Live Braodcast information for No Playback on Transmitter "
-                            + group);
-        }
-        if (this.playlistDataMap.remove(group) != null) {
-            statusHandler
-                    .info("Evicting Playlist information for No Playback on Transmitter "
-                            + group);
-        }
-    }
-
-    public synchronized void handleDacTransmitShutdown(
-            DacTransmitShutdownNotification notification) {
-        statusHandler
-                .info("Received a Dac Transmit Shutdown Notification for Transmitter "
-                        + notification.getTransmitterGroup() + ".");
-
-        /*
-         * Determine if the Transmitter Group has actually been disabled or if a
-         * load-balancing may have occurred.
-         */
-        final String name = notification.getTransmitterGroup();
-        if (this.broadcastOverrideMap.remove(name) != null) {
-            statusHandler
-                    .info("Evicting Live Broadcast information for Disabled Transmitter "
-                            + name + ".");
-        }
-
-        /*
-         * Ensure that all requests for playlist information accurately reflect
-         * that the 'Off the Air' message should be playing.
-         */
-        if (this.playlistDataMap.remove(name) != null) {
-            statusHandler
-                    .info("Evicting Playlist information for Disabled Transmitter "
-                            + name + ".");
-        }
-    }
-
-    public synchronized void processPlaylistSwitchNotification(
-            PlaylistSwitchNotification notification) {
-        String tg = notification.getTransmitterGroup();
-        statusHandler.info("PlaylistSwitchNotification arrived for " + tg);
-        if (messageTypeDao == null) {
-            statusHandler
-                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no MessageTypeDao.");
-            return;
-        }
-        if (playlistDao == null) {
-            statusHandler
-                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no PlaylistDao.");
-            return;
-        }
-        if (broadcastMsgDao == null) {
-            statusHandler
-                    .info("Unable to process PlaylistSwitchNotification because the PlaylistStateManager has no BroadcastMsgDao.");
-            return;
-        }
-
-        /*
-         * any playlist notifications received for transmitters that were
-         * previously in a live broadcast state eliminates the live broadcast
-         * state because all playlist / message switching is paused during a
-         * live broadcast.
-         */
-        if (this.broadcastOverrideMap.remove(tg) != null) {
-            statusHandler
-                    .info("Evicting Live Broadcast information for Transmitter "
-                            + tg + ".");
-        }
-
-        /**
-         * Warning: the following code is almost an exact replication of the if
-         * statement in the handlePlaylistSwitchNotification method of
-         * PlaylistData.
-         */
-        List<MessagePlaybackPrediction> messageList = notification
-                .getMessages();
-        List<MessagePlaybackPrediction> periodicMessageList = notification
-                .getPeriodicMessages();
-
-        PlaylistDataStructure playlistData = playlistDataMap.get(tg);
-        if (playlistData == null) {
-            playlistData = new PlaylistDataStructure(messageList,
-                    periodicMessageList);
-        } else {
-            /*
-             * make a copy to avoid sync issues with already returned structures
-             * that may be serializing
-             */
-            playlistData = new PlaylistDataStructure(messageList,
-                    periodicMessageList, playlistData);
-        }
-
-        playlistData.setSuiteName(notification.getSuiteName());
-        playlistData.setPlaybackCycleTime(notification.getPlaybackCycleTime());
-        Set<Long> missingIds = playlistData.getMissingBroadcastIds();
-        if (!missingIds.isEmpty()) {
-            playlistData.setBroadcastMsgData(getBroadcastData(missingIds));
-        }
-
-        playlistDataMap.put(tg, playlistData);
     }
 
     public Map<BroadcastMsg, MessageType> getBroadcastData(Set<Long> ids) {
@@ -271,115 +114,43 @@ public class PlaylistStateManager {
 
     public synchronized void processMessagePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
-        statusHandler.info("MessagePlaybackStatusNotification arrived for "
-                + notification.getTransmitterGroup());
-
-        /*
-         * any playlist notifications received for transmitters that were
-         * previously in a live broadcast state eliminates the live broadcast
-         * state because all playlist / message switching is paused during a
-         * live broadcast.
-         */
-        if (this.broadcastOverrideMap
-                .remove(notification.getTransmitterGroup()) != null) {
-            statusHandler
-                    .info("Evicting Live Broadcast information for Transmitter "
-                            + notification.getTransmitterGroup() + ".");
-        }
-
-        PlaylistDataStructure playlistData = playlistDataMap.get(notification
-                .getTransmitterGroup());
-        if (playlistData == null) {
-            playlistData = new PlaylistDataStructure();
-            playlistDataMap.put(notification.getTransmitterGroup(),
-                    playlistData);
-        }
-        playlistData.updatePlaybackData(notification);
-        setToneFlags(playlistData, notification.getBroadcastId());
-    }
-
-    private void setToneFlags(PlaylistDataStructure playlistData,
-            long broadcastId) {
-        final boolean interrupt = (playlistData.getSuiteName() == null) ? false
-                : playlistData.getSuiteName().startsWith("Interrupt");
-        MessagePlaybackPrediction prediction = playlistData.getPredictionMap()
-                .get(broadcastId);
-        BroadcastMsg broadcastMessage = playlistData.getPlaylistMap().get(
-                broadcastId);
-        if (prediction.isPlayedAlertTone() || prediction.isPlayedSameTone()
-                || interrupt) {
-            if (broadcastMessage != null) {
-                if (tonesMatch(prediction, broadcastMessage)
-                        && (interrupt == false)
-                        && broadcastMessage.isDelivered()) {
-                    return;
-                }
-            }
-            broadcastMessage = broadcastMsgDao.getByID(broadcastId);
+        /* Update any tone flags in the database */
+        if (notification.isPlayedAlertTone() || notification.isPlayedSameTone()
+                || (notification.getPlayCount() == 1)) {
+            BroadcastMsg broadcastMessage = broadcastMsgDao
+                    .getByID(notification.getBroadcastId());
             if (broadcastMessage != null) {
                 boolean updated = false;
 
-                if (!tonesMatch(prediction, broadcastMessage)) {
-                    broadcastMessage.setPlayedAlertTone(prediction
+                if (!tonesMatch(notification, broadcastMessage)) {
+                    broadcastMessage.setPlayedAlertTone(notification
                             .isPlayedAlertTone());
-                    broadcastMessage.setPlayedSameTone(prediction
+                    broadcastMessage.setPlayedSameTone(notification
                             .isPlayedSameTone());
                     updated = true;
                 }
-                if (interrupt
-                        && (interrupt != broadcastMessage.isPlayedInterrupt())) {
-                    broadcastMessage.setPlayedInterrupt(interrupt);
+
+                if (broadcastMessage.getInputMessage().getInterrupt()
+                        && !broadcastMessage.isPlayedInterrupt()) {
+                    broadcastMessage.setPlayedInterrupt(true);
                     updated = true;
                 }
+
                 if (updated) {
                     broadcastMsgDao.persist(broadcastMessage);
                 }
             }
+
         }
     }
 
-    private static boolean tonesMatch(MessagePlaybackPrediction prediction,
+    private static boolean tonesMatch(
+            MessagePlaybackStatusNotification notification,
             BroadcastMsg broadcastMessage) {
-        return (broadcastMessage.isPlayedAlertTone() == prediction
+        return (broadcastMessage.isPlayedAlertTone() == notification
                 .isPlayedAlertTone())
-                && (broadcastMessage.isPlayedSameTone() == prediction
+                && (broadcastMessage.isPlayedSameTone() == notification
                         .isPlayedSameTone());
-    }
-
-    public synchronized IPlaylistData getPlaylistDataStructure(
-            String transmitterGrpName) {
-        PlaylistDataStructure playlistData = playlistDataMap
-                .get(transmitterGrpName);
-
-        if (playlistData == null) {
-            playlistData = new PlaylistDataStructure();
-        }
-
-        if ((transmitterGrpName != null)
-                && this.broadcastOverrideMap.containsKey(transmitterGrpName)) {
-            return this.getBroadcastOverride(transmitterGrpName, playlistData);
-        }
-
-        return playlistData;
-    }
-
-    private synchronized INonStandardBroadcast getBroadcastOverride(
-            String transmitterGrpName, PlaylistDataStructure playlistData) {
-        INonStandardBroadcast broadcast = this.broadcastOverrideMap
-                .get(transmitterGrpName);
-        if (broadcast instanceof LiveBroadcastSwitchNotification) {
-            return new LiveBroadcastSwitchNotification(
-                    (LiveBroadcastSwitchNotification) broadcast, playlistData);
-        } else if (broadcast instanceof MaintenanceMessagePlayback) {
-            return new MaintenanceMessagePlayback(
-                    (MaintenanceMessagePlayback) broadcast);
-        }
-
-        return null;
-    }
-
-    public void setPlaylistDao(PlaylistDao playlistDao) {
-        this.playlistDao = playlistDao;
     }
 
     public void setMessageTypeDao(MessageTypeDao messageTypeDao) {

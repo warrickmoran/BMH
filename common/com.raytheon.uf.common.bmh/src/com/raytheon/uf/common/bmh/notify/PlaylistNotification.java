@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -28,8 +29,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
 /**
- * Notification generated when DacTransmit application switches its current
- * playlist.
+ * Notification of the current playlist state for a DAC Transmit. This is
+ * generated every time DAC Transmit switches a playlist as well as on demand.
  * 
  * <pre>
  * 
@@ -41,6 +42,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Aug 06, 2014  #3286     dgilling    Rename getMessageIds() to getPlaylist().
  * Jan 13, 2015  #3843     bsteffen    Add periodic predictions
  * Jan 28, 2016   5300     rjpeter     Return emptyList instead of null.
+ * Feb 04, 2016   5308     rjpeter     Renamed from PlaylistSwitchNotification to PlaylistNotification.
  * </pre>
  * 
  * @author dgilling
@@ -48,13 +50,16 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 
 @DynamicSerialize
-public class PlaylistSwitchNotification {
+public class PlaylistNotification {
 
     @DynamicSerializeElement
     private String suiteName;
 
     @DynamicSerializeElement
     private String transmitterGroup;
+
+    @DynamicSerializeElement
+    private long timestamp;
 
     @DynamicSerializeElement
     private List<MessagePlaybackPrediction> messages;
@@ -72,23 +77,32 @@ public class PlaylistSwitchNotification {
     @DynamicSerializeElement
     private long playbackCycleTime;
 
-    public PlaylistSwitchNotification() {
+    public PlaylistNotification() {
         // empty constructor for serialization support
     }
 
-    public PlaylistSwitchNotification(String suiteName,
-            String transmitterGroup, List<MessagePlaybackPrediction> messages,
-            long playbackCycleTime) {
+    public PlaylistNotification(String suiteName, String transmitterGroup,
+            List<MessagePlaybackPrediction> messages, long playbackCycleTime) {
         this.suiteName = suiteName;
         this.transmitterGroup = transmitterGroup;
+        this.timestamp = System.currentTimeMillis();
         this.messages = messages;
         this.playbackCycleTime = playbackCycleTime;
+    }
+
+    public PlaylistNotification(PlaylistNotification that) {
+        this.suiteName = that.suiteName;
+        this.transmitterGroup = that.transmitterGroup;
+        this.timestamp = that.timestamp;
+        this.messages = new ArrayList<>(that.getMessages());
+        this.periodicMessages = new ArrayList<>(that.getPeriodicMessages());
+        this.playbackCycleTime = that.playbackCycleTime;
     }
 
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("PlaylistSwitchNotification [suiteName=");
+        builder.append("PlaylistNotification [suiteName=");
         builder.append(suiteName);
         builder.append(", transmitterGroup=");
         builder.append(transmitterGroup);
@@ -127,7 +141,7 @@ public class PlaylistSwitchNotification {
 
     public List<MessagePlaybackPrediction> getMessages() {
         if (messages == null) {
-            return Collections.emptyList();
+            messages = new ArrayList<>(0);
         }
 
         return messages;
@@ -156,5 +170,53 @@ public class PlaylistSwitchNotification {
 
     public void setPlaybackCycleTime(long playbackCycleTime) {
         this.playbackCycleTime = playbackCycleTime;
+    }
+
+    /**
+     * @return the timestamp
+     */
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    /**
+     * @param timestamp
+     *            the timestamp to set
+     */
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    /**
+     * Return a new PlaylistNotification with the details of the message in the
+     * playlist updated.
+     * 
+     * @param notification
+     */
+    public PlaylistNotification merge(
+            MessagePlaybackStatusNotification notification) {
+        if (notification == null) {
+            return this;
+        }
+
+        PlaylistNotification rval = new PlaylistNotification(this);
+
+        long bId = notification.getBroadcastId();
+        List<MessagePlaybackPrediction> messages = rval.getMessages();
+        int lastPlayedIndex = 0;
+
+        for (int i = 0; i < messages.size(); i++) {
+            MessagePlaybackPrediction msg = messages.get(i);
+            if (bId == msg.getBroadcastId()) {
+                messages.set(i, new MessagePlaybackPrediction(notification));
+                return rval;
+            } else if (msg.getLastTransmitTime() != null) {
+                lastPlayedIndex++;
+            }
+        }
+
+        messages.add(lastPlayedIndex, new MessagePlaybackPrediction(
+                notification));
+        return rval;
     }
 }
