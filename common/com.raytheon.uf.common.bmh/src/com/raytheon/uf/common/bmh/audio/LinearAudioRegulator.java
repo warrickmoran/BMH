@@ -21,8 +21,7 @@ package com.raytheon.uf.common.bmh.audio;
 
 import java.util.List;
 
-import org.apache.commons.lang.math.IntRange;
-import org.apache.commons.lang.math.Range;
+import org.apache.commons.lang3.Range;
 
 /**
  * BMH Audio Regulator.
@@ -53,6 +52,7 @@ import org.apache.commons.lang.math.Range;
  * Aug 24, 2015 4770       bkowal      The decibel silence limit is now configurable.
  * Aug 25, 2015 4771       bkowal      Re-factored to support additional audio regulators.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
  * </pre>
  * 
  * @author bkowal
@@ -87,8 +87,8 @@ public class LinearAudioRegulator extends AbstractAudioRegulator {
      * @return the amplitude range
      */
     @Override
-    protected Range calculateBoundarySignals(final byte[] audio, int offset,
-            int length) {
+    protected Range<? extends Number> calculateBoundarySignals(
+            final byte[] audio, int offset, int length) {
         short runningMinAmplitude = 0;
         short runningMaxAmplitude = 0;
 
@@ -116,6 +116,6 @@ public class LinearAudioRegulator extends AbstractAudioRegulator {
             }
         }
 
-        return new IntRange(runningMinAmplitude, runningMaxAmplitude);
+        return Range.between(runningMinAmplitude, runningMaxAmplitude);
     }
 }

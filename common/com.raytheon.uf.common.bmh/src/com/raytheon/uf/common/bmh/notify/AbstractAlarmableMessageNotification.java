@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
@@ -38,6 +38,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 1, 2015  4490       bkowal      Initial creation
+ * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
  * 
  * </pre>
  * 

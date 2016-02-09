@@ -46,6 +46,7 @@
 #                                                 alter the padding bytes after a SAME Tone.
 #    07/07/2015      4464          bkowal         Default SAME Tone padding is now 0.
 #    01/07/2016      4997          bkowal         dactransmit is no longer a uf edex plugin.
+#    02/09/2016      5082          bkowal         Updates for Apache commons lang 3.
 ##############################################################################
 
 
@@ -118,7 +119,7 @@ export JAVA_HOME="${awips_home}/java"
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
-DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib org.apache.commons.lang"
+DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib org.apache.commons.lang3"
 
 ENTRY_POINT="com.raytheon.bmh.dactransmit.DacTransmitMain"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"

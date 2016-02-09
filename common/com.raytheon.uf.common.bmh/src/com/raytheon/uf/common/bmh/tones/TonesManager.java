@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedList;
 import java.util.List;
 
-import org.apache.commons.lang.WordUtils;
+import org.apache.commons.lang3.text.WordUtils;
 
 import com.raytheon.uf.common.bmh.audio.AudioConvererterManager;
 import com.raytheon.uf.common.bmh.audio.AudioConversionException;
@@ -58,6 +58,7 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  *                                     Use {@link FskTonesEncoder}.
  * Apr 24, 2015 4394       bkowal      Renamed TRANSFER_TYPE to {@link TransferType}.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
  * 
  * </pre>
  * 

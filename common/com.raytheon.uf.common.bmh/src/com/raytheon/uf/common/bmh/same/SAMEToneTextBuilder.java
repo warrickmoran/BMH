@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -76,6 +76,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    for reporting the areas that cannot be added.
  * May 06, 2015  4471     bkowal      Made {@link #DEMO_EVENT} public.
  * Jun 01, 2015  4490     bkowal      Defined {@link #AREA_COUNT_LIMIT}.
+ * Feb 09, 2016  5082     bkowal      Updates for Apache commons lang 3.
  * 
  * </pre>
  * 

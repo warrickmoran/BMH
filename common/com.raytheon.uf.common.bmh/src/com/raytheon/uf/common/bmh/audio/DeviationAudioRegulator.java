@@ -22,9 +22,7 @@ package com.raytheon.uf.common.bmh.audio;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.lang.math.DoubleRange;
-import org.apache.commons.lang.math.IntRange;
-import org.apache.commons.lang.math.Range;
+import org.apache.commons.lang3.Range;
 
 /**
  * Audio Regulation Algorithm that excludes outliers a standard deviation or
@@ -40,6 +38,7 @@ import org.apache.commons.lang.math.Range;
  * Aug 27, 2015 4771       bkowal      Handle edge cases with no to little variance in
  *                                     which there is no standard deviation.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
  * </pre>
  * 
  * @author bkowal
@@ -70,7 +69,7 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
      * calculateBoundarySignals(byte[], int, int)
      */
     @Override
-    protected Range calculateBoundarySignals(byte[] audio, int offset,
+    protected Range<? extends Number> calculateBoundarySignals(byte[] audio, int offset,
             int length) {
         /*
          * First, determine the amplitude levels of every segment of audio.
@@ -96,7 +95,7 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
             /*
              * All samples were 0.
              */
-            return new IntRange(0, 0);
+            return Range.is(0);
         }
 
         double mean = amplitudeSum / sampleCount;
@@ -114,7 +113,7 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
             /*
              * All values are exactly the same; so there is no variance.
              */
-            return new DoubleRange(minimumAmplitude, maximumAmplitude);
+            return Range.between(minimumAmplitude, maximumAmplitude);
         }
 
         /*
@@ -138,9 +137,9 @@ public class DeviationAudioRegulator extends AbstractAudioRegulator {
             /*
              * There was a slight variance; but, it was extremely small.
              */
-            return new DoubleRange(minimumAmplitude, maximumAmplitude);
+            return Range.between(minimumAmplitude, maximumAmplitude);
         }
 
-        return new IntRange(rangeMinAmplitude, rangeMaxAmplitude);
+        return Range.between(rangeMinAmplitude, rangeMaxAmplitude);
     }
 }

@@ -19,7 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.notify.status;
 
-import org.apache.commons.lang.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.EqualsBuilder;
 
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Nov 20, 2014  3817     bsteffen    Initial creation
  * Jan 26, 2015  4020     bkowal      Added {@link #edexHost}.
  * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
+ * Feb 09, 2016  5082     bkowal      Updates for Apache commons lang 3.
  * 
  * </pre>
  * 

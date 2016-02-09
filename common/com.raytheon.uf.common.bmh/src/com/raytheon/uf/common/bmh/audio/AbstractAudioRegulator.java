@@ -22,7 +22,7 @@ package com.raytheon.uf.common.bmh.audio;
 import java.util.Collection;
 import java.util.List;
 
-import org.apache.commons.lang.math.Range;
+import org.apache.commons.lang3.Range;
 
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.PCMToUlawAlgorithm;
 import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.audio.impl.algorithm.UlawToPCMAlgorithm;
  * Aug 25, 2015 4771       bkowal      Initial creation
  * Oct 14, 2015 4984       rjpeter     Fix sign on clipping.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
  * </pre>
  * 
  * @author bkowal
@@ -134,8 +135,9 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             }
 
             UlawToPCMAlgorithm.convert(ulawData, i, length, pcmData);
-            Range range = this.calculateBoundarySignals(pcmData, 0, length * 2);
-            maxValue = (short) Math.max(maxValue, range.getMaximumNumber()
+            Range<? extends Number> range = this.calculateBoundarySignals(
+                    pcmData, 0, length * 2);
+            maxValue = (short) Math.max(maxValue, range.getMaximum()
                     .shortValue());
         }
 
@@ -182,11 +184,11 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             }
             UlawToPCMAlgorithm
                     .convert(ulawAudio, 0, ulawAudio.length, pcmAudio);
-            Range range = this.calculateBoundarySignals(pcmAudio, 0,
-                    pcmAudio.length);
-            this.maxAmplitude = (short) Math.max(range.getMaximumNumber()
+            Range<? extends Number> range = this.calculateBoundarySignals(
+                    pcmAudio, 0, pcmAudio.length);
+            this.maxAmplitude = (short) Math.max(range.getMaximum()
                     .shortValue(), this.maxAmplitude);
-            this.minAmplitude = (short) Math.min(range.getMinimumNumber()
+            this.minAmplitude = (short) Math.min(range.getMinimum()
                     .shortValue(), this.minAmplitude);
         }
 
@@ -224,18 +226,18 @@ public abstract class AbstractAudioRegulator implements IAudioRegulator {
             final double adjustmentRate, int offset, int length)
             throws UnsupportedAudioFormatException, AudioConversionException,
             AudioOverflowException {
-        Range amplitudeRange = this.calculateBoundarySignals(sample, offset,
-                length);
-        if (this.skipAudio(amplitudeRange.getMinimumNumber().shortValue(),
-                amplitudeRange.getMaximumNumber().shortValue())) {
+        Range<? extends Number> amplitudeRange = this.calculateBoundarySignals(
+                sample, offset, length);
+        if (this.skipAudio(amplitudeRange.getMinimum().shortValue(),
+                amplitudeRange.getMaximum().shortValue())) {
             return;
         }
 
         this.regulateAudioVolume(sample, adjustmentRate, offset, length);
     }
 
-    protected abstract Range calculateBoundarySignals(final byte[] audio,
-            int offset, int length);
+    protected abstract Range<? extends Number> calculateBoundarySignals(
+            final byte[] audio, int offset, int length);
 
     /**
      * Determines if a segment of audio should be skipped based on the
