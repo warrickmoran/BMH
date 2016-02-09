@@ -64,7 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_T
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.RecordPlaybackDlg;
 import com.raytheon.uf.viz.core.VizApp;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
+import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
 /**
@@ -93,13 +93,14 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 18, 2015  #4490     bkowal       {@link RecordedByUtils} and
  *                                      {@link ImportedByUtils} relocated to common.
  * Aug 25, 2015  #4771     bkowal       {@link RecordPlaybackDlg} dialog creation may now fail.                                     
- * 
+ * Jan 25, 2016  #5054     randerso     Change to subclass CaveSWTDialog
+ *
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
-public class MessageContentsDlg extends CaveSWTDialogBase {
+public class MessageContentsDlg extends CaveSWTDialog {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(MessageContentsDlg.class);
 

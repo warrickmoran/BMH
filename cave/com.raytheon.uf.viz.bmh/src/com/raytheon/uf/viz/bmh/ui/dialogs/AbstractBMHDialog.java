@@ -21,6 +21,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs;
 
 import org.eclipse.swt.events.ShellAdapter;
 import org.eclipse.swt.events.ShellEvent;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -37,6 +38,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Jul 15, 2014  #3387     lvenable    Initial creation
  * Jun 05, 2015  4490      rjpeter     Dialog tracked via BMHLauncherDlg.
+ * Jan 26, 2016  5054      randerso    Allow dialog to be parented by display
+ * 
  * </pre>
  * 
  * @author lvenable
@@ -59,6 +62,19 @@ public abstract class AbstractBMHDialog extends CaveSWTDialog {
      */
     protected AbstractBMHDialog(Shell parentShell, int style, int caveStyle) {
         super(parentShell, style, caveStyle);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param display
+     * @param style
+     *            SWT style.
+     * @param caveStyle
+     *            Cave style.
+     */
+    protected AbstractBMHDialog(Display display, int style, int caveStyle) {
+        super(display, style, caveStyle);
     }
 
     /**

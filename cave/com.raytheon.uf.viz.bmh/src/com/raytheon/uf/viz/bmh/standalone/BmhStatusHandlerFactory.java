@@ -23,12 +23,12 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.statushandlers.StatusManager;
-import ch.qos.logback.classic.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
+
+import ch.qos.logback.classic.Logger;
 
 import com.raytheon.uf.common.logback.appender.AbstractJmsAppender;
 import com.raytheon.uf.common.status.AbstractHandlerFactory;
@@ -57,6 +57,7 @@ import com.raytheon.uf.common.status.slf4j.UFMarkers;
  * ------------- -------- ----------- --------------------------
  * Mar 11, 2015  4266     bsteffen    Initial creation
  * Jun 22, 2015  4570     bkowal      Updated to use the new slf4j CAVE logging.
+ * Jan 26, 2016  5054     randerso    Remove dummy shell
  * 
  * </pre>
  * 
@@ -76,6 +77,9 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
     private static final StatusHandler instance = new StatusHandler(
             StatusHandler.class.getPackage().getName(), CATEGORY, CATEGORY);
 
+    /**
+     * Constructor
+     */
     public BmhStatusHandlerFactory() {
         super(CATEGORY);
     }
@@ -113,8 +117,8 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
 
         Slf4JBridge.logToSLF4J(logger, priority, m, message, throwable);
 
-        if (this.alertvizAppender.isConnected() == false
-                && priority != Priority.VERBOSE) {
+        if ((this.alertvizAppender.isConnected() == false)
+                && (priority != Priority.VERBOSE)) {
             /*
              * It is unlikely that messages will be logged to AlertViz, display
              * a notification dialog.
@@ -147,8 +151,13 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
 
             @Override
             public void run() {
-                ErrorDialog.openError(new Shell(Display.getDefault()),
-                        "BMH Status", null, status);
+                /*
+                 * This will be used if AlertViz is not running.
+                 * 
+                 * AlertViz cannot run without EDEX request and this BMH
+                 * functionality is designed to be usable when EDEX is down.
+                 */
+                ErrorDialog.openError(null, "BMH Status", null, status);
             }
         });
     }
