@@ -23,17 +23,17 @@
        Refer to edex/modes/README.txt for documentation
 --> 
 <edexModes>
-	<mode name="ingest">
-		<exclude>^bmh-</exclude>
-	</mode>
-	<mode name="bmh">
-	 	<include>^bmh-</include>
-	 	<include>request-service-common.xml</include>
+    <mode name="ingest">
+        <exclude>^bmh-</exclude>
+    </mode>
+    <mode name="bmh">
+        <include>^bmh-</include>
+        <include>database-ingest.xml</include>
+        <include>request-service-common.xml</include>
         <include>nwsauth-request.xml</include>
         <includeMode>statsTemplate</includeMode>
-	</mode>
-	<mode name="request">
-	 	<include>^bmh-request.xml</include>
-	</mode>
-
+    </mode>
+    <mode name="request">
+        <include>^bmh-request.xml</include>
+    </mode>
 </edexModes>

@@ -58,6 +58,21 @@
         <property name="transactionManager" ref="bmhTxManager" />
     </bean>
 
+    <bean id="bmhBloatMonitor" class="com.raytheon.uf.edex.database.health.DatabaseBloatMonitor">
+        <constructor-arg>
+            <bean class="com.raytheon.uf.edex.database.health.PostgresBloatDao">
+                <constructor-arg value="bmh"/>
+            </bean>
+        </constructor-arg>
+        <constructor-arg ref="warningThresholds"/>
+        <constructor-arg ref="criticalThresholds"/>
+    </bean>
+
+    <bean factory-bean="dbMonitorRegistry" factory-method="registerMonitor">
+        <constructor-arg value="bmhBloatMonitor" />
+        <constructor-arg ref="bmhBloatMonitor" />
+    </bean>
+
   <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
     depends-on="bmhTxTemplate">
     <constructor-arg ref="edexMessageLogger" />
