@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 
@@ -56,6 +57,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  *                                    cluster members.
  * Oct 23, 2015  5029     rjpeter     Make isConnected public, have disconnect call removeCommunicator.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
+ * Feb 11, 2016  5308     rjpeter     Forward on SendPlaylistMessage.
  * </pre>
  * 
  * @author bsteffen
@@ -194,6 +196,9 @@ public class ClusterCommunicator extends Thread {
         } else if (message instanceof LiveBroadcastSwitchNotification) {
             LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) message;
             this.manager.checkLoadBalanceLockdown(notification);
+        } else if (message instanceof SendPlaylistMessage) {
+            this.manager
+                    .forwardPlaylistRequestMessage((SendPlaylistMessage) message);
         } else {
             logger.error("Unexpected message from cluster member of type: {}",
                     message.getClass().getSimpleName());
@@ -243,7 +248,7 @@ public class ClusterCommunicator extends Thread {
      * @return
      */
     public boolean remoteAccepted() {
-        return state != null && isConnected();
+        return (state != null) && isConnected();
     }
 
     public void disconnect() {
