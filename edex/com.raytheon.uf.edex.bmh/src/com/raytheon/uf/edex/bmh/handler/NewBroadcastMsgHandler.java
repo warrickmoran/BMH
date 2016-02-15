@@ -29,7 +29,6 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -304,8 +303,10 @@ public class NewBroadcastMsgHandler extends
         }
 
         // persist all entities.
-        List<Object> entitiesToPersist = new LinkedList<Object>();
+        List<Object> entitiesToPersist = new ArrayList<Object>(
+                broadcastRecords.size() + 2);
         // input message first
+        validMsg.getInputMessage().setLastUpdateTime(TimeUtil.newDate());
         entitiesToPersist.add(validMsg.getInputMessage());
         // the validated message next
         entitiesToPersist.add(validMsg);
@@ -313,7 +314,6 @@ public class NewBroadcastMsgHandler extends
         entitiesToPersist.addAll(broadcastRecords);
         validatedMsgDao.persistAll(entitiesToPersist);
 
-        validatedMsgDao.persistCascade(validMsg);
         if (newInputMsg == false
                 && Boolean.FALSE.equals(inputMessage.getActive())) {
             BmhMessageProducer.sendConfigMessage(
