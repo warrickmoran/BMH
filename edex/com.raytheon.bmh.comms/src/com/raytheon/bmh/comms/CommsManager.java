@@ -147,6 +147,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * Jan 04, 2016  5308     rjpeter     Added PlaylistServer.
+ * Feb 25, 2016  5382     bkowal      Log every case when a dac transmit process is killed.
  * </pre>
  * 
  * @author bsteffen
@@ -479,6 +480,10 @@ public class CommsManager {
                                      */
                                     this.disconnectedDacProcesses
                                             .remove(transmitterGroup);
+                                    logger.info(
+                                            "Killing Dac Transmit for {}. Process has not successfully synced with the dac for: {} ms. Exceeds max allowed time: {} ms.",
+                                            channel.getTransmitterGroup(),
+                                            duration, MAX_DAC_DISCONNECT_TIME);
                                     launchDacTransmit(dac, channel, true);
                                     sleeptime += DAC_START_SLEEP_TIME;
                                     allDacsRunning = false;
