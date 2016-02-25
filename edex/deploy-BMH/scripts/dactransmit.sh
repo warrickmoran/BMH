@@ -47,6 +47,7 @@
 #    07/07/2015      4464          bkowal         Default SAME Tone padding is now 0.
 #    01/07/2016      4997          bkowal         dactransmit is no longer a uf edex plugin.
 #    02/09/2016      5082          bkowal         Updates for Apache commons lang 3.
+#    02/25/2016      5395          rjpeter        Removed incremental CMS.
 ##############################################################################
 
 
@@ -127,7 +128,7 @@ for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
 done;
 
-JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
+JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
 JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
 JVM_PROPS="${JVM_PROPS} -DusePositionStream=${USE_POSITION_STREAM} -DdisableAudioAttenuation=${DISABLE_AUDIO_ATTENUATION}"
 JVM_PROPS="${JVM_PROPS} -DsamePaddingOverride=${SAME_PADDING} -DsameEomPaddingOverride=${SAME_EOM_PADDING}"

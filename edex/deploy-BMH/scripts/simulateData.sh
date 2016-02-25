@@ -28,6 +28,7 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    08/15/14        3515          rjpeter        Initial Creation.
+#    02/25/16        5395          rjpeter        Removed incremental CMS.
 ##############################################################################
 
 
@@ -52,7 +53,7 @@ export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 ENTRY_POINT="com.raytheon.uf.edex.bmh.test.data.DataSimulator"
 CLASSPATH="${EDEX_HOME}/lib/plugins/com.raytheon.uf.edex.bmh.test.jar"
 
-JVM_ARGS="-Xms4m -Xmx32m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode"
+JVM_ARGS="-Xms4m -Xmx32m -XX:+UseConcMarkSweepGC"
 JVM_PROPS="-DdoInitialLoad=$INITIAL_LOAD_ALL_EFFECTIVE -DinputDir=$INPUT_DIR -DoutputDir=$OUTPUT_DIR -Duser.timezone=GMT"
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "$@"

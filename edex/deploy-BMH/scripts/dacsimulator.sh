@@ -30,6 +30,7 @@
 #    10/17/14        3688          dgilling       Initial Creation.
 #    10/20/14        3688          dgilling       Add logging, fix dependencies.
 #    01/09/15        3942          rjpeter        Set memory parameters.
+#    02/25/16        5395          rjpeter        Removed incremental CMS.
 ##############################################################################
 
 path_to_script=`readlink -f $0`
@@ -52,7 +53,7 @@ for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"
 done;
 
-JVM_ARGS="-Xms16m -Xmx32m -XX:+UseConcMarkSweepGC -XX:+CMSIncrementalMode -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
+JVM_ARGS="-Xms16m -Xmx32m -XX:+UseConcMarkSweepGC -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
 JVM_PROPS="-Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dacsimulator.xml"
 
 
