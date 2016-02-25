@@ -148,6 +148,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * Jan 04, 2016  5308     rjpeter     Added PlaylistServer.
  * Feb 25, 2016  5382     bkowal      Log every case when a dac transmit process is killed.
+ * Feb 25, 2016  5419     rjpeter     Give DacTransmit more time to start if it fails to connect.
  * </pre>
  * 
  * @author bsteffen
@@ -177,6 +178,13 @@ public class CommsManager {
      */
     private static final int DAC_START_SLEEP_TIME = Integer.getInteger(
             "CommsDacStartSleepInterval", 5000);
+
+    /**
+     * The max amount of time(in ms) to wait between attempts to start new dac
+     * transmit processes when needed.
+     */
+    private static final int DAC_MAX_START_SLEEP_TIME = Integer.getInteger(
+            "CommsDacMaxStartSleepInterval", 120000);
 
     /**
      * The amount of time(in ms) to wait before checking the status of the dacs.
@@ -234,7 +242,7 @@ public class CommsManager {
      */
     private volatile CommsConfig config;
 
-    private final Map<String, Process> startedProcesses = new HashMap<>();
+    private final Map<String, LaunchedProcess> startedProcesses = new HashMap<>();
 
     private final ConcurrentMap<String, Long> disconnectedDacProcesses = new ConcurrentHashMap<>();
 
@@ -464,10 +472,10 @@ public class CommsManager {
                                      */
                                     this.transmitServer
                                             .dacTransmitDisconnected(transmitterGroup);
-                                    Process p = this.startedProcesses
+                                    LaunchedProcess p = this.startedProcesses
                                             .remove(transmitterGroup);
                                     if (p != null) {
-                                        p.destroy();
+                                        p.getProcess().destroy();
                                     }
                                     logger.info(
                                             "Killing Dac Transmit for {}. Proccess is on another cluster member.",
@@ -492,6 +500,7 @@ public class CommsManager {
                                     .contains(transmitterGroup)) {
                                 this.dacProcessesToRestart
                                         .remove(transmitterGroup);
+                                sleeptime += DAC_START_SLEEP_TIME;
                                 logger.info(
                                         "Restarting dac transmit process for: {} ...",
                                         transmitterGroup);
@@ -621,14 +630,14 @@ public class CommsManager {
                         e);
             }
         }
-        for (Entry<String, Process> e : startedProcesses.entrySet()) {
+        for (Entry<String, LaunchedProcess> e : startedProcesses.entrySet()) {
             /*
              * Destroy any processes we have started that have not connected
              * since they may have bad config values.
              */
             logger.debug("Stopping unconnected process for Transmitter {}.",
                     e.getKey());
-            e.getValue().destroy();
+            e.getValue().getProcess().destroy();
         }
         silenceAlarm.reconfigure(config);
     }
@@ -636,14 +645,17 @@ public class CommsManager {
     protected void launchDacTransmit(DacConfig dac, DacChannelConfig channel,
             boolean force) {
         String group = channel.getTransmitterGroup();
+        long backOffTime = DAC_START_SLEEP_TIME;
+
         /*
          * If force has already been set. There is no need to determine if any
          * existing processed need to be terminated.
          */
-        Process p = null;
         if (force == false) {
-            p = startedProcesses.get(group);
-            if (p != null) {
+            LaunchedProcess lp = startedProcesses.get(group);
+            if (lp != null) {
+                Process p = lp.getProcess();
+
                 try {
                     int status = p.exitValue();
                     if (status == 1) {
@@ -653,7 +665,7 @@ public class CommsManager {
                          * So, the only option is to kill it and restart it.
                          */
                         logger.error(
-                                "Dac transmit process existed because there is already an unconnected dac transmit process running for {}.",
+                                "Dac transmit process exited because there is already an unconnected dac transmit process running for {}.",
                                 group);
                         force = true;
                     } else {
@@ -661,12 +673,23 @@ public class CommsManager {
                                 + group + " with a status of " + status);
                     }
                 } catch (IllegalThreadStateException e) {
-                    logger.info("Dac transmit process is running but unconnected for "
-                            + group);
-                    force = true;
+                    if (lp.isTimedOut()) {
+                        logger.info(
+                                "Dac transmit process for {} has not connected to Comms Manager within timeout of {}. Restarting Dac Transmit",
+                                group,
+                                TimeUtil.prettyDuration(lp.getConnectTimeOut()));
+                        force = true;
+                        backOffTime += lp.getConnectTimeOut();
+                    } else {
+                        logger.info(
+                                "Waiting for Dac Transmit process for {} to connect to Comms Manager",
+                                group);
+                        return;
+                    }
                 }
             }
         }
+
         logger.info("Starting dac transmit for: " + group);
         if (config.getDacTransmitStarter() == null) {
             /* validateConfig should have already handled this. */
@@ -734,9 +757,15 @@ public class CommsManager {
                 .resolve("logs").resolve(logFileName.toString());
         startCommand.redirectOutput(Redirect.appendTo(logFilePath.toFile()));
         startCommand.redirectError(Redirect.appendTo(logFilePath.toFile()));
+
+        if (backOffTime > DAC_MAX_START_SLEEP_TIME) {
+            backOffTime = DAC_MAX_START_SLEEP_TIME;
+        }
+
         try {
-            p = startCommand.start();
-            startedProcesses.put(group, p);
+            LaunchedProcess lp = new LaunchedProcess(startCommand.start(),
+                    backOffTime);
+            startedProcesses.put(group, lp);
         } catch (IOException e) {
             logger.error("Unable to start dac transmit for " + group, e);
         }
@@ -1182,5 +1211,30 @@ public class CommsManager {
         }
 
         new CommsManager(operational).run();
+    }
+
+    private class LaunchedProcess {
+        private final Process p;
+
+        private final long launchTime = System.currentTimeMillis();
+
+        private final long connectTimeOut;
+
+        public LaunchedProcess(Process p, long connectTimeOut) {
+            this.p = p;
+            this.connectTimeOut = connectTimeOut;
+        }
+
+        public Process getProcess() {
+            return p;
+        }
+
+        public long getConnectTimeOut() {
+            return connectTimeOut;
+        }
+
+        public boolean isTimedOut() {
+            return System.currentTimeMillis() >= (launchTime + connectTimeOut);
+        }
     }
 }
