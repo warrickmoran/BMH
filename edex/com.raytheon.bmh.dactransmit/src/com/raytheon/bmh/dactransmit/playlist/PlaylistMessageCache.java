@@ -124,6 +124,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
  * Feb 04, 2016 5308       bkowal       Utilize {@link DacPlaylistMessageMetadata}.
  * Feb 15, 2016 5308       bkowal       Playlist file purge will happen independently of message purge.
+ * Feb 23, 2016 5382       bkowal       Prevent unlikely NPE.
  * </pre>
  * 
  * @author dgilling
@@ -782,7 +783,6 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         logger.debug("Removing message " + messageId + " from cache.");
 
         cachedMessages.remove(messageId);
-
     }
 
     private void purgeAudio(final DacPlaylistMessageId messageId) {
@@ -794,14 +794,15 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
 
         DacPlaylistMessage message = cachedMessages.get(messageId);
-        if (message != null) {
-            cachedFiles.remove(message);
+        if (message == null) {
+            return;
         }
 
         /*
          * With all references to this version of the message being removed, we
          * no longer need the last read version of the metadata on disk.
          */
+        cachedFiles.remove(message);
         if (message.getMetadata() != null
                 && Files.exists(message.getMetadata().getPath())) {
             try {
