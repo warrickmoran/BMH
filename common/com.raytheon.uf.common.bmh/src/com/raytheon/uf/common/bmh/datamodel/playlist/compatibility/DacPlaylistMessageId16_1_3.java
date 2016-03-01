@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.playlist;
+package com.raytheon.uf.common.bmh.datamodel.playlist.compatibility;
 
 import java.nio.file.Path;
 import java.util.Calendar;
@@ -35,6 +35,9 @@ import com.raytheon.uf.common.bmh.trace.ITraceable;
  * Xml representation of a playlist message that is sent from the playlist
  * manager to the comms manager.
  * 
+ * NOTE: Do not update. Only exists to allow message file compatibility from one
+ * version to the next.
+ * 
  * <pre>
  * 
  * SOFTWARE HISTORY
@@ -50,17 +53,16 @@ import com.raytheon.uf.common.bmh.trace.ITraceable;
  *                                    to the playlist.
  * May 13, 2015  4429     rferrel     Implement {@link ITraceable}.
  * Feb 04, 2016  5308     bkowal      Promoted {@link #path}.
- * Mar 08, 2016  5382     bkowal      Added {@link #version}.
+ * Mar 08, 2016  5382     bkowal      Based on 16.1.3. Maintained for message file conversion.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+@Deprecated
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacPlaylistMessageId implements ITraceable {
-
-    public static final String CURRENT_VERSION = "1.0";
+public class DacPlaylistMessageId16_1_3 implements ITraceable {
 
     @XmlAttribute
     protected long broadcastId;
@@ -76,18 +78,15 @@ public class DacPlaylistMessageId implements ITraceable {
     protected String traceId;
 
     @XmlElement
-    private String version;
-
-    @XmlElement
     protected Calendar expire;
 
     protected transient Path path;
 
-    public DacPlaylistMessageId() {
+    public DacPlaylistMessageId16_1_3() {
 
     }
 
-    public DacPlaylistMessageId(long broadcastId) {
+    public DacPlaylistMessageId16_1_3(long broadcastId) {
         this.broadcastId = broadcastId;
     }
 
@@ -163,7 +162,7 @@ public class DacPlaylistMessageId implements ITraceable {
         if (getClass() != obj.getClass()) {
             return false;
         }
-        DacPlaylistMessageId other = (DacPlaylistMessageId) obj;
+        DacPlaylistMessage16_1_3 other = (DacPlaylistMessage16_1_3) obj;
         if (broadcastId != other.broadcastId) {
             return false;
         }
@@ -176,20 +175,5 @@ public class DacPlaylistMessageId implements ITraceable {
 
     public void setTraceId(String traceId) {
         this.traceId = traceId;
-    }
-
-    /**
-     * @return the version
-     */
-    public String getVersion() {
-        return version;
-    }
-
-    /**
-     * @param version
-     *            the version to set
-     */
-    public void setVersion(String version) {
-        this.version = version;
     }
 }

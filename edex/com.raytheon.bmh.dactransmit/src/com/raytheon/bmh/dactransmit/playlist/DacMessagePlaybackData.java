@@ -23,10 +23,11 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Calendar;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.xml.bind.JAXB;
 
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import com.raytheon.bmh.dactransmit.dacsession.DataTransmitConstants;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
+import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -69,6 +71,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 25, 2015  #4290     bsteffen     Switch to global replacement.
  * May 04, 2015  #4452     bkowal       Added {@link #requiresToneTruncationNotification()}.
  * May 22, 2015  #4481     bkowal       Added {@link #dynamicAudio}.
+ * Mar 01, 2016  #5382     bkowal       Added {@link #positionFileExpired(Path, AtomicReference)}.
  * 
  * </pre>
  * 
@@ -132,18 +135,15 @@ public final class DacMessagePlaybackData {
         if (Files.exists(positionFile)) {
             int position = 0;
             try {
-                BasicFileAttributes attrs = Files.readAttributes(positionFile,
-                        BasicFileAttributes.class);
-                long timeOffset = TimeUtil.currentTimeMillis()
-                        - attrs.lastModifiedTime().toMillis();
-                if (timeOffset < DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD) {
-                    position = (int) Files.size(positionFile);
-                } else {
+                AtomicReference<Long> timeOffset = new AtomicReference<Long>();
+                if (positionFileExpired(positionFile, timeOffset)) {
                     logger.info(
-                            "Message restarted because position file is {}ms old",
+                            "Message restarted because position file is {}ms old.",
                             timeOffset);
+                } else {
+                    position = (int) Files.size(positionFile);
                 }
-            } catch (IOException e) {
+            } catch (Exception e) {
                 logger.error(
                         "Unable to determine position of message {} resetting playback.",
                         message.getBroadcastId(), e);
@@ -167,6 +167,36 @@ public final class DacMessagePlaybackData {
             }
         }
         return false;
+    }
+
+    /**
+     * Determines if the position file has expired based on how long ago the
+     * file was last written to.
+     * 
+     * @param positionFile
+     *            {@link Path} of the position file to check.
+     * @param fileAge
+     *            optional reference to a {@link Long}. If supplied, will be
+     *            used to return the age of the position file by reference.
+     * @return {@code true}, if the file has expired; {@code false}, otherwise.
+     * @throws IOException
+     */
+    public static boolean positionFileExpired(Path positionFile,
+            AtomicReference<Long> fileAge) throws IOException {
+        if (Files.exists(positionFile) == false) {
+            throw new IllegalArgumentException("The specified position file: "
+                    + positionFile.toString() + " does not exist.");
+        }
+
+        BasicFileAttributes attrs = Files.readAttributes(positionFile,
+                BasicFileAttributes.class);
+        long timeOffset = TimeUtil.currentTimeMillis()
+                - attrs.lastModifiedTime().toMillis();
+
+        if (fileAge != null) {
+            fileAge.set(timeOffset);
+        }
+        return (timeOffset >= DataTransmitConstants.SYNC_DOWNTIME_RESTART_THRESHOLD);
     }
 
     /**
@@ -225,14 +255,22 @@ public final class DacMessagePlaybackData {
             }
         }
         Path msgPath = message.getPath();
-        Path tmpPath = msgPath.resolveSibling(msgPath.getFileName().toString()
-                .replace(".xml", ".tmp.xml"));
+        ReentrantLock fileLock = null;
         try {
-            JAXB.marshal(message, tmpPath.toFile());
-            Files.move(tmpPath, msgPath, StandardCopyOption.REPLACE_EXISTING,
-                    StandardCopyOption.ATOMIC_MOVE);
+            fileLock = InMemoryFileLockManager.getInstance()
+                    .requestResourceLock(msgPath, 1000L);
+            if (fileLock == null) {
+                logger.error("Unable to write updated message file: "
+                        + msgPath.toString() + ". Failed to lock the file.");
+                return;
+            }
+            JAXB.marshal(message, msgPath.toFile());
         } catch (Throwable e) {
             logger.error("Unable to persist message state.", e);
+        } finally {
+            if (fileLock != null) {
+                fileLock.unlock();
+            }
         }
     }
 

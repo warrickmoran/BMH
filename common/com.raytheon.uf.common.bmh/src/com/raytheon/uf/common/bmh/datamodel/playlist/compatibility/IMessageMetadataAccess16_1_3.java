@@ -17,12 +17,15 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.playlist;
+package com.raytheon.uf.common.bmh.datamodel.playlist.compatibility;
 
 import java.util.List;
 
 /**
  * Identifies the message metadata fields that must be readily accessible.
+ * 
+ * NOTE: Do not update. Only exists to allow message file compatibility from one
+ * version to the next.
  * 
  * <pre>
  * 
@@ -30,26 +33,16 @@ import java.util.List;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 03, 2016 5308       bkowal      Initial creation
- * Mar 08, 2016 5382       bkowal      Added additional EDEX BMH-specific fields.
+ * Feb 03, 2016  5308       bkowal      Initial creation
+ * Mar 08, 2016  5382       bkowal      Based on 16.1.3. Maintained for message file conversion.
  * 
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
-
-public interface IMessageMetadataAccess {
-
-    public String getName();
-
-    public String getMessageType();
-
-    public String getSAMEtone();
-
-    public boolean isAlertTone();
-
-    public boolean isSAMETones();
+@Deprecated
+public interface IMessageMetadataAccess16_1_3 {
 
     public boolean isPeriodic();
 
@@ -64,10 +57,6 @@ public interface IMessageMetadataAccess {
     public long getPlaybackInterval();
 
     public List<String> getSoundFiles();
-
-    public boolean isConfirm();
-
-    public boolean isWarning();
 
     public boolean isDynamic();
 

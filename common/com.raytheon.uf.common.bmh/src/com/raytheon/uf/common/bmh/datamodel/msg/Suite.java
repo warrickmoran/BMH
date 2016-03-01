@@ -261,7 +261,7 @@ public class Suite {
     }
 
     /**
-     * Manually sets the position filed in the SuiteMessage. Work around for
+     * Manually sets the position field in the SuiteMessage. Work around for
      * https://hibernate.atlassian.net/browse/HHH-5732
      */
     public void updatePositions() {

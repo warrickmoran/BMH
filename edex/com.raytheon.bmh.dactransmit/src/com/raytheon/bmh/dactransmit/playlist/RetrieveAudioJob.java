@@ -69,6 +69,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                     the audio retrieval attempt is complete.
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Mar 08, 2016 5382       bkowal      Check for null message data.
  * </pre>
  * 
  * @author bkowal
@@ -140,6 +141,10 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      */
     @Override
     public IAudioFileBuffer call() throws Exception {
+        if (this.message == null) {
+            return null;
+        }
+
         final long start = System.currentTimeMillis();
         List<byte[]> rawDataArrays = new ArrayList<>(this.message
                 .getSoundFiles().size());
