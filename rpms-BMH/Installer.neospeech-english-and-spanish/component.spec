@@ -2,12 +2,12 @@
 # AWIPS II BMH spec file
 #
 %define _version 3.10
-%define _neospeech_zip neospeech-spanish.zip
+%define _neospeech_directory neospeech-spanish
 
 Name: awips2-neospeech-english-and-spanish
 Summary: AWIPS II BMH Installation
 Version: %{_version}
-Release: 2
+Release: 3
 Group: AWIPSII
 BuildRoot: %{_build_root}
 BuildArch: x86_64
@@ -15,6 +15,7 @@ URL: N/A
 License: N/A
 Distribution: N/A
 Vendor: Raytheon
+Packager: %{_build_site}
 
 Provides: awips2-neospeech-english-and-spanish
 Requires: awips2-neospeech
@@ -38,13 +39,13 @@ fi
 %build
 
 %install
-neospeech_package=%{_awipscm_share}/awips2-static/neospeech/%{_version}/%{_neospeech_zip}
-if [ ! -f ${neospeech_package} ]; then
-   file ${neospeech_package}
+neospeech_package=%{_baseline_workspace}/foss/neospeech-%{_version}/%{_neospeech_directory}
+if [ ! -d ${neospeech_package} ]; then
+   echo "Directory ${neospeech_package} not found!"
    exit 1
 fi
 
-unzip ${neospeech_package} -d %{_build_root}
+cp -rv ${neospeech_package}/* %{_build_root}
 if [ $? -ne 0 ]; then
    exit 1
 fi

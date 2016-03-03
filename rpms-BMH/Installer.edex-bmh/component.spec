@@ -16,7 +16,7 @@ URL: N/A
 License: N/A
 Distribution: N/A
 Vendor: Raytheon
-Packager: Bryan Kowal
+Packager: %{_build_site}
 
 BuildRequires: awips2-ant
 BuildRequires: awips2-java
