@@ -26,10 +26,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
+import com.raytheon.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.serialization.SerializationUtil;
-import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
 
 /**
  * Allows the Comms Manager to communicate with a single instance of a Dac
@@ -42,6 +42,7 @@ import com.raytheon.uf.edex.bmh.dactransmit.ipc.DacTransmitShutdown;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Apr 28, 2015 4394       bkowal      Initial creation
+ * Jan 07, 2016 4997       bkowal      dactransmit is no longer a uf edex plugin.
  * 
  * </pre>
  * 

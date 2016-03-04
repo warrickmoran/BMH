@@ -58,6 +58,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.systemstatus.data.TransmitterInfo;
  * Jan 29, 2015  4029      bkowal       Simplified Dac Voltage reporting.
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * Jun 15, 2015  4482      rjpeter      Fix resource leak.
+ * Dec 01, 2015  5113      bkowal       Report when a BMH Dac and a DAC are no longer in sync.
  * </pre>
  * 
  * @author lvenable
@@ -203,10 +204,9 @@ public class DacStatusComp extends Composite {
      * @return
      */
     private boolean validateDacStatus() {
-        // TODO : add more validation
-
         if (dacInfo.getPsu1Voltage() != DAC_VOLTAGE.OK
-                || dacInfo.getPsu2Voltage() != DAC_VOLTAGE.OK) {
+                || dacInfo.getPsu2Voltage() != DAC_VOLTAGE.OK
+                || dacInfo.isDesync()) {
             return false;
         }
 
@@ -227,6 +227,9 @@ public class DacStatusComp extends Composite {
                 .append(dacInfo.getPsu1Voltage().toString()).append("\n");
         sb.append("PSU2 Voltage : ")
                 .append(dacInfo.getPsu2Voltage().toString()).append("\n");
+        if (dacInfo.isDesync()) {
+            sb.append("\nDAC and BMH are NOT in sync.\n");
+        }
 
         new CustomToolTip(lbl, sb.toString());
     }

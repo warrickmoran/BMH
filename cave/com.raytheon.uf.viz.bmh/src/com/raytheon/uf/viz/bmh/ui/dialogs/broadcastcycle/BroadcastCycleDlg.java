@@ -63,7 +63,6 @@ import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
-import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -83,7 +82,7 @@ import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
 import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.NoPlaybackMessageNotification;
-import com.raytheon.uf.common.bmh.notify.PlaylistSwitchNotification;
+import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
 import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
@@ -207,6 +206,9 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 19, 2015  4481      bkowal      Set the time zone on the {@link SimpleDateFormat}.
  * Jun 22, 2015  4481      bkowal      Display the timezone display id in the time zone field.
  * Jul 13, 2015  4636      bkowal      Handle initial maintenance playback statuses.
+ * Jan 05, 2016  4997      bkowal      Allow toggling between transmitters/groups.
+ * Jan 27, 2016  5160      rjpeter     Left align MRD column.
+ * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
  * </pre>
  * 
  * @author mpduff
@@ -330,6 +332,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * events and disposal events simultaneously.
      */
     private final Object disposalLock = new Object();
+
+    /**
+     * checkbox used to toggle between displaying transmitters/groups for
+     * selection.
+     */
+    protected Button groupToggleBtn;
 
     /**
      * Constructor.
@@ -467,6 +475,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         transGrp.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        this.groupToggleBtn = new Button(transGrp, SWT.CHECK);
+        this.groupToggleBtn.setText("Transmitter Group");
+        this.groupToggleBtn.setSelection(true);
+        this.groupToggleBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                toggleGroupsTransmitters();
+            }
+        });
+
+        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         gd.widthHint = 125;
         this.transmitterTable = new Table(transGrp, SWT.V_SCROLL | SWT.H_SCROLL
                 | SWT.SINGLE | SWT.BORDER);
@@ -478,6 +497,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 updateOnTransmitterChange(true);
             }
         });
+    }
+
+    private void toggleGroupsTransmitters() {
+        this.populateTransmitters(false);
+        transmitterTable.select(getSelectedIndex());
+        updateOnTransmitterChange(false);
     }
 
     private void createUpperSection(Composite comp) {
@@ -792,68 +817,42 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void initialTablePopulation() {
         try {
-            IPlaylistData playlistDataRecord = this.dataManager
-                    .getPlaylistDataForTransmitter(selectedTransmitterGrp);
+            INonStandardBroadcast notification = playlistData
+                    .getNonStandardBroadcast(selectedTransmitterGrp);
             PlaylistDataStructure dataStruct = null;
-            LiveBroadcastSwitchNotification liveNotification = null;
-            MaintenanceMessagePlayback maintNotification = null;
-            if (playlistDataRecord instanceof PlaylistDataStructure) {
-                dataStruct = (PlaylistDataStructure) playlistDataRecord;
-            } else if (playlistDataRecord instanceof LiveBroadcastSwitchNotification) {
-                liveNotification = (LiveBroadcastSwitchNotification) playlistDataRecord;
-                dataStruct = liveNotification.getActualPlaylist();
-            } else if (playlistDataRecord instanceof MaintenanceMessagePlayback) {
-                maintNotification = (MaintenanceMessagePlayback) playlistDataRecord;
-                this.playlistData
-                        .handleMaintenanceNotification((MaintenanceMessagePlayback) playlistDataRecord);
-            }
-
-            if (dataStruct != null) {
+            if (notification == null) {
                 if (selectedTransmitterGrp != null) {
-                    playlistData.setData(selectedTransmitterGrp, dataStruct);
+                    dataStruct = playlistData
+                            .getPlaylistData(selectedTransmitterGrp);
                 }
-                this.selectedSuite = dataStruct.getSuiteName();
-            }
 
-            if ((liveNotification == null) && (dataStruct != null)) {
-                if (this.selectedSuite != null) {
-                    suiteValueLbl.setText(this.selectedSuite);
-                } else {
-                    /*
-                     * A Transmitter in maintenance mode or that is disabled
-                     * will not have an associated suite.
-                     */
-                    suiteValueLbl.setText(StringUtils.EMPTY);
-                }
-                cycleDurValueLbl.setText(timeFormatter.format(new Date(
-                        dataStruct.getPlaybackCycleTime())));
-                suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
-
-                if (selectedTransmitterGrp != null) {
-                    tableData = playlistData
-                            .getUpdatedTableData(selectedTransmitterGrp);
-                }
+                tableData = playlistData
+                        .getUpdatedTableData(selectedTransmitterGrp);
                 tableComp.populateTable(tableData);
                 if (tableData.getTableRowCount() > 0) {
                     tableComp.select(0);
                 }
+
                 handleTableSelection();
             } else {
-                INonStandardBroadcast notification = null;
-                if (liveNotification != null) {
-                    playlistData
-                            .handleLiveBroadcastSwitchNotification(liveNotification);
-                    notification = liveNotification;
-                } else {
-                    this.playlistData
-                            .handleMaintenanceNotification(maintNotification);
-                    notification = maintNotification;
-                }
-                TableData tableData = playlistData
-                        .getNonStandardTableData(notification);
+                tableData = playlistData.getNonStandardTableData(notification);
                 this.updateDisplayForNonStandardBroadcast(tableData,
                         notification);
             }
+
+            if (dataStruct != null) {
+                this.selectedSuite = dataStruct.getSuiteName();
+                suiteValueLbl.setText(selectedSuite == null ? StringUtils.EMPTY
+                        : selectedSuite);
+                cycleDurValueLbl.setText(timeFormatter.format(new Date(
+                        dataStruct.getPlaybackCycleTime())));
+            } else {
+                this.selectedSuite = null;
+                suiteValueLbl.setText(StringUtils.EMPTY);
+                cycleDurValueLbl.setText(StringUtils.EMPTY);
+            }
+
+            suiteCatValueLbl.setText(this.getCategoryForCurrentSuite());
         } catch (Exception e) {
             statusHandler.error("Error getting initial playback data", e);
         }
@@ -875,20 +874,54 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 List<Transmitter> transmitterObjectList = tg
                         .getOrderedConfiguredTransmittersList();
 
-                for (Transmitter t : transmitterObjectList) {
+                if (this.groupToggleBtn.getSelection()) {
                     TableItem ti = new TableItem(this.transmitterTable, 0);
-                    ti.setText(t.getMnemonic());
-                    ti.setData(t);
-                    if (t.getTxStatus() == TxStatus.DISABLED) {
-                        ti.setBackground(this.getDisplay().getSystemColor(
-                                SWT.COLOR_RED));
-                        ti.setForeground(this.getDisplay().getSystemColor(
-                                SWT.COLOR_LIST_FOREGROUND));
-                    } else if (t.getTxStatus() == TxStatus.MAINT) {
+                    ti.setText(tg.getName());
+                    /*
+                     * Find the first enabled transmitter. If none are enabled,
+                     * find the first transmitter in maintenance mode. If none
+                     * are in maintenance mode, choose the first transmitter in
+                     * the group.
+                     */
+                    Set<Transmitter> enabledTransmitters = tg
+                            .getTransmitterWithStatus(TxStatus.ENABLED);
+                    if (CollectionUtils.isNotEmpty(enabledTransmitters)) {
+                        ti.setData(enabledTransmitters.iterator().next());
+                        continue;
+                    }
+                    // check for maintenance
+                    Set<Transmitter> maintTransmitters = tg
+                            .getTransmitterWithStatus(TxStatus.MAINT);
+                    if (CollectionUtils.isNotEmpty(maintTransmitters)) {
+                        ti.setData(maintTransmitters.iterator().next());
                         ti.setBackground(this.getDisplay().getSystemColor(
                                 SWT.COLOR_DARK_BLUE));
                         ti.setForeground(this.getDisplay().getSystemColor(
                                 SWT.COLOR_WHITE));
+                        continue;
+                    }
+                    // just retrieve the first in the list.
+                    ti.setData(tg.getTransmitterList().get(0));
+                    ti.setBackground(this.getDisplay().getSystemColor(
+                            SWT.COLOR_RED));
+                    ti.setForeground(this.getDisplay().getSystemColor(
+                            SWT.COLOR_LIST_FOREGROUND));
+                } else {
+                    for (Transmitter t : transmitterObjectList) {
+                        TableItem ti = new TableItem(this.transmitterTable, 0);
+                        ti.setText(t.getMnemonic());
+                        ti.setData(t);
+                        if (t.getTxStatus() == TxStatus.DISABLED) {
+                            ti.setBackground(this.getDisplay().getSystemColor(
+                                    SWT.COLOR_RED));
+                            ti.setForeground(this.getDisplay().getSystemColor(
+                                    SWT.COLOR_LIST_FOREGROUND));
+                        } else if (t.getTxStatus() == TxStatus.MAINT) {
+                            ti.setBackground(this.getDisplay().getSystemColor(
+                                    SWT.COLOR_DARK_BLUE));
+                            ti.setForeground(this.getDisplay().getSystemColor(
+                                    SWT.COLOR_WHITE));
+                        }
                     }
                 }
             }
@@ -957,7 +990,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         columns.add(new TableColumnData("Message Id", 100));
         columns.add(new TableColumnData("Message Title", 225));
         columns.add(new TableColumnData("Message Name", 175));
-        columns.add(new TableColumnData("MRD"));
+        columns.add(new TableColumnData("MRD", 20, SWT.LEFT));
         columns.add(new TableColumnData("Expiration Time (UTC)", 125));
         columns.add(new TableColumnData("Alert"));
         columns.add(new TableColumnData("SAME"));
@@ -986,8 +1019,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                  * Determine if the audio stream needs to be reloaded either
                  * because the dac or the dac port has been altered.
                  */
-                reloadAudioStream = this.monitorThread != null
-                        && (this.selectedTransmitterGroupObject != null && ((transmitter
+                reloadAudioStream = (this.monitorThread != null)
+                        && ((this.selectedTransmitterGroupObject != null) && ((transmitter
                                 .getTransmitterGroup().getDac() != this.selectedTransmitterGroupObject
                                 .getDac()) || (this.monitorThread.getChannel() != transmitter
                                 .getDacPort())));
@@ -1029,18 +1062,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         this.retrieveProgram();
 
         messageTextArea.setText("");
-        INonStandardBroadcast notification = playlistData
-                .getNonStandardBroadcast(selectedTransmitterGrp);
-        if (notification == null) {
-            initialTablePopulation();
-            tableData = playlistData
-                    .getUpdatedTableData(selectedTransmitterGrp);
-            tableComp.populateTable(tableData);
-            handleTableSelection();
-        } else {
-            tableData = playlistData.getNonStandardTableData(notification);
-            this.updateDisplayForNonStandardBroadcast(tableData, notification);
-        }
+        initialTablePopulation();
         if (reloadAudioStream) {
             handleMonitorInlineEvent();
         }
@@ -1530,8 +1552,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         for (NotificationMessage message : messages) {
             try {
                 Object o = message.getMessagePayload();
-                if (o instanceof PlaylistSwitchNotification) {
-                    final PlaylistSwitchNotification notification = (PlaylistSwitchNotification) o;
+                if (o instanceof PlaylistNotification) {
+                    final PlaylistNotification notification = (PlaylistNotification) o;
                     playlistData.handlePlaylistSwitchNotification(notification);
                     if (notification.getTransmitterGroup().equals(
                             selectedTransmitterGrp)) {
@@ -1831,7 +1853,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 for (TransmitterGroupIdentifier identifier : notification
                         .getIdentifiers()) {
                     final String grp = identifier.getName();
-                    int indx = getIndexOfTransmitterInTable(grp);
+                    int indx = getSelectedIndex();
                     if (indx != -1) {
                         /*
                          * The group already in the list. Update if it is the
@@ -1872,9 +1894,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                          * select the transmitter that is "currently" selected
                          * at its "new" location.
                          */
-
-                        transmitterTable
-                                .select(getIndexOfTransmitterInTable(selectedTransmitter));
+                        transmitterTable.select(getSelectedIndex());
                         updateOnTransmitterChange(false);
                     }
 
@@ -1885,16 +1905,18 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         });
     }
 
-    private int getIndexOfTransmitterInTable(final String grp) {
+    private int getSelectedIndex() {
         int indx = -1;
         for (int i = 0; i < transmitterTable.getItemCount(); i++) {
             if (transmitterTable.getItem(i).getText(0)
-                    .equals(selectedTransmitter)) {
+                    .equals(selectedTransmitter)
+                    || (this.groupToggleBtn.getSelection() && transmitterTable
+                            .getItem(i).getText(0)
+                            .equals(selectedTransmitterGrp))) {
                 indx = i;
                 break;
             }
         }
-
         return indx;
     }
 

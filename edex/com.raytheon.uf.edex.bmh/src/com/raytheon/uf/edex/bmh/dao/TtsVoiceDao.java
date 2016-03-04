@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 
@@ -40,6 +41,8 @@ import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Dec 16, 2014  3618     bkowal      Added {@link #getVoiceIdentifiers()}.
  * Jan 15, 2015  3809     bkowal      Added {@link #getVoiceIdentifiersForLanguage(Language)}.
+ * Dec 03, 2015  5158     bkowal      Added {@link #getDefaultVoiceForLanguage(Language)}. 
+ * Dec 08, 2015  5159     bkowal      Added {@link #isVoiceDictionary(Dictionary)}.
  * 
  * </pre>
  * 
@@ -158,5 +161,37 @@ public class TtsVoiceDao extends AbstractBMHDao<TtsVoice, Integer> {
         }
 
         return voiceIdentifiers;
+    }
+
+    public boolean isVoiceDictionary(final Dictionary dictionary) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                TtsVoice.GET_VOICE_FOR_DICTIONARY, "dictionary", dictionary);
+
+        return (returnedObjects != null && returnedObjects.isEmpty() == false);
+    }
+
+    /**
+     * Returns the {@link TtsVoice} associated with the specified
+     * {@link Language} as the "default" voice.
+     * 
+     * @param language
+     *            the specified {@link Language}.
+     * @return the associated {@link TtsVoice}
+     */
+    public TtsVoice getDefaultVoiceForLanguage(final Language language) {
+        List<?> returnedObjects = this.findByNamedQueryAndNamedParam(
+                TtsVoice.GET_DEFAULT_VOICE_FOR_LANGUAGE, "language", language);
+        if (returnedObjects == null || returnedObjects.isEmpty()) {
+            return null;
+        }
+
+        if (returnedObjects.size() > 1) {
+            throw new IllegalStateException(
+                    "Found more than once voice for language: "
+                            + language.name()
+                            + "; unable to determine the default voice!");
+        }
+
+        return (TtsVoice) returnedObjects.get(0);
     }
 }

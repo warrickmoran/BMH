@@ -19,8 +19,8 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.recordplayback.live;
 
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -62,7 +62,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.IAudioRecorderListener;
  * Nov 21, 2014 3845       bkowal      Use Transmitter Groups
  * Jul 15, 2015 4636       bkowal      Slightly increase the amount of audio that is accumulated.
  * Aug 25, 2015 4771       bkowal      Buffer delays are now configurable.
- * 
+ * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bkowal
@@ -85,7 +85,7 @@ public class LiveBroadcastThread extends
 
     private String broadcastId;
 
-    private List<byte[]> bufferedAudio;
+    private final List<byte[]> bufferedAudio;
 
     /** Audio streaming timer. */
     private ScheduledExecutorService timer;
@@ -109,9 +109,9 @@ public class LiveBroadcastThread extends
 
     @Override
     public void run() {
-        while (this.state != BROADCAST_STATE.STOPPED
-                && this.state != BROADCAST_STATE.ERROR
-                && this.state != BROADCAST_STATE.INIT_ERROR) {
+        while ((this.state != BROADCAST_STATE.STOPPED)
+                && (this.state != BROADCAST_STATE.ERROR)
+                && (this.state != BROADCAST_STATE.INIT_ERROR)) {
             try {
                 this.notifyListener();
                 switch (this.state) {
@@ -126,12 +126,12 @@ public class LiveBroadcastThread extends
                          * manager <-> dac transmit
                          */
                         Object object = this.readFromCommsManager();
-                        if (object == null
-                                && this.state != BROADCAST_STATE.ERROR
-                                && this.state != BROADCAST_STATE.STOPPED) {
+                        if ((object == null)
+                                && (this.state != BROADCAST_STATE.ERROR)
+                                && (this.state != BROADCAST_STATE.STOPPED)) {
                             statusHandler
                                     .error("comms manager "
-                                            + BMHServers.getBroadcastServer()
+                                            + BMHServers.getCommsManager()
                                             + " unexpectedly dropped the connection during the live broadcast!");
                             this.state = BROADCAST_STATE.ERROR;
                         } else if (object instanceof BroadcastStatus) {
@@ -149,8 +149,8 @@ public class LiveBroadcastThread extends
                                     + " from comms manager.");
                         }
                     } catch (BroadcastException e) {
-                        if (this.state != BROADCAST_STATE.ERROR
-                                && this.state != BROADCAST_STATE.STOPPED) {
+                        if ((this.state != BROADCAST_STATE.ERROR)
+                                && (this.state != BROADCAST_STATE.STOPPED)) {
                             statusHandler
                                     .error("Unexpected error occurred during the live broadcast!",
                                             e);
@@ -172,8 +172,8 @@ public class LiveBroadcastThread extends
             }
         }
 
-        if (this.state == BROADCAST_STATE.ERROR
-                || this.state == BROADCAST_STATE.INIT_ERROR) {
+        if ((this.state == BROADCAST_STATE.ERROR)
+                || (this.state == BROADCAST_STATE.INIT_ERROR)) {
             /*
              * stop the recording which will trigger the proper shutdown of
              * everything else.
@@ -213,8 +213,8 @@ public class LiveBroadcastThread extends
         try {
             responseObject = this.readFromCommsManager();
         } catch (BroadcastException e) {
-            if (this.state != BROADCAST_STATE.STOPPED
-                    && this.state != BROADCAST_STATE.ERROR) {
+            if ((this.state != BROADCAST_STATE.STOPPED)
+                    && (this.state != BROADCAST_STATE.ERROR)) {
                 statusHandler.error("Failed to start live broadcast!", e);
                 this.state = BROADCAST_STATE.INIT_ERROR;
             }
@@ -289,8 +289,8 @@ public class LiveBroadcastThread extends
 
     @Override
     public void audioReady(byte[] audioData) {
-        if (this.state == BROADCAST_STATE.ERROR
-                || this.state == BROADCAST_STATE.STOPPED) {
+        if ((this.state == BROADCAST_STATE.ERROR)
+                || (this.state == BROADCAST_STATE.STOPPED)) {
             return;
         }
 

@@ -20,12 +20,17 @@
 package com.raytheon.uf.common.bmh.data;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
+import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -47,8 +52,11 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 13, 2015     3843   bsteffen    Add periodic predictions
  * Jan 13, 2015     3844   bsteffen    Change included message to be PlaylistMessage
  * Mar 25, 2015     4290   bsteffen    Switch to global replacement.
- * 
- * 
+ * Jan 28, 2016     5300   rjpeter     Updated to use copy construction instead of in place update.
+ * Jan 29, 2016     5300   bkowal      Compare update times when determining if a message has already
+ *                                     been loaded to ensure the latest version is stored locally.
+ * Feb 04, 2016     5308   bkowal      Ensure that a message will not remain displayed as an interrupt
+ *                                     after the initial broadcast.
  * </pre>
  * 
  * @author mpduff
@@ -66,7 +74,7 @@ public class PlaylistDataStructure implements IPlaylistData {
      * Broadcast Message ID -> MessagePlaybackPrediction
      */
     @DynamicSerializeElement
-    private LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
+    private volatile LinkedHashMap<Long, MessagePlaybackPrediction> predictionMap;
 
     /**
      * Broadcast Message ID -> MessagePlaybackPrediction Contains predicitions
@@ -93,7 +101,64 @@ public class PlaylistDataStructure implements IPlaylistData {
     @DynamicSerializeElement
     private long playbackCycleTime;
 
+    @DynamicSerializeElement
+    private long timeStamp;
+
     public PlaylistDataStructure() {
+    }
+
+    public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
+            List<MessagePlaybackPrediction> periodicMessages, long timeStamp) {
+        this(messages, periodicMessages, null, timeStamp);
+    }
+
+    public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
+            List<MessagePlaybackPrediction> periodicMessages,
+            PlaylistDataStructure that, long timeStamp) {
+        this.predictionMap = new LinkedHashMap<>(messages.size());
+        this.periodicPredictionMap = new LinkedHashMap<>(
+                periodicMessages.size());
+        this.playlistMap = new HashMap<>();
+        this.messageTypeMap = new HashMap<>();
+        this.timeStamp = timeStamp;
+
+        for (MessagePlaybackPrediction pred : messages) {
+            predictionMap.put(pred.getBroadcastId(), pred);
+        }
+
+        for (MessagePlaybackPrediction pred : periodicMessages) {
+            periodicPredictionMap.put(pred.getBroadcastId(), pred);
+        }
+
+        if (that != null) {
+            /* Copy over the referenced broadcast msgs and msg types */
+            Map<Long, BroadcastMsg> thatPlaylistMap = that.getPlaylistMap();
+            Map<Long, MessageType> thatMsgTypeMap = that.getMessageTypeMap();
+
+            for (MessagePlaybackPrediction pred : messages) {
+                Long broadcastId = pred.getBroadcastId();
+                BroadcastMsg bMsg = thatPlaylistMap.get(broadcastId);
+                if (bMsg != null) {
+                    playlistMap.put(broadcastId, bMsg);
+                }
+                MessageType msgType = thatMsgTypeMap.get(broadcastId);
+                if (msgType != null) {
+                    messageTypeMap.put(broadcastId, msgType);
+                }
+            }
+
+            for (MessagePlaybackPrediction pred : periodicMessages) {
+                Long broadcastId = pred.getBroadcastId();
+                BroadcastMsg bMsg = thatPlaylistMap.get(broadcastId);
+                if (bMsg != null) {
+                    playlistMap.put(broadcastId, bMsg);
+                }
+                MessageType msgType = thatMsgTypeMap.get(broadcastId);
+                if (msgType != null) {
+                    messageTypeMap.put(broadcastId, msgType);
+                }
+            }
+        }
 
     }
 
@@ -184,5 +249,94 @@ public class PlaylistDataStructure implements IPlaylistData {
      */
     public void setPlaybackCycleTime(long playbackCycleTime) {
         this.playbackCycleTime = playbackCycleTime;
+    }
+
+    public Set<Long> getMissingBroadcastIds() {
+        Set<Long> rval = new HashSet<>();
+        rval.addAll(getPredictionMap().keySet());
+        rval.addAll(getPeriodicPredictionMap().keySet());
+        Iterator<Long> broadcastIdIterator = rval.iterator();
+        while (broadcastIdIterator.hasNext()) {
+            final Long broadcastId = broadcastIdIterator.next();
+            final BroadcastMsg msg = getPlaylistMap().get(broadcastId);
+            if (msg == null) {
+                /*
+                 * message has not previously been retrieved yet.
+                 */
+                continue;
+            }
+
+            /*
+             * check predictions
+             */
+            MessagePlaybackPrediction pred = getPredictionMap()
+                    .get(broadcastId);
+            if (pred == null) {
+                /*
+                 * check periodic predictions.
+                 */
+                pred = getPeriodicPredictionMap().get(broadcastId);
+            }
+            if (pred == null) {
+                // unlikely - message should not even be in the list.
+                broadcastIdIterator.remove();
+                continue;
+            }
+
+            /*
+             * if this message is an interrupt and the played interrupt flag is
+             * currently unset, retrieve the broadcast msg because it should
+             * eventually be set.
+             */
+            if (msg.getInputMessage().getInterrupt()
+                    && msg.isPlayedInterrupt() == false) {
+                continue;
+            }
+
+            /*
+             * ensure that the timestamps match.
+             */
+            if (msg.getUpdateDate().getTimeInMillis() == pred.getTimestamp()) {
+                // the message has not been updated since it was last retrieved.
+                broadcastIdIterator.remove();
+            }
+        }
+        return rval;
+    }
+
+    public void setBroadcastMsgData(Map<BroadcastMsg, MessageType> broadcastData) {
+        for (Map.Entry<BroadcastMsg, MessageType> entry : broadcastData
+                .entrySet()) {
+            BroadcastMsg bMsg = entry.getKey();
+            playlistMap.put(bMsg.getId(), bMsg);
+            messageTypeMap.put(bMsg.getId(), entry.getValue());
+        }
+    }
+
+    public synchronized void updatePlaybackData(
+            MessagePlaybackStatusNotification notification) {
+        long id = notification.getBroadcastId();
+        MessagePlaybackPrediction pred = new MessagePlaybackPrediction(
+                notification);
+        LinkedHashMap<Long, MessagePlaybackPrediction> newPredictionMap = new LinkedHashMap<>(
+                getPredictionMap());
+        newPredictionMap.put(id, pred);
+        predictionMap = newPredictionMap;
+    }
+
+    /**
+     * @param timeStamp
+     *            the timeStamp to set
+     */
+    public void setTimeStamp(long timeStamp) {
+        this.timeStamp = timeStamp;
+    }
+
+    /**
+     * 
+     * @return
+     */
+    public long getTimeStamp() {
+        return timeStamp;
     }
 }

@@ -35,6 +35,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme.ParseType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 30, 2014   3355     mpduff      Initial creation
+ * Dec 10, 2015   5112     bkowal      Added {@link #DYNAMIC_NUMERIC_CHAR}.
  * 
  * </pre>
  * 
@@ -43,6 +44,9 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.dict.convert.ParsedPhoneme.ParseType;
  */
 
 public class LegacyPhonemeParser {
+    
+    public static final String DYNAMIC_NUMERIC_CHAR = "@";
+    
     /** Digit pattern */
     private final Pattern pattern = Pattern.compile("\\d");
 

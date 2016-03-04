@@ -3,7 +3,7 @@
 # neospeech_tts  This shell script takes care of starting and stopping
 #                the NeoSpeech TTS Server.
 #
-# chkconfig: - 99 10
+# chkconfig: 235 99 10
 # description: BMH NeoSpeech TTS 
 # processname: ttssrv
 ##############################################################################
@@ -14,6 +14,8 @@
 #    Date            Ticket#       Engineer       Description
 #    ------------    ----------    -----------    --------------------------
 #    10/15/15        4976          bkowal         Initial Creation.
+#    01/06/16        5210          bkowal         Verify that the TTS-provided
+#                                                 stop script finishes.
 ##############################################################################
 
 # Source function library.
@@ -42,6 +44,11 @@ getTtsPid() {
 	neospeech_pid_found=$?
 }
 
+getTtsStopPid() {
+	neospeech_stop_pid=`pgrep -f "${STOP_SCRIPT}"`
+	neospeech_stop_pid_found=$?
+}
+
 handleStatus() {
 	local status_target=$1
 	local status_code=$2
@@ -55,7 +62,7 @@ handleStatus() {
 			echo "${status_target} is not running."
 			;;
 		4)
-			echo "${status_target} status uknown due to insufficient privileges."
+			echo "${status_target} status unknown due to insufficient privileges."
 			;;
 		*)
 			echo "${status_target} status unknown!"
@@ -76,7 +83,7 @@ start() {
 	local now=`date`
 	echo "Starting ${PROG} @ ${now} ..." >> ${NEOSPEECH_LOG}
 	echo -ne "Starting ${PROG} ..."
-	/bin/bash ${NEOSPEECH_BIN}/${START_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1 
+	/bin/bash ${NEOSPEECH_BIN}/${START_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1
 	if [ $? -ne 0 ]; then
 		failure
 		echo
@@ -118,40 +125,64 @@ stop() {
 	
 	local attempt_max=10
 	local force_kill_neospeech=0
+	local force_kill_neospeech_stop=0
 	
 	local now=`date`
 	echo "Stopping ${PROG} @ ${now} ..." >> ${NEOSPEECH_LOG}
 	echo -ne "Stopping ${PROG} ..."
-	local save_neospeech_pid=${neospeech_pid}
-	/bin/bash ${NEOSPEECH_BIN}/${STOP_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1
-	# wait for neospeech to stop
+	# Run the tts stop script in the background so that we will be able to verify
+	# its successful execution.
+	/bin/bash ${NEOSPEECH_BIN}/${STOP_SCRIPT} >> ${NEOSPEECH_LOG} 2>&1 &
+	
+	# verify that the NeoSpeech stop script has successfully finished
+	getTtsStopPid
 	local attempt_count=0
+	while [ ${neospeech_stop_pid_found} -eq 0 ]; do
+		let attempt_count+=1
+		if [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech_stop} -eq 0 ]; then
+			force_kill_neospeech_stop=1
+			attempt_count=0
+			echo "Killing ${STOP_SCRIPT} (pid ${neospeech_stop_pid})" >> ${NEOSPEECH_LOG}
+			kill -9 ${neospeech_stop_pid} > /dev/null 2>&1
+		elif [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech_stop} -eq 1 ]; then
+			failure
+			echo
+			echo "Failed to stop ${STOP_SCRIPT} (pid ${neospeech_stop_pid})" | tee -a ${NEOSPEECH_LOG}
+			echo "Failed to stop ${PROG} (pid ${neospeech_pid})" | tee -a ${NEOSPEECH_LOG}
+			return
+		fi
+		sleep 1
+		getTtsStopPid
+	done
 	
 	# wait for neospeech to stop
-	local attempt_count=0
+	attempt_count=0
+	if [ ${force_kill_neospeech_stop} -eq 1 ]; then
+	   # just skip to the kill NeoSpeech phase because the NeoSpeech stop script
+	   # failed to finish.
+	   attempt_count=9
+	   # refresh information about the running NeoSpeech process.
+	   getTtsPid
+	fi
 	while [ ${neospeech_pid_found} -eq 0 ]; do
 		let attempt_count+=1
 		if [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech} -eq 0 ]; then
 			force_kill_neospeech=1
 			attempt_count=0
+			echo "Killing ${PROG} (pid ${neospeech_pid})" >> ${NEOSPEECH_LOG}
 			kill -9 ${neospeech_pid} > /dev/null 2>&1
 		elif [ ${attempt_count} -eq ${attempt_max} -a ${force_kill_neospeech} -eq 1 ]; then
 			failure
 			echo
-			echo "Failed to stop ${PROG} (pid ${neospeech_pid})"
-			echo "Failed to stop ${PROG} (pid ${neospeech_pid})" >> ${NEOSPEECH_LOG}
+			echo "Failed to stop ${PROG} (pid ${neospeech_pid})" | tee -a ${NEOSPEECH_LOG}
 			return
 		fi
-		
+		sleep 2
 		getTtsPid
 	done
 	
 	success
 	echo
-	if [ ${force_kill_neospeech} -eq 1 ]; then
-		echo "Force killed ${PROG} (pid ${save_neospeech_pid})."
-		echo "Force killed ${PROG} (pid ${save_neospeech_pid})." >> ${NEOSPEECH_LOG}
-	fi
 
 	return
 }

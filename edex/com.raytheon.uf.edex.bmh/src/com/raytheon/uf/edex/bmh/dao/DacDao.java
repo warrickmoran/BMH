@@ -19,9 +19,12 @@
  **/
 package com.raytheon.uf.edex.bmh.dao;
 
+import java.util.List;
+
 import org.hibernate.Session;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
@@ -39,6 +42,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
  * Aug 04, 2014  3486     bsteffen    Initial creation
  * Oct 06, 2014  3687     bsteffen    Add operational flag to constructor.
  * Nov 06, 2015  5092     bkowal      Update dac updates / delete for {@link DacChannel}.
+ * Nov 09, 2015  5113     bkowal      Added {@link #validateDacUniqueness(int, String, String, String, int)}.
  * 
  * </pre>
  * 
@@ -94,5 +98,20 @@ public class DacDao extends AbstractBMHDao<Dac, String> {
 
         session.createQuery("DELETE FROM DacChannel WHERE dac_id = ?")
                 .setParameter(0, dac.getId()).executeUpdate();
+    }
+
+    public Dac validateDacUniqueness(final int dacId, final String name,
+            final String address, final String receiveAddress,
+            final int receivePort) {
+        List<?> objects = this.findByNamedQueryAndNamedParam(
+                Dac.VALIDATE_DAC_UNIQUENESS, new String[] { "dacId", "name",
+                        "address", "receiveAddress", "receivePort" },
+                new Object[] { dacId, name, address, receiveAddress,
+                        receivePort });
+        if (CollectionUtils.isEmpty(objects)) {
+            return null;
+        }
+
+        return (Dac) objects.get(0);
     }
 }

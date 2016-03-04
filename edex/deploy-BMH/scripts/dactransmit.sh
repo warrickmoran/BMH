@@ -45,6 +45,7 @@
 #    05/05/2015      4464          bkowal         Added SAME_PADDING and SAME_EOM_PADDING to optionally
 #                                                 alter the padding bytes after a SAME Tone.
 #    07/07/2015      4464          bkowal         Default SAME Tone padding is now 0.
+#    01/07/2016      4997          bkowal         dactransmit is no longer a uf edex plugin.
 ##############################################################################
 
 
@@ -119,7 +120,7 @@ export PATH=${awips_home}/bin:${JAVA_HOME}/bin
 
 DEPENDENCIES="ch.qos.logback org.apache.commons.cli org.slf4j com.google.guava org.apache.thrift net.sf.cglib org.apache.commons.lang"
 
-ENTRY_POINT="com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"
+ENTRY_POINT="com.raytheon.bmh.dactransmit.DacTransmitMain"
 CLASSPATH="${EDEX_HOME}/lib/plugins/*"
 for dependency in $DEPENDENCIES; do
   CLASSPATH="${CLASSPATH}:/awips2/edex/lib/dependencies/${dependency}/*"

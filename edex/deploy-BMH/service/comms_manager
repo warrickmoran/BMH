@@ -3,7 +3,7 @@
 # comms_manager  This shell script takes care of starting and stopping
 #                the BMH Comms Manager instance.
 #
-# chkconfig: - 99 10
+# chkconfig: 235 99 10
 # description: BMH Comms Manager 
 # processname: commsmanager.sh
 # config: /awips2/bmh/conf/comms.xml
@@ -19,6 +19,7 @@
 #                                                 operational and practice mode simultaneously
 #    01/23/15        2995          rjpeter        nice comms_manager and all child processes to -10
 #    01/30/15        4039          bsteffen       Stop dac transmits
+#    01/07/16        4997          bkowal         dactransmit is no longer a uf edex plugin.
 ##############################################################################
 
 # Source function library.
@@ -64,7 +65,7 @@ getCommsMgrPid() {
 }
 
 getDacTransmitPids() {
-	dac_transmit_pid=`pgrep -f "java.*com.raytheon.uf.edex.bmh.dactransmit.DacTransmitMain"`
+	dac_transmit_pid=`pgrep -f "java.*com.raytheon.bmh.dactransmit.DacTransmitMain"`
 	dac_transmit_pid_found=$?
 }
 

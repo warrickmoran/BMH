@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Jan 05, 2015 3651       bkowal      Use {@link IMessageLogger} to log message errors.
  * May 13, 2015 4429       rferrel     Changes to {@link DefaultMessageLogger} for traceId.
  * Oct 30, 2015 5069       rjpeter     Update outgoing file name to be afosId plus extension.
+ * Jan 11, 2016 5240       bkowal      Attempt ldad dissemination at least 3 times.
  * </pre>
  * 
  * @author bkowal
@@ -65,6 +66,14 @@ public class LdadDisseminator implements IContextStateProcessor {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(LdadDisseminator.class);
+
+    private final int MAX_ATTEMPT = 3;
+
+    /*
+     * The amount of time to wait in between each attempt that has failed in
+     * milliseconds.
+     */
+    private final long ATTEMPT_FAIL_DELAY = 600;
 
     private static final String DEFAULT_SCP_BIN = "/usr/bin/scp";
 
@@ -182,57 +191,88 @@ public class LdadDisseminator implements IContextStateProcessor {
                 + ldadConfig.getName() + " ...");
         statusHandler.info("Running scp command: " + scpCommadLine);
 
+        boolean attemptSCP = true;
         ITimer scpTimer = TimeUtil.getTimer();
 
-        scpTimer.start();
-        RunProcess scpProcess = RunProcess.getRunProcess().exec(scpCommadLine);
+        int currentAttempt = 0;
 
-        /*
-         * Wait for the scp operation to finish.
-         */
-        int exitCode = scpProcess.waitFor();
+        while (attemptSCP) {
+            ++currentAttempt;
+            scpTimer.start();
+            RunProcess scpProcess = RunProcess.getRunProcess().exec(
+                    scpCommadLine);
 
-        /*
-         * scp process has finished.
-         */
-        scpTimer.stop();
+            /*
+             * Wait for the scp operation to finish.
+             */
+            int exitCode = scpProcess.waitFor();
 
-        /*
-         * Determine if the scp operation was successful or not.
-         */
-        // 0 indicates success
-        if (exitCode == 0) {
-            statusHandler.info("The scp process for ldad configuration: "
-                    + ldadConfig.getName() + " successfully finished in "
-                    + TimeUtil.prettyDuration(scpTimer.getElapsedTime()) + ".");
-            return;
-        }
+            /*
+             * scp process has finished.
+             */
+            scpTimer.stop();
 
-        StringBuilder errMsg = new StringBuilder(
-                "Failed to complete the scp process for ldad configuration: ");
-        errMsg.append(ldadConfig.getName());
-        errMsg.append(" in ");
-        errMsg.append(TimeUtil.prettyDuration(scpTimer.getElapsedTime()));
-        errMsg.append("!");
-        // all other exit codes indicate failure
-        if (exitCode == RunProcess.INTERRUPTED) {
-            errMsg.append(" The scp process did not finish because it was interrupted.");
-        } else {
-            errMsg.append(" The scp process exited with error code (");
-            errMsg.append(exitCode);
-            errMsg.append(").");
-            // determine if additional details exist in std err
-            if (scpProcess.getStderr() != null
-                    && scpProcess.getStderr().trim().isEmpty() == false) {
-                errMsg.append(". ERROR: ");
-                errMsg.append(scpProcess.getStderr().trim());
+            /*
+             * Determine if the scp operation was successful or not.
+             */
+            // 0 indicates success
+            if (exitCode == 0) {
+                statusHandler.info("The scp process for ldad configuration: "
+                        + ldadConfig.getName() + " successfully finished in "
+                        + TimeUtil.prettyDuration(scpTimer.getElapsedTime())
+                        + ".");
+                return;
+            }
+
+            StringBuilder errMsg = new StringBuilder(
+                    "Failed to complete the scp process for product: ");
+            errMsg.append(message.getAfosid());
+            errMsg.append(" associated with ldad configuration: ");
+            errMsg.append(ldadConfig.getName());
+            errMsg.append(" in ");
+            errMsg.append(TimeUtil.prettyDuration(scpTimer.getElapsedTime()));
+            errMsg.append("!");
+            // all other exit codes indicate failure
+            if (exitCode == RunProcess.INTERRUPTED) {
+                errMsg.append(" The scp process did not finish because it was interrupted.");
+            } else {
+                errMsg.append(" The scp process exited with error code (");
+                errMsg.append(exitCode);
+                errMsg.append(").");
+                // determine if additional details exist in std err
+                if (scpProcess.getStderr() != null
+                        && scpProcess.getStderr().trim().isEmpty() == false) {
+                    errMsg.append(" ERROR: ");
+                    errMsg.append(scpProcess.getStderr().trim());
+                }
+            }
+
+            errMsg.append(" (Attempt = ").append(currentAttempt).append(")");
+            if (currentAttempt == MAX_ATTEMPT) {
+                // failure notification.
+                statusHandler.error(BMH_CATEGORY.LDAD_ERROR, errMsg.toString());
+                this.messageLogger.logError(null,
+                        BMH_COMPONENT.LDAD_DISSEMINATOR,
+                        BMH_ACTIVITY.SCP_DISSEMINATION, message);
+                attemptSCP = false;
+            } else {
+                statusHandler.warn(BMH_CATEGORY.LDAD_ERROR, errMsg.toString());
+                scpTimer.reset();
+                // wait some amount of time before another attempt.
+                try {
+                    Thread.sleep(ATTEMPT_FAIL_DELAY);
+                } catch (InterruptedException e) {
+                    StringBuilder sb = new StringBuilder("Failed to wait ");
+                    sb.append(ATTEMPT_FAIL_DELAY).append(" milliseconds!");
+                    if (e.getLocalizedMessage() != null) {
+                        sb.append(" REASON = ");
+                        sb.append(e.getLocalizedMessage());
+                    }
+
+                    statusHandler.warn(BMH_CATEGORY.INTERRUPTED, sb.toString());
+                }
             }
         }
-
-        // failure notification.
-        statusHandler.error(BMH_CATEGORY.LDAD_ERROR, errMsg.toString());
-        this.messageLogger.logError(null, BMH_COMPONENT.LDAD_DISSEMINATOR,
-                BMH_ACTIVITY.SCP_DISSEMINATION, message);
     }
 
     /**

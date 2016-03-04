@@ -106,7 +106,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 31, 2015   4304     rferrel     Populate selectedMessage Same Transmitters.
  *                                      Only enable same transmitters in affected area.
  * May 05, 2015   4463     bkowal      Update the new originator field in the {@link MessageType}.
- * 
+ * Jan 27, 2016   5160     rjpeter     Don't allow creation of DMO message types.
  * </pre>
  * 
  * @author lvenable
@@ -393,7 +393,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         msgTypeTitleTF = new Text(generalGroup, SWT.BORDER);
         msgTypeTitleTF.setLayoutData(gd);
 
-        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+        if ((dialogType == DialogType.EDIT) && (selectedMsgType != null)) {
             msgTypeTitleTF.setText(selectedMsgType.getTitle());
         }
 
@@ -434,7 +434,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         eoChk = new Button(generalGroup, SWT.CHECK);
         eoChk.setText("Emergency Override");
 
-        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+        if ((dialogType == DialogType.EDIT) && (selectedMsgType != null)) {
             eoChk.setSelection(selectedMsgType.isEmergencyOverride());
         }
     }
@@ -684,7 +684,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             }
         });
 
-        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+        if ((dialogType == DialogType.EDIT) && (selectedMsgType != null)) {
             gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
             ImageDescriptor id;
             id = AbstractUIPlugin.imageDescriptorFromPlugin(
@@ -761,9 +761,10 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 "Please correct the following problems:\n\n");
 
         if (dialogType == DialogType.CREATE) {
+            String afosId = msgTypeTF.getText().toUpperCase().trim();
+
             // Validate afosId for correctness and uniqueness if new
-            boolean validAfos = MessageTypeUtils.validateAfosId(msgTypeTF
-                    .getText().toUpperCase());
+            boolean validAfos = MessageTypeUtils.validateAfosId(afosId);
             if (!validAfos) {
                 String message = "Invalid Message Type name.\n\nMust be 7-9 alphanumeric characters "
                         + "with no spaces or special characters.";
@@ -772,8 +773,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 return false;
             }
 
-            if (!MessageTypeUtils.isUnique(msgTypeTF.getText().toUpperCase()
-                    .trim(), existingAfosIds)) {
+            if (!MessageTypeUtils.isUnique(afosId, existingAfosIds)) {
                 String message = "Invalid name/AfosID.\n\n"
                         + msgTypeTF.getText().trim()
                         + " is already being used.\n\n" + "Enter another name";
@@ -781,7 +781,13 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
                         "Invalid Name", message);
                 return false;
+            }
 
+            if ("DMO".equals(afosId.subSequence(3, 6))) {
+                String message = "Invalid Message Type.\n\nDMO messages are reserved for use by Send Demo Message.";
+                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
+                        "Invalid Message Type", message);
+                return false;
             }
         }
 
@@ -944,7 +950,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             return cld;
         }
 
-        if (dialogType == DialogType.EDIT && selectedMsgType != null) {
+        if ((dialogType == DialogType.EDIT) && (selectedMsgType != null)) {
             Set<Transmitter> transSet = selectedMsgType.getSameTransmitters();
             if (transSet != null) {
                 for (Transmitter t : transmitters) {
@@ -983,7 +989,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         // If the selected message is null or the dialog is a create dialog then
         // set the selection to 0.
-        if (selectedMsgType == null || dialogType == DialogType.CREATE) {
+        if ((selectedMsgType == null) || (dialogType == DialogType.CREATE)) {
             voiceCbo.select(0);
             return;
         }
@@ -1001,8 +1007,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             /*
              * exclude the static message type designations.
              */
-            if (des == StaticMessageIdentifier.stationIdDesignation
-                    || des == StaticMessageIdentifier.timeDesignation) {
+            if ((des == StaticMessageIdentifier.stationIdDesignation)
+                    || (des == StaticMessageIdentifier.timeDesignation)) {
                 continue;
             }
             designationCbo.add(des.name());
@@ -1010,7 +1016,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         // If the selected message is null or the dialog is a create dialog then
         // set the selection to 0.
-        if (selectedMsgType == null || dialogType == DialogType.CREATE) {
+        if ((selectedMsgType == null) || (dialogType == DialogType.CREATE)) {
             this.designationCbo.setText(DEFAULT_DESIGNATION.name());
             return;
         }

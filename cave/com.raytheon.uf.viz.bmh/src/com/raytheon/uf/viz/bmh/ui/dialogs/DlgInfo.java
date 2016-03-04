@@ -39,6 +39,7 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TxStatus;
  * Jan 08, 2015 3963       bkowal      Added {@link #TRANSMITTER_CONFIGURATION_DECOMMISSION}.
  * Feb 19, 2015 4143       bsteffen    Add demo message dialog.
  * Sep 25, 2015 4909       bkowal      Fixed {@link #DEMO_MESSAGE}.
+ * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * 
  * </pre>
  * 
@@ -54,7 +55,7 @@ public enum DlgInfo {
                     + TxStatus.DECOMM.name()),
 
     TRANSMITTER_ALIGNMENT("bmh.dialog.transmitterAlignment",
-            "Transmitter Alignment"),
+            "Transmitter Group Alignment"),
 
     LISTENING_AREAS("bmh.dialog.listeningAreas", "Listening Areas"),
 

@@ -55,6 +55,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * May 18, 2015  4483     bkowal      Contents are now used in {@link #checkDuplicate(InputMessage)}.
  * Nov 16, 2015  5127     rjpeter     Added getActiveWithAfosidAndAreaCodesAndNoMrd, overrode saveOrUpdate
  *                                    to set lastUpdateTime.
+ * Feb 04, 2016  5308     rjpeter     Removed checkDuplicate, getPeriodicMessages, and getInputMessages.
  * </pre>
  * 
  * @author bsteffen
@@ -87,76 +88,6 @@ public class InputMessageDao extends
         }
 
         super.saveOrUpdate(obj);
-    }
-
-    /**
-     * Search the database for any messages which can be considered duplicates
-     * of this message.
-     * 
-     * @param message
-     *            InputMessage to find duplicates.
-     * @return true if duplicates exist, false otherwise
-     * @see InputMessage#equalsExceptId(Object)
-     */
-    public boolean checkDuplicate(final InputMessage message) {
-        List<?> messages = findByNamedQueryAndNamedParam(
-                InputMessage.DUP_QUERY_NAME,
-                new String[] { "id", "afosid", "effectiveTime",
-                        "expirationTime" },
-                new Object[] { message.getId(), message.getAfosid(),
-                        message.getEffectiveTime(), message.getExpirationTime() });
-        for (Object obj : messages) {
-            InputMessage dup = (InputMessage) obj;
-            if (dup.getId() == message.getId()) {
-                continue;
-            } else if (!dup.getAfosid().equals(message.getAfosid())) {
-                continue;
-            } else if (!dup.getAreaCodeList().containsAll(
-                    message.getAreaCodeList())) {
-                continue;
-            }
-            if (message.getMrdId() == dup.getMrdId()
-                    && dup.getContent().equals(message.getContent())) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Get a list of Periodic messages
-     * 
-     * @return
-     */
-    public List<InputMessage> getPeriodicMessages() {
-        // TODO optimize this query
-        List<InputMessage> allObjects = this.loadAll();
-        if (allObjects == null) {
-            return Collections.emptyList();
-        }
-
-        List<InputMessage> messageList = new ArrayList<InputMessage>();
-        for (Object obj : allObjects) {
-            InputMessage msg = (InputMessage) obj;
-            if (msg.isPeriodic()) {
-                messageList.add(msg);
-            }
-        }
-
-        return messageList;
-    }
-
-    /**
-     * Get all of the input messages fully populated.
-     * 
-     * @return List of Input Messages.
-     */
-    public List<InputMessage> getInputMessages() {
-        List<InputMessage> inputMessageList = this.loadAll();
-        if (inputMessageList == null) {
-            return Collections.emptyList();
-        }
-        return inputMessageList;
     }
 
     /**

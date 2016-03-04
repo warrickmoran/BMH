@@ -76,12 +76,15 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jun 24, 2015 4490       bkowal      Updated {@link #GET_LANGUAGES_FOR_GROUP_QUERY} to
  *                                     alphabetically sort the returned {@link TransmitterLanguage}s.
+ * Dec 03, 2015 5159       bkowal      Added {@link #GET_LANGUAGES_FOR_DICTIONARY_QUERY}.                                    
  * </pre>
  * 
  * @author rjpeter
  * @version 1.0
  */
-@NamedQueries({ @NamedQuery(name = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP, query = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP_QUERY) })
+@NamedQueries({
+        @NamedQuery(name = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP, query = TransmitterLanguage.GET_LANGUAGES_FOR_GROUP_QUERY),
+        @NamedQuery(name = TransmitterLanguage.GET_LANGUAGES_FOR_DICTIONARY, query = TransmitterLanguage.GET_LANGUAGES_FOR_DICTIONARY_QUERY) })
 @Entity
 @Table(name = "transmitter_language")
 @DynamicSerialize
@@ -90,6 +93,10 @@ public class TransmitterLanguage {
     public static final String GET_LANGUAGES_FOR_GROUP = "getLanguagesForGroup";
 
     protected static final String GET_LANGUAGES_FOR_GROUP_QUERY = "FROM TransmitterLanguage tl WHERE tl.id.transmitterGroup = :group ORDER BY id";
+
+    public static final String GET_LANGUAGES_FOR_DICTIONARY = "getLanguagesForDictionary";
+
+    protected static final String GET_LANGUAGES_FOR_DICTIONARY_QUERY = "FROM TransmitterLanguage tl WHERE tl.dictionary = :dictionary";
 
     @EmbeddedId
     @DynamicSerializeElement
@@ -115,6 +122,15 @@ public class TransmitterLanguage {
     @DynamicSerializeElement
     @Fetch(FetchMode.SUBSELECT)
     private Set<StaticMessageType> staticMessageTypes;
+
+    /**
+     * Both {@link #removedDictionary} and {@link #removedStaticMsgTypes} are
+     * used to ensure that static messages are updated correctly in response to
+     * {@link Dictionary} and {@link StaticMessageType} changes.
+     */
+    @Transient
+    @DynamicSerializeElement
+    private Dictionary removedDictionary;
 
     @Transient
     @DynamicSerializeElement
@@ -301,6 +317,20 @@ public class TransmitterLanguage {
         for (StaticMessageType stm : this.staticMessageTypes) {
             stm.setTransmitterLanguage(this);
         }
+    }
+
+    /**
+     * @return the removedDictionary
+     */
+    public Dictionary getRemovedDictionary() {
+        return removedDictionary;
+    }
+
+    /**
+     * @param removedDictionary the removedDictionary to set
+     */
+    public void setRemovedDictionary(Dictionary removedDictionary) {
+        this.removedDictionary = removedDictionary;
     }
 
     public Set<StaticMessageType> getRemovedStaticMsgTypes() {

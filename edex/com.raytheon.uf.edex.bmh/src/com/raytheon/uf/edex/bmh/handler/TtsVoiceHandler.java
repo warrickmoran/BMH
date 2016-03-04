@@ -20,9 +20,13 @@
 package com.raytheon.uf.edex.bmh.handler;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification;
 import com.raytheon.uf.common.bmh.request.TtsVoiceRequest;
 import com.raytheon.uf.common.bmh.request.TtsVoiceResponse;
@@ -50,6 +54,8 @@ import com.raytheon.uf.edex.bmh.tts.TTSVoiceManager;
  * Mar 27, 2015  4315     rferrel     Added {@link #availableLanguage(TtsVoiceRequest)}.
  * Jun 08, 2015  4403     bkowal      Create and disseminate a {@link VoiceConfigNotification}
  *                                    whenever a {@link TtsVoice} is altered.
+ * Dec 08, 2015  5159     bkowal      Disseminate a {@link LanguageDictionaryConfigNotification}
+ *                                    whenever a voice dictionary is updated.
  * 
  * </pre>
  * 
@@ -80,6 +86,8 @@ public class TtsVoiceHandler extends
     @Override
     public Object handleRequest(TtsVoiceRequest request) throws Exception {
         VoiceConfigNotification notification = null;
+        LanguageDictionaryConfigNotification dictionaryNotification = null;
+
         TtsVoiceResponse ttsVoiceResponse = new TtsVoiceResponse();
         switch (request.getAction()) {
         case AllVoices:
@@ -98,6 +106,21 @@ public class TtsVoiceHandler extends
             ttsVoiceResponse = updateVoice(request);
             notification = new VoiceConfigNotification(request.getVoice(),
                     request);
+            Set<String> updatedWords = new HashSet<>();
+            if (request.getVoice().getDictionary() != null) {
+                updatedWords.addAll(request.getVoice().getDictionary()
+                        .getAllWordsAsStrings());
+            }
+            if (request.getVoice().getRemovedDictionary() != null) {
+                updatedWords.addAll(request.getVoice().getRemovedDictionary()
+                        .getAllWordsAsStrings());
+            }
+            if (updatedWords.isEmpty() == false) {
+                dictionaryNotification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Update, request, false);
+                dictionaryNotification.setUpdatedWords(new ArrayList<>(
+                        updatedWords));
+            }
             break;
         case RegisterVoice:
             ttsVoiceResponse = registerVoice(request);
@@ -112,6 +135,8 @@ public class TtsVoiceHandler extends
         }
 
         BmhMessageProducer.sendConfigMessage(notification,
+                request.isOperational());
+        BmhMessageProducer.sendConfigMessage(dictionaryNotification,
                 request.isOperational());
         return ttsVoiceResponse;
     }

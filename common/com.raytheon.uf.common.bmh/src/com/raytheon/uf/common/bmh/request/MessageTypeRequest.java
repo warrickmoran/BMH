@@ -45,7 +45,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 13, 2015  4213     bkowal      Added {@link MessageTypeAction#GetByDesignationAndLanguage}
  *                                    and {@link #language}.
  * Apr 22, 2015  4397     bkowal      Extend {@link AbstractBMHSystemConfigRequest}.
- * 
+ * Jan 27, 2016  5160     rjpeter     Added {@link MessageTypeAction#GetDemoMsgAfosIds};
  * </pre>
  * 
  * @author mpduff
@@ -54,7 +54,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class MessageTypeRequest extends AbstractBMHSystemConfigRequest {
     public enum MessageTypeAction {
-        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation, GetByDesignationAndLanguage;
+        AllMessageTypes, Delete, Save, GetByAfosId, GetByPkId, GetAfosIdTitle, GetEmergencyOverrideMsgTypes, GetAfosDesignation, GetByDesignationAndLanguage, GetDemoMsgAfosIds;
     }
 
     @DynamicSerializeElement
@@ -164,11 +164,13 @@ public class MessageTypeRequest extends AbstractBMHSystemConfigRequest {
 
     /*
      * (non-Javadoc)
-     * @see com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest#isSystemConfigChange()
+     * 
+     * @see com.raytheon.uf.common.bmh.request.AbstractBMHSystemConfigRequest#
+     * isSystemConfigChange()
      */
     @Override
     public boolean isSystemConfigChange() {
-        return this.action == MessageTypeAction.Delete
-                || this.action == MessageTypeAction.Save;
+        return (this.action == MessageTypeAction.Delete)
+                || (this.action == MessageTypeAction.Save);
     }
 }

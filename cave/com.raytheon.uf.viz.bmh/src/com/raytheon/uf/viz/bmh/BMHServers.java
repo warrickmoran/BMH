@@ -45,7 +45,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Feb 05, 2015 3743       bsteffen    Add methods needed for running standalone.
  * Aug 20, 2015 4768       bkowal      Add methods for line tap servers when running
  *                                     in standalone.
- * 
+ * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bkowal
@@ -60,56 +60,35 @@ public final class BMHServers {
 
     private static final String BMH_SERVER_OPTIONS = "bmh.server.options";
 
-    private static final String LINETAP_SERVER = "bmh.comms.manager.linetap";
+    private static final String COMMS_MANAGER = "bmh.comms.manager";
 
-    private static final String LINETAP_SERVER_OPTIONS = "bmh.comms.manager.linetap.options";
+    private static final String COMMS_MANAGER_OPTIONS = "bmh.comms.manager.options";
 
-    public static final String BROADCAST_SERVER = "bmh.comms.manager.broadcast";
-
-    private static final String BROADCAST_SERVER_OPTIONS = "bmh.comms.manager.broadcast.options";
-
-    private static final String PRACTICE_LINETAP_SERVER = "bmh.practice.comms.manager.linetap";
-
-    private static final String PRACTICE_BROADCAST_SERVER = "bmh.practice.comms.manager.broadcast";
+    private static final String PRACTICE_COMMS_MANAGER = "bmh.practice.comms.manager";
 
     /* Only used to prompt user when request edex is down */
-    private static String DEFAULT_SERVER = "px1";
+    private static final String DEFAULT_SERVER = "ec-bmh";
 
     /* Only used to prompt user when request edex is down */
-    private static String DEFAULT_BMH_SERVER = "http://" + DEFAULT_SERVER
+    private static final String DEFAULT_BMH_SERVER = "http://" + DEFAULT_SERVER
             + ":9583/services";
 
-    private static String DEFAULT_LINETAP_SERVER = "tcp://" + DEFAULT_SERVER
-            + ":58260/";
+    private static final String DEFAULT_COMMS_MANAGER = "tcp://"
+            + DEFAULT_SERVER + ":18000/";
 
-    /* Only used to prompt user when request edex is down */
-    private static String DEFAULT_BROADCAST_SERVER = "tcp://" + DEFAULT_SERVER
-            + ":58269/";
+    private static final String DEFAULT_PRACTICE_MANAGER = "tcp://"
+            + DEFAULT_SERVER + ":18500/";
 
-    public static String getLineTapServerKey() {
-        String key = LINETAP_SERVER;
+    public static String getCommsManagerKey() {
+        String key = COMMS_MANAGER;
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            key = PRACTICE_LINETAP_SERVER;
+            key = PRACTICE_COMMS_MANAGER;
         }
         return key;
     }
 
-    public static String getLineTapServer() {
-        return VizServers.getInstance()
-                .getServerLocation(getLineTapServerKey());
-    }
-
-    public static String getBroadcastServerKey() {
-        String key = BROADCAST_SERVER;
-        if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
-            key = PRACTICE_BROADCAST_SERVER;
-        }
-        return key;
-    }
-
-    public static String getBroadcastServer() {
-        return VizServers.getInstance().getServerLocation(
-                getBroadcastServerKey());
+    public static String getCommsManager() {
+        return VizServers.getInstance().getServerLocation(getCommsManagerKey());
     }
 
     /**
@@ -120,14 +99,12 @@ public final class BMHServers {
     public static void saveServers() {
         String bmhServer = VizServers.getInstance().getServerLocation(
                 BMH_SERVER);
-        String broadcastServer = VizServers.getInstance().getServerLocation(
-                BROADCAST_SERVER);
-        String lineTapServer = VizServers.getInstance().getServerLocation(
-                LINETAP_SERVER);
-        if (bmhServer == null && broadcastServer == null
-                && lineTapServer == null) {
+        String commsManager = VizServers.getInstance().getServerLocation(
+                COMMS_MANAGER);
+        if ((bmhServer == null) && (commsManager == null)) {
             return;
         }
+
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
         if (bmhServer != null) {
             prefs.setValue(BMH_SERVER, bmhServer);
@@ -135,17 +112,11 @@ public final class BMHServers {
                     bmhServer, prefs, BMH_SERVER_OPTIONS);
             prefs.setValue(BMH_SERVER_OPTIONS, serverOptions);
         }
-        if (broadcastServer != null) {
-            prefs.setValue(BROADCAST_SERVER, broadcastServer);
+        if (commsManager != null) {
+            prefs.setValue(COMMS_MANAGER, commsManager);
             String serverOptions = ServerRemembrance.formatServerOptions(
-                    broadcastServer, prefs, BROADCAST_SERVER_OPTIONS);
-            prefs.setValue(BROADCAST_SERVER_OPTIONS, serverOptions);
-        }
-        if (lineTapServer != null) {
-            prefs.setValue(LINETAP_SERVER, lineTapServer);
-            String serverOptions = ServerRemembrance.formatServerOptions(
-                    lineTapServer, prefs, LINETAP_SERVER_OPTIONS);
-            prefs.setValue(LINETAP_SERVER_OPTIONS, serverOptions);
+                    commsManager, prefs, COMMS_MANAGER_OPTIONS);
+            prefs.setValue(COMMS_MANAGER_OPTIONS, serverOptions);
         }
         if (prefs instanceof IPersistentPreferenceStore) {
             try {
@@ -163,7 +134,7 @@ public final class BMHServers {
     public static String getSavedBmhServer() {
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
         String bmhEdex = prefs.getString(BMH_SERVER);
-        if (bmhEdex == null || bmhEdex.isEmpty()) {
+        if ((bmhEdex == null) || bmhEdex.isEmpty()) {
             bmhEdex = DEFAULT_BMH_SERVER;
         }
         return bmhEdex;
@@ -178,42 +149,22 @@ public final class BMHServers {
         return ServerRemembrance.getServerOptions(prefs, BMH_SERVER_OPTIONS);
     }
 
-    public static String getSavedLineTapServer() {
+    public static String getSavedCommsManager() {
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
-        String bmhEdex = prefs.getString(getLineTapServerKey());
-        if (bmhEdex == null || bmhEdex.isEmpty()) {
-            return DEFAULT_LINETAP_SERVER;
+        String bmhEdex = prefs.getString(getCommsManagerKey());
+        if ((bmhEdex == null) || bmhEdex.isEmpty()) {
+            if (CAVEMode.getMode() == CAVEMode.OPERATIONAL) {
+                return DEFAULT_COMMS_MANAGER;
+            }
+
+            return DEFAULT_PRACTICE_MANAGER;
         }
         return bmhEdex;
     }
 
-    public static String[] getSavedBmhLineTapServerOptions() {
+    public static String[] getSavedCommsManagerOptions() {
         IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
-        return ServerRemembrance
-                .getServerOptions(prefs, LINETAP_SERVER_OPTIONS);
-    }
-
-    /**
-     * Get previously saved broadcast server, only intended for use during
-     * initial configuration.
-     */
-    public static String getSavedBroadcastServer() {
-        IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
-        String bmhEdex = prefs.getString(BROADCAST_SERVER);
-        if (bmhEdex == null || bmhEdex.isEmpty()) {
-            bmhEdex = DEFAULT_BROADCAST_SERVER;
-        }
-        return bmhEdex;
-    }
-
-    /**
-     * Get list of all previously saved broadcast servers, only intended for use
-     * during initial configuration.
-     */
-    public static String[] getSavedBroadcastServerOptions() {
-        IPreferenceStore prefs = Activator.getDefault().getPreferenceStore();
-        return ServerRemembrance.getServerOptions(prefs,
-                BROADCAST_SERVER_OPTIONS);
+        return ServerRemembrance.getServerOptions(prefs, COMMS_MANAGER_OPTIONS);
     }
 
     /**

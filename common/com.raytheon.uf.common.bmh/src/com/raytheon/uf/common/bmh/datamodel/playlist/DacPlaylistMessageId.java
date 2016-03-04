@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
+import java.nio.file.Path;
 import java.util.Calendar;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -48,6 +49,7 @@ import com.raytheon.uf.common.bmh.trace.ITraceable;
  * Apr 07, 2015  4293     bkowal      Added {@link #timestamp} to be written
  *                                    to the playlist.
  * May 13, 2015  4429     rferrel     Implement {@link ITraceable}.
+ * Feb 04, 2016  5308     bkowal      Promoted {@link #path}.
  * 
  * </pre>
  * 
@@ -72,6 +74,8 @@ public class DacPlaylistMessageId implements ITraceable {
 
     @XmlElement
     protected Calendar expire;
+
+    protected transient Path path;
 
     public DacPlaylistMessageId() {
 
@@ -112,6 +116,14 @@ public class DacPlaylistMessageId implements ITraceable {
         this.expire = expire;
     }
 
+    public Path getPath() {
+        return path;
+    }
+
+    public void setPath(Path path) {
+        this.path = path;
+    }
+
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -123,7 +135,7 @@ public class DacPlaylistMessageId implements ITraceable {
         }
         if (expire != null) {
             builder.append(",expire=");
-            builder.append(expire);
+            builder.append(expire.getTime().toString());
         }
         builder.append("]");
         return builder.toString();

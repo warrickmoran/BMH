@@ -31,7 +31,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.VoiceConfigNotification;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -70,6 +70,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  *                                     associated with the selected message type.
  * Jun 08, 2015 4403       bkowal      Specify that the synthesized text must be transformed. Ensure
  *                                     that the text is re-synthesized after dictionary changes.
+ * Dec 08, 2015 5159       bkowal      Use {@link LanguageDictionaryConfigNotification}.
  * 
  * </pre>
  * 
@@ -423,8 +424,8 @@ public class TextAudioPlaybackDelegate implements ModifyListener,
                             this.encodedText = null;
                         }
                     }
-                } else if (o instanceof NationalDictionaryConfigNotification) {
-                    NationalDictionaryConfigNotification notification = (NationalDictionaryConfigNotification) o;
+                } else if (o instanceof LanguageDictionaryConfigNotification) {
+                    LanguageDictionaryConfigNotification notification = (LanguageDictionaryConfigNotification) o;
                     if (notification.getLanguage() == this.language) {
                         synchronized (this.synthesisLock) {
                             /*

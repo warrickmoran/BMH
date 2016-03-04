@@ -19,13 +19,19 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -35,8 +41,15 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
+import com.raytheon.uf.common.bmh.notify.config.DacNotSyncNotification;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
+import com.raytheon.uf.common.bmh.request.DacResponse;
+import com.raytheon.uf.common.jms.notification.INotificationObserver;
+import com.raytheon.uf.common.jms.notification.NotificationException;
+import com.raytheon.uf.common.jms.notification.NotificationMessage;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
@@ -44,9 +57,12 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.CreateEditDacConfigDlg.DialogType;
+import com.raytheon.uf.viz.core.VizApp;
+import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
 import com.raytheon.viz.core.mode.CAVEMode;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
 
@@ -67,13 +83,22 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Sep 24, 2015  4922      bkowal       Prevent editing / adding / deleting dacs when not
  *                                      in operational mode.
+ * Nov 11, 2015  5113      bkowal       Preparing dialog to support auto-configuration of DACs.
+ * Nov 12, 2015  5113      bkowal       Support reboot and failover of DACs.
+ * Nov 23, 2015  5113      bkowal       Update table rows to indicate whether or not a {@link Dac}
+ *                                      has sync with the associated DAC.
+ * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
+ *                                      DACs using the generated configuration. 
  * </pre>
  * 
  * @author lvenable
  * @version 1.0
  */
 
-public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
+public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
+        INotificationObserver {
+
+    public static final String MANUFACTURER_DAC_IP = "10.2.69.1";
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
@@ -85,14 +110,33 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
     /** DAC table data. */
     private TableData dacTableData = null;
 
+    /** New/Create button. */
+    private Button newBtn;
+
     /** Edit button. */
     private Button editBtn;
 
     /** Delete button. */
     private Button deleteBtn;
 
+    /** Reboot button. */
+    private Button rebootBtn;
+
+    /** Failover button. */
+    private Button failoverBtn;
+
     /** Data access manager */
     private DacDataManager dataManager;
+
+    private DacConfigResponse latestConfigResponse;
+
+    private final DacConfigDlg thisDialog = this;
+
+    /*
+     * Local storage to track desynced {@link Dac}s for as long as this instance
+     * of this dialog is open.
+     */
+    private final List<Integer> desyncedDacs = new ArrayList<>();
 
     /**
      * Constructor.
@@ -123,6 +167,15 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
     @Override
     protected void opened() {
         shell.setMinimumSize(shell.getSize());
+
+        NotificationManagerJob.addObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
+    }
+
+    @Override
+    protected void disposed() {
+        NotificationManagerJob.removeObserver(
+                BMHJmsDestinations.getBMHConfigDestination(), this);
     }
 
     /**
@@ -147,6 +200,11 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
         createDacTable();
         createBottomActionButtons();
         populateDacTable();
+
+        /*
+         * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+         */
+        this.newBtn.forceFocus();
     }
 
     /**
@@ -166,7 +224,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
          * Action buttons.
          */
         Composite buttonComp = new Composite(dacGrp, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(3, false));
+        buttonComp.setLayout(new GridLayout(5, false));
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
@@ -174,14 +232,14 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
 
         gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button newBtn = new Button(buttonComp, SWT.PUSH);
+        newBtn = new Button(buttonComp, SWT.PUSH);
         newBtn.setText("New...");
         newBtn.setLayoutData(gd);
         newBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditDacConfigDlg createDacConfigDlg = new CreateEditDacConfigDlg(
-                        shell, DialogType.CREATE, dataManager);
+                        shell, DialogType.CREATE, dataManager, thisDialog);
                 createDacConfigDlg.setCloseCallback(new ICloseCallback() {
 
                     @Override
@@ -189,6 +247,13 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
                         Dac dac = (Dac) returnValue;
                         if (dac != null) {
                             updateTable(dac);
+                            /*
+                             * Allow for easy, convenient: Enter -> Enter ->
+                             * Enter configuration.
+                             * 
+                             * Only if successful.
+                             */
+                            newBtn.forceFocus();
                         }
                     }
                 });
@@ -205,7 +270,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             @Override
             public void widgetSelected(SelectionEvent e) {
                 CreateEditDacConfigDlg createDacConfigDlg = new CreateEditDacConfigDlg(
-                        shell, DialogType.EDIT, dataManager);
+                        shell, DialogType.EDIT, dataManager, thisDialog);
                 createDacConfigDlg.setCloseCallback(new ICloseCallback() {
 
                     @Override
@@ -219,13 +284,17 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
                 if (dacTable.getSelectedIndex() >= 0) {
                     TableRowData rowdata = dacTableData.getTableRow(dacTable
                             .getSelectedIndex());
-                    createDacConfigDlg.setDac((Dac) rowdata.getData());
+                    Dac editDac = (Dac) rowdata.getData();
+                    synchronized (desyncedDacs) {
+                        createDacConfigDlg.setDac(editDac,
+                                desyncedDacs.contains(editDac.getId()));
+                    }
                     createDacConfigDlg.open();
                 }
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
+        gd = new GridData();
         gd.widthHint = buttonWidth;
         deleteBtn = new Button(buttonComp, SWT.PUSH);
         deleteBtn.setText("Delete");
@@ -237,6 +306,30 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             }
         });
 
+        gd = new GridData();
+        gd.widthHint = buttonWidth;
+        rebootBtn = new Button(buttonComp, SWT.PUSH);
+        rebootBtn.setText("Reboot...");
+        rebootBtn.setLayoutData(gd);
+        rebootBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleRebootAction();
+            }
+        });
+
+        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
+        gd.widthHint = buttonWidth;
+        failoverBtn = new Button(buttonComp, SWT.PUSH);
+        failoverBtn.setText("Failover...");
+        failoverBtn.setLayoutData(gd);
+        failoverBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                handleFailoverAction();
+            }
+        });
+
         /*
          * Disable the {@link Button}s if in practice mode.
          */
@@ -244,6 +337,8 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
             newBtn.setEnabled(false);
             editBtn.setEnabled(false);
             deleteBtn.setEnabled(false);
+            rebootBtn.setEnabled(false);
+            failoverBtn.setEnabled(false);
         }
     }
 
@@ -303,12 +398,21 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
      */
     private void populateDacTableData() {
         try {
-            List<Dac> dacs = dataManager.getDacs();
+            DacResponse dacResponse = dataManager.getDacsAndSyncStatus();
+            List<Dac> dacs = dacResponse.getDacList();
+            if (CollectionUtils.isEmpty(dacs)) {
+                return;
+            }
             Collections.sort(dacs, new DacNameComparator());
+            synchronized (desyncedDacs) {
+                this.desyncedDacs.clear();
+                this.desyncedDacs.addAll(dacResponse.getDesyncedDacs());
 
-            for (Dac dac : dacs) {
-                TableRowData trd = createTableRow(dac);
-                dacTableData.addDataRow(trd);
+                for (Dac dac : dacs) {
+                    TableRowData trd = createTableRow(dac,
+                            this.desyncedDacs.contains(dac.getId()));
+                    dacTableData.addDataRow(trd);
+                }
             }
         } catch (Exception e) {
             statusHandler.error("Error getting DAC data.", e);
@@ -322,45 +426,79 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
     }
 
     private void updateTable(Dac dac) {
-        for (TableRowData row : dacTableData.getTableRows()) {
-            if (row.getData().equals(dac)) {
-                row.setCellDataFromString(0, dac.getName());
-                row.setCellDataFromString(1, dac.getAddress());
-                row.setCellDataFromString(2,
-                        String.valueOf(dac.getReceivePort()));
-                row.setCellDataFromString(3, dac.getReceiveAddress());
-                StringBuilder sb = new StringBuilder();
-                for (Integer port : dac.getDataPorts()) {
-                    sb.append(port).append(" ");
-                }
-                row.setCellDataFromString(4, sb.toString());
-                row.setData(dac);
+        synchronized (desyncedDacs) {
+            for (TableRowData row : dacTableData.getTableRows()) {
+                if (row.getData().equals(dac)) {
+                    row.setCellDataFromString(0, dac.getName());
+                    row.setCellDataFromString(1, dac.getAddress());
+                    row.setCellDataFromString(2,
+                            String.valueOf(dac.getReceivePort()));
+                    row.setCellDataFromString(3, dac.getReceiveAddress());
+                    StringBuilder sb = new StringBuilder();
+                    for (Integer port : dac.getDataPorts()) {
+                        sb.append(port).append(" ");
+                    }
+                    row.setCellDataFromString(4, sb.toString());
+                    row.setData(dac);
 
-                dacTable.populateTable(dacTableData);
-                return;
+                    final Color rowColor = (this.desyncedDacs.contains(dac
+                            .getId())) ? getDisplay().getSystemColor(
+                            SWT.COLOR_RED) : null;
+                    for (TableCellData tcd : row.getTableCellData()) {
+                        tcd.setForegroundColor(rowColor);
+                    }
+
+                    dacTable.populateTable(dacTableData);
+                    return;
+                }
             }
         }
 
         // New Dac
-        TableRowData row = createTableRow(dac);
+        TableRowData row = createTableRow(dac, false);
         dacTableData.addDataRow(row);
         dacTable.populateTable(dacTableData);
     }
 
-    private TableRowData createTableRow(Dac dac) {
+    public void updateDacSync(final int id) {
+        synchronized (desyncedDacs) {
+            this.desyncedDacs.remove(new Integer(id));
+        }
+    }
+
+    private TableRowData createTableRow(Dac dac, final boolean deSync) {
         StringBuilder sb = new StringBuilder();
         TableRowData trd = new TableRowData();
-        trd.addTableCellData(new TableCellData(dac.getName()));
-        trd.addTableCellData(new TableCellData(dac.getAddress()));
-        trd.addTableCellData(new TableCellData(String.valueOf(dac
-                .getReceivePort())));
-        trd.addTableCellData(new TableCellData(dac.getReceiveAddress()));
+        TableCellData tcd = new TableCellData(dac.getName());
+        if (deSync) {
+            tcd.setForegroundColor(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
+        trd.addTableCellData(tcd);
+        tcd = new TableCellData(dac.getAddress());
+        if (deSync) {
+            tcd.setForegroundColor(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
+        trd.addTableCellData(tcd);
+        tcd = new TableCellData(String.valueOf(dac.getReceivePort()));
+        if (deSync) {
+            tcd.setForegroundColor(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
+        trd.addTableCellData(tcd);
+        tcd = new TableCellData(dac.getReceiveAddress());
+        if (deSync) {
+            tcd.setForegroundColor(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
+        trd.addTableCellData(tcd);
         List<Integer> ports = new ArrayList<Integer>(dac.getDataPorts());
         Collections.sort(ports);
         for (int port : ports) {
             sb.append(port).append(" ");
         }
-        trd.addTableCellData(new TableCellData(sb.toString()));
+        tcd = new TableCellData(sb.toString());
+        if (deSync) {
+            tcd.setForegroundColor(getDisplay().getSystemColor(SWT.COLOR_RED));
+        }
+        trd.addTableCellData(tcd);
         trd.setData(dac);
 
         return trd;
@@ -386,6 +524,166 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB {
                             e);
                 }
             }
+        }
+    }
+
+    private void handleRebootAction() {
+        if (dacTable.getSelectedIndex() >= 0) {
+            TableRowData rowData = dacTableData.getTableRow(dacTable
+                    .getSelectedIndex());
+            final Dac dac = (Dac) rowData.getData();
+
+            /* Confirm the reboot. */
+            int option = DialogUtility.showMessageBox(this.shell,
+                    SWT.ICON_QUESTION | SWT.YES | SWT.NO, "DAC Reboot",
+                    "Are you sure you want to reboot DAC: " + dac.getName()
+                            + "?");
+            if (option != SWT.YES) {
+                return;
+            }
+
+            ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+            try {
+                dialog.run(true, false, new IRunnableWithProgress() {
+                    @Override
+                    public void run(IProgressMonitor monitor)
+                            throws InvocationTargetException,
+                            InterruptedException {
+                        monitor.beginTask("Rebooting DAC: " + dac.getName()
+                                + " ...", IProgressMonitor.UNKNOWN);
+                        try {
+                            latestConfigResponse = dataManager
+                                    .configureSaveDac(null, true,
+                                            dac.getAddress());
+
+                        } catch (Exception e) {
+                            statusHandler.error("Failed to configure DAC: "
+                                    + dac.getName() + ".", e);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                statusHandler.error("Failed to reboot DAC: " + dac.getName()
+                        + ".", e);
+                return;
+            }
+
+            this.displayDACEventDlg(null);
+        }
+    }
+
+    private void handleFailoverAction() {
+        if (dacTable.getSelectedIndex() >= 0) {
+            TableRowData rowData = dacTableData.getTableRow(dacTable
+                    .getSelectedIndex());
+            final Dac dac = (Dac) rowData.getData();
+
+            /*
+             * Confirm that the user ideally has unplugged the failed DAC.
+             */
+            int option = DialogUtility
+                    .showMessageBox(this.shell, SWT.ICON_QUESTION | SWT.YES
+                            | SWT.NO, "DAC Failover",
+                            "Has the DAC that was previously using this configuration been unplugged?");
+            if (option != SWT.YES) {
+                return;
+            }
+
+            /*
+             * Request the IP Address of the replacement DAC.
+             */
+            final InputTextDlg inputDlg = new InputTextDlg(shell,
+                    "Configure DAC",
+                    "Enter the IP Address of the DAC to configure:",
+                    MANUFACTURER_DAC_IP, new ConfigureDacAddressValidator(),
+                    false, true);
+            final String configAddress = (String) inputDlg.open();
+            if (configAddress == null) {
+                // Cancel
+                return;
+            }
+            ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+            try {
+                dialog.run(true, false, new IRunnableWithProgress() {
+                    @Override
+                    public void run(IProgressMonitor monitor)
+                            throws InvocationTargetException,
+                            InterruptedException {
+                        monitor.beginTask("Configuring DAC: " + dac.getName()
+                                + " ...", IProgressMonitor.UNKNOWN);
+                        try {
+                            latestConfigResponse = dataManager
+                                    .configureSaveDac(dac, true, configAddress);
+
+                        } catch (Exception e) {
+                            statusHandler.error("Failed to configure DAC: "
+                                    + dac.getName() + ".", e);
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                statusHandler.error("Failed to configure DAC: " + dac.getName()
+                        + ".", e);
+                return;
+            }
+
+            final String commonText = (this.latestConfigResponse != null && this.latestConfigResponse
+                    .isSuccess()) ? "Transfer audio lines to the replacement DAC."
+                    : null;
+            this.displayDACEventDlg(commonText);
+        }
+    }
+
+    private void displayDACEventDlg(final String commonText) {
+        if (latestConfigResponse == null) {
+            return;
+        }
+
+        DacConfigEventDlg dacEventDlg = new DacConfigEventDlg(shell,
+                latestConfigResponse.getEvents(), commonText);
+        dacEventDlg.open();
+    }
+
+    @Override
+    public void notificationArrived(NotificationMessage[] messages) {
+        if (isDisposed()) {
+            return;
+        }
+
+        for (NotificationMessage message : messages) {
+            try {
+                Object o = message.getMessagePayload();
+                if (o instanceof DacNotSyncNotification) {
+                    final DacNotSyncNotification notification = (DacNotSyncNotification) o;
+                    VizApp.runAsync(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateSyncStatus(notification.getDesyncedDacsList());
+                        }
+                    });
+                }
+            } catch (NotificationException e) {
+                statusHandler.error("Error processing config notification", e);
+            }
+        }
+    }
+
+    private void updateSyncStatus(List<Integer> desyncedDacsList) {
+        synchronized (desyncedDacs) {
+            this.desyncedDacs.clear();
+            this.desyncedDacs.addAll(desyncedDacsList);
+
+            for (TableRowData row : dacTableData.getTableRows()) {
+                Dac dac = (Dac) row.getData();
+                final Color rowColor = (this.desyncedDacs.contains(dac.getId())) ? getDisplay()
+                        .getSystemColor(SWT.COLOR_RED) : null;
+                for (TableCellData tcd : row.getTableCellData()) {
+                    tcd.setForegroundColor(rowColor);
+                }
+            }
+
+            dacTable.populateTable(dacTableData);
+            return;
         }
     }
 }

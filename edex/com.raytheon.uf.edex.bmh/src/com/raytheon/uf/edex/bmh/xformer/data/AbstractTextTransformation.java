@@ -48,6 +48,7 @@ import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
  * Mar 24, 2015 4301       bkowal      Provide better support for plain text rules.
  * Apr 10, 2015 4356       bkowal      Use the end index of the group of interest.
  * Jul 06, 2015 4603       bkowal      Improved matching text retrieval.
+ * Jan 15, 2016 5241       bkowal      Added {@link #getWordLength()}.
  * 
  * </pre>
  * 
@@ -72,6 +73,8 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
 
     protected String ssmlReplacement;
 
+    private final int wordLength;
+
     /**
      * Constructor
      * 
@@ -95,6 +98,7 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
             throw new TransformationException(text.toLowerCase(), e);
         }
         this.ssmlReplacement = ssmlReplacement;
+        this.wordLength = text.length();
     }
 
     protected String prepareTransformationRegex(String text) {
@@ -176,4 +180,9 @@ public abstract class AbstractTextTransformation implements ITextTransformation 
     @Override
     public abstract List<Serializable> applyTransformation(String text)
             throws SSMLConversionException;
+
+    @Override
+    public int getWordLength() {
+        return this.wordLength;
+    }
 }
