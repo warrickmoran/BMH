@@ -15,6 +15,7 @@ URL: N/A
 License: N/A
 Distribution: N/A
 Vendor: Raytheon
+Packager: %{_build_site}
 
 Provides: awips2-neospeech-english
 Requires: awips2-neospeech
