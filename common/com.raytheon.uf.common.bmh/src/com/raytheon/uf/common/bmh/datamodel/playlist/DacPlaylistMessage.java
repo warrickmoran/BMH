@@ -20,7 +20,6 @@
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 
@@ -29,7 +28,6 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
-import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -72,6 +70,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 11, 2015  4002     bkowal      Added {@link #initialBLDelayNotificationSent}.
  * May 13, 2015  4429     rferrel     Added traceId to {@link #toString()}.
  * May 26, 2015  4481     bkowal      Added {@link #dynamic}.
+ * Feb 04, 2016  5308     bkowal      Refactored into {@link DacPlaylistMessageMetadata}.
  * 
  * </pre>
  * 
@@ -80,28 +79,14 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 @XmlRootElement(name = "bmhMessage")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacPlaylistMessage extends DacPlaylistMessageId {
-
-    /*
-     * indicates a message does not have a set periodicity.
-     */
-    private static final String NO_PERIODICTY = "00000000";
+public class DacPlaylistMessage extends DacPlaylistMessageId implements
+        IMessageMetadataAccess {
 
     @XmlElement
     private String name;
 
-    @XmlElement(name = "soundFile")
-    private List<String> soundFiles;
-
     @XmlElement
     private Calendar start;
-
-    /** format is DDHHMMSS */
-    @XmlElement
-    private String periodicity;
-
-    @XmlElement
-    private String messageText;
 
     @XmlElement
     private String messageType;
@@ -176,24 +161,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     private transient boolean initialBLDelayNotificationSent;
 
-    /**
-     * {@link #initialRecognitionTime} and {@link #recognized} only exist to
-     * fulfill the statistics requirements. The {@link #initialRecognitionTime}
-     * represents the time that the {@link InputMessage} was last recognized for
-     * processing. The word last is used because a message can be processed more
-     * than once as a result of the in-place edit. The {@link #recognized}
-     * exists to ensure that a version of the message will only be recognized
-     * once.
-     */
-    @XmlElement
-    private long initialRecognitionTime;
-
-    @XmlElement
-    private boolean recognized = false;
-
-    private transient Path path;
-
-    private transient boolean dynamic;
+    private transient volatile DacPlaylistMessageMetadata metadata;
 
     public DacPlaylistMessage() {
 
@@ -209,8 +177,11 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         StringBuilder builder = new StringBuilder();
         builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId)
                 .append(", messageType=").append(messageType)
-                .append(", traceId=").append(traceId).append(", expire=")
-                .append(expire).append("]");
+                .append(", traceId=").append(traceId).append(", expire=");
+        if (this.expire != null) {
+            builder.append(expire.getTime().toString());
+        }
+        builder.append("]");
         return builder.toString();
     }
 
@@ -237,25 +208,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
         this.messageType = messageType;
     }
 
-    public List<String> getSoundFiles() {
-        return this.soundFiles;
-    }
-
-    public void addSoundFile(String soundFile) {
-        if (this.soundFiles == null) {
-            this.soundFiles = new ArrayList<>(1);
-        }
-        this.soundFiles.add(soundFile);
-    }
-
-    /**
-     * @param soundFiles
-     *            the soundFiles to set
-     */
-    public void setSoundFiles(List<String> soundFiles) {
-        this.soundFiles = soundFiles;
-    }
-
     public Calendar getStart() {
         return this.start;
     }
@@ -266,27 +218,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
      */
     public void setStart(Calendar start) {
         this.start = start;
-    }
-
-    public String getPeriodicity() {
-        return this.periodicity;
-    }
-
-    /**
-     * @param periodicity
-     *            the periodicity to set
-     */
-    public void setPeriodicity(String periodicity) {
-        this.periodicity = periodicity;
-    }
-
-    public boolean isPeriodic() {
-        return periodicity != null && !periodicity.isEmpty()
-                && NO_PERIODICTY.equals(periodicity) == false;
-    }
-
-    public String getMessageText() {
-        return this.messageText;
     }
 
     public String getSAMEtone() {
@@ -338,14 +269,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
-     * @param messageText
-     *            the messageText to set
-     */
-    public void setMessageText(String messageText) {
-        this.messageText = messageText;
-    }
-
-    /**
      * Determine whether this message is within its valid playback period based
      * on the current time.
      * 
@@ -375,26 +298,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
-     * If this message has a valid "periodicity" setting, this method calculates
-     * the time (in ms) that should elapse between plays of this message based
-     * on the periodicity setting (format is DDHHmm).
-     * 
-     * @return Number of milliseconds between plays, or, -1 if this message does
-     *         not have a valid periodicity setting.
-     */
-    public long getPlaybackInterval() {
-        if (isPeriodic()) {
-            int days = Integer.parseInt(periodicity.substring(0, 2));
-            int hours = Integer.parseInt(periodicity.substring(2, 4));
-            int minutes = Integer.parseInt(periodicity.substring(4, 6));
-            int seconds = Integer.parseInt(periodicity.substring(6, 8));
-            return (seconds + (60 * (minutes + (60 * (hours + (24 * days))))))
-                    * TimeUtil.MILLIS_PER_SECOND;
-        }
-        return -1;
-    }
-
-    /**
      * @return the initialBLDelayNotificationSent
      */
     public boolean isInitialBLDelayNotificationSent() {
@@ -408,44 +311,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     public void setInitialBLDelayNotificationSent(
             boolean initialBLDelayNotificationSent) {
         this.initialBLDelayNotificationSent = initialBLDelayNotificationSent;
-    }
-
-    /**
-     * @return the initialRecognitionTime
-     */
-    public long getInitialRecognitionTime() {
-        return initialRecognitionTime;
-    }
-
-    /**
-     * @param initialRecognitionTime
-     *            the initialRecognitionTime to set
-     */
-    public void setInitialRecognitionTime(long initialRecognitionTime) {
-        this.initialRecognitionTime = initialRecognitionTime;
-    }
-
-    /**
-     * @return the recognized
-     */
-    public boolean isRecognized() {
-        return recognized;
-    }
-
-    /**
-     * @param recognized
-     *            the recognized to set
-     */
-    public void setRecognized(boolean recognized) {
-        this.recognized = recognized;
-    }
-
-    public Path getPath() {
-        return path;
-    }
-
-    public void setPath(Path path) {
-        this.path = path;
     }
 
     /**
@@ -635,17 +500,53 @@ public class DacPlaylistMessage extends DacPlaylistMessageId {
     }
 
     /**
-     * @return the dynamic
+     * @return the metadata
      */
-    public boolean isDynamic() {
-        return dynamic;
+    public DacPlaylistMessageMetadata getMetadata() {
+        return metadata;
     }
 
     /**
-     * @param dynamic
-     *            the dynamic to set
+     * @param metadata
+     *            the metadata to set
      */
-    public void setDynamic(boolean dynamic) {
-        this.dynamic = dynamic;
+    public void setMetadata(DacPlaylistMessageMetadata metadata) {
+        this.metadata = metadata;
+    }
+
+    @Override
+    public boolean isPeriodic() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
+        return this.metadata.isPeriodic();
+    }
+
+    @Override
+    public long getPlaybackInterval() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
+        return this.metadata.getPlaybackInterval();
+    }
+
+    @Override
+    public List<String> getSoundFiles() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
+        return this.metadata.getSoundFiles();
+    }
+
+    @Override
+    public boolean isDynamic() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
+        return this.metadata.isDynamic();
     }
 }

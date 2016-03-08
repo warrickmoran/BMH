@@ -97,6 +97,7 @@ import com.raytheon.uf.common.util.CollectionUtil;
  *                                     {@link Program}.
  * Sep 03, 2015 4836       bkowal      Only evaluate the {@link TimeZone} during ascii file import
  *                                     if the transmitter is configured.
+ * Jan 27, 2016 5160       rjpeter     Don't allow DMO messages to be part of a suite.
  * </pre>
  * 
  * @author rjpeter
@@ -983,10 +984,17 @@ public class AsciiFileTranslator {
                 if (group != null) {
                     for (MessageType msgType : group.getMessageTypes()) {
                         if (!msgTypesInSuite.contains(msgType)) {
+                            String afosId = msgType.getAfosid();
+                            if ((afosId.length() >= 6)
+                                    && "DMO".equals(afosId.substring(3, 6))) {
+                                // Don't add DMO messages to playlists
+                                continue;
+                            }
                             SuiteMessage msg = new SuiteMessage();
                             msg.setMsgTypeSummary(msgType.getSummary());
                             suite.addSuiteMessage(msg);
                             msgTypesInSuite.add(msgType);
+
                         }
                     }
                 } else {
@@ -1000,6 +1008,13 @@ public class AsciiFileTranslator {
             } else {
                 MessageType msgType = msgTypes.get(field);
                 if (msgType != null) {
+                    String afosId = msgType.getAfosid();
+                    if ((afosId.length() >= 6)
+                            && "DMO".equals(afosId.substring(3, 6))) {
+                        // Don't add DMO messages to playlists
+                        continue;
+                    }
+
                     if (!msgTypesInSuite.contains(msgType)) {
                         SuiteMessage msg = new SuiteMessage();
                         msg.setMsgTypeSummary(msgType.getSummary());
@@ -1228,7 +1243,7 @@ public class AsciiFileTranslator {
             return;
         }
 
-        if (suite.getType() == SuiteType.GENERAL
+        if ((suite.getType() == SuiteType.GENERAL)
                 && this.doesGeneralSuiteExists(program)) {
             StringBuilder sb = new StringBuilder("Program: ").append(program
                     .getName());
@@ -1261,7 +1276,7 @@ public class AsciiFileTranslator {
     }
 
     private boolean doesGeneralSuiteExists(final Program program) {
-        if (program.getSuites() == null || program.getSuites().isEmpty()) {
+        if ((program.getSuites() == null) || program.getSuites().isEmpty()) {
             return false;
         }
 

@@ -19,18 +19,22 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
+import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 
 /**
  * Handles any requests to get or modify the state of {@link Dictionary}s
@@ -46,14 +50,16 @@ import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
  * Oct 07, 2014  3687     bsteffen    Handle non-operational requests.
  * Oct 13, 2014  3413     rferrel     Implement User roles.
  * Oct 16, 2014  3636     rferrel     Implement logging.
- * Dec 11, 2014  3618     bkowal      Disseminate a {@link NationalDictionaryConfigNotification}
+ * Dec 11, 2014  3618     bkowal      Disseminate a {@link LanguageDictionaryConfigNotification}
  *                                    whenever the National {@link Dictionary} is updated.
  * Dec 15, 2014  3618     bkowal      Include the {@link Language} in the
- *                                    {@link NationalDictionaryConfigNotification}.
+ *                                    {@link LanguageDictionaryConfigNotification}.
  * Dec 16, 2014  3618     bkowal      Added {@link #getNationalDictionaryForLanguage(DictionaryRequest)} and
  *                                    {@link #getNonNationalDictionariesForLanguage(DictionaryRequest)}.
  * Jan 05, 2015  3618     bkowal      The {@link Dictionary} is now specified for delete operations.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Dec 03, 2015  5159     bkowal      Potentially trigger message re-generation even when a non-national
+ *                                    {@link Dictionary} is altered.
  * </pre>
  * 
  * @author mpduff
@@ -66,7 +72,11 @@ public class DictionaryHandler extends
     @Override
     public Object handleRequest(DictionaryRequest request) throws Exception {
         DictionaryResponse response = new DictionaryResponse();
-        NationalDictionaryConfigNotification notification = null;
+        LanguageDictionaryConfigNotification notification = null;
+
+        final TransmitterLanguageDao transmitterLanguageDao = new TransmitterLanguageDao(
+                request.isOperational());
+        final TtsVoiceDao ttsVoiceDao = new TtsVoiceDao(request.isOperational());
 
         switch (request.getAction()) {
         case ListNames:
@@ -77,19 +87,65 @@ public class DictionaryHandler extends
             break;
         case Save:
             response = saveDictionary(request);
-            if (request.getDictionary().isNational()) {
-                notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Update, request);
+            if (ttsVoiceDao.isVoiceDictionary(request.getDictionary())
+                    || request.getDictionary().isNational()) {
+                notification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Update, request, request
+                                .getDictionary().isNational());
                 notification.setLanguage(request.getDictionary().getLanguage());
+                notification.setUpdatedWords(request.getDictionary()
+                        .getAllWordsAsStrings());
+            } else {
+                /*
+                 * Determine if the {@link Dictionary} is associated with a
+                 * {@link TransmitterLanguage}.
+                 */
+                List<TransmitterLanguageConfigNotification> notifications = transmitterLanguageDao
+                        .determineAffectedTransmitterLanguages(
+                                request.getDictionary(),
+                                ConfigChangeType.Update, request, null);
+                if (notifications.isEmpty() == false) {
+                    for (TransmitterLanguageConfigNotification tlNotification : notifications) {
+                        BmhMessageProducer.sendConfigMessage(tlNotification,
+                                request.isOperational());
+                    }
+                }
             }
             break;
         case Delete:
-            if (request.getDictionary().isNational()) {
-                notification = new NationalDictionaryConfigNotification(
-                        ConfigChangeType.Delete, request);
+            List<TransmitterLanguageConfigNotification> notifications = Collections
+                    .emptyList();
+            if (ttsVoiceDao.isVoiceDictionary(request.getDictionary())
+                    || request.getDictionary().isNational()) {
+                notification = new LanguageDictionaryConfigNotification(
+                        ConfigChangeType.Delete, request, request
+                                .getDictionary().isNational());
                 notification.setLanguage(request.getDictionary().getLanguage());
+                notification.setUpdatedWords(request.getDictionary()
+                        .getAllWordsAsStrings());
+            } else {
+                /*
+                 * Determine if the {@link Dictionary} is associated with a
+                 * {@link TransmitterLanguage}. Even though the {@link
+                 * Dictionary} has been removed, {@link ConfigChangeType#Update}
+                 * is still used in this case because the {@link
+                 * TransmitterLanguage}s still remain, so we want to ensure that
+                 * the messages are only generated without the associated {@link
+                 * Dictionary} substitutions instead of being removed all
+                 * together.
+                 */
+                notifications = transmitterLanguageDao
+                        .determineAffectedTransmitterLanguages(
+                                request.getDictionary(),
+                                ConfigChangeType.Update, request, null);
             }
             deleteDictionary(request);
+            if (notifications.isEmpty() == false) {
+                for (TransmitterLanguageConfigNotification tlNotification : notifications) {
+                    BmhMessageProducer.sendConfigMessage(tlNotification,
+                            request.isOperational());
+                }
+            }
             break;
         case GetNationalForLanguage:
             response = this.getNationalDictionaryForLanguage(request);

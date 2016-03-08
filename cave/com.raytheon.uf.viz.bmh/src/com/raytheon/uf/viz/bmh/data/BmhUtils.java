@@ -121,6 +121,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  *                                      Spanish languages.
  * Aug 05, 2015   4685      bkowal      Added {@link #containsGeneralSuite(ProgramSummary)}.
  * Sep 01, 2015   4771      bkowal      Added {@link #retrieveRegulationConfiguration()}.
+ * Nov 11, 2015   5114      rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author mpduff
@@ -379,7 +380,7 @@ public class BmhUtils {
 
         List<String> phonemes = new ArrayList<>(ssmlContents.size());
         for (Serializable s : ssmlContents) {
-            if (s instanceof Phoneme == false) {
+            if ((s instanceof Phoneme) == false) {
                 continue;
             }
             Phoneme phoneme = (Phoneme) s;
@@ -451,7 +452,7 @@ public class BmhUtils {
             String dateTimeStr) {
         Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
 
-        if (dateTimeStr == null || dateTimeStr.length() != 8) {
+        if ((dateTimeStr == null) || (dateTimeStr.length() != 8)) {
             dateTimeMap.put(DateFieldType.DAY, 0);
             dateTimeMap.put(DateFieldType.HOUR, 0);
             dateTimeMap.put(DateFieldType.MINUTE, 0);
@@ -479,7 +480,7 @@ public class BmhUtils {
             String timeStr) {
         Map<DateFieldType, Integer> durmap = new LinkedHashMap<DateFieldType, Integer>();
 
-        if (timeStr == null || timeStr.length() != 4) {
+        if ((timeStr == null) || (timeStr.length() != 4)) {
             durmap.put(DateFieldType.HOUR, 0);
             durmap.put(DateFieldType.MINUTE, 0);
         } else {
@@ -708,7 +709,7 @@ public class BmhUtils {
     }
 
     public static boolean isDbReset() {
-        return (System.currentTimeMillis() - dbResetTime.get() <= 5 * TimeUtil.MILLIS_PER_SECOND);
+        return ((System.currentTimeMillis() - dbResetTime.get()) <= (5 * TimeUtil.MILLIS_PER_SECOND));
     }
 
     /**
@@ -752,11 +753,11 @@ public class BmhUtils {
      */
     public static AudioRegulationConfiguration retrieveRegulationConfiguration()
             throws Exception {
-        String commsLoc = BMHServers.getBroadcastServer();
+        String commsLoc = BMHServers.getCommsManager();
         if (commsLoc == null) {
             throw new CommsCommunicationException(
                     "No address has been specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ".");
+                            + BMHServers.getCommsManagerKey() + ".");
         }
         URI commsURI = null;
         try {

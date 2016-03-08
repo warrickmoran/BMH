@@ -38,7 +38,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Oct 16, 2014  3728      lvenable     Initial creation
  * Nov 03, 2014  3790      lvenable     Changed enum name.
  * Jan 02, 2014  3833      lvenable     Added unexpired action and time variable.
- * 
+ * Feb 04, 2016  5308      rjpeter      Removed AllInputMessages.
  * </pre>
  * 
  * @author lvenable
@@ -48,7 +48,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 public class InputMessageRequest extends AbstractBMHServerRequest {
 
     public enum InputMessageAction {
-        AllInputMessages, ListIdNameAfosCreationActive, UnexpiredMessages, GetByPkId;
+        ListIdNameAfosCreationActive, UnexpiredMessages, GetByPkId;
     }
 
     @DynamicSerializeElement

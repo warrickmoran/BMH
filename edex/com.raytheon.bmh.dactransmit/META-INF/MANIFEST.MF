@@ -1,0 +1,23 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: BMH DAC Transmit
+Bundle-SymbolicName: com.raytheon.bmh.dactransmit
+Bundle-Version: 0.14.0.qualifier
+Bundle-Vendor: RAYTHEON
+Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Main-Class: com.raytheon.bmh.dactransmit.DacTransmitMain
+Require-Bundle: org.apache.commons.cli;bundle-version="1.0.0",
+ com.raytheon.uf.common.util;bundle-version="1.14.0",
+ com.raytheon.uf.common.time;bundle-version="1.12.1174",
+ ch.qos.logback;bundle-version="1.0.13",
+ org.slf4j;bundle-version="1.7.5",
+ com.raytheon.uf.common.bmh;bundle-version="1.14.0",
+ com.raytheon.uf.common.serialization;bundle-version="1.14.0",
+ com.google.guava;bundle-version="11.0.2",
+ com.raytheon.uf.edex.bmh;bundle-version="1.14.0",
+ org.apache.commons.lang;bundle-version="2.3.0",
+ com.raytheon.uf.common.bmh.dac;bundle-version="1.0.0",
+ com.raytheon.uf.common.stats;bundle-version="1.0.0",
+ com.raytheon.uf.common.event;bundle-version="1.14.0"
+Export-Package: com.raytheon.bmh.dactransmit,
+ com.raytheon.bmh.dactransmit.ipc

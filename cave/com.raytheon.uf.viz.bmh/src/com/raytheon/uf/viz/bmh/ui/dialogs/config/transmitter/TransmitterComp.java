@@ -135,6 +135,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jul 22, 2015 4424       bkowal      Transmitter naming validation improvements.
  * Aug 10, 2015 4424       bkowal      Finish Transmitter rename.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Jan 06, 2015 4997       bkowal      Implemented transmitter promote to group.
  * </pre>
  * 
  * @author mpduff
@@ -469,6 +470,26 @@ public class TransmitterComp extends Composite implements INotificationObserver 
                             .getTxStatus() == TxStatus.DECOMM))
                             || ((standaloneGroup != null) && (standaloneGroup
                                     .getTransmitterList().get(0).getTxStatus() == TxStatus.DECOMM));
+                }
+
+                /*
+                 * Promote menu option.
+                 */
+                if (standaloneGroup != null) {
+                    boolean promoteEnabled = enableItem
+                            && transmitterDecommissioned == false;
+                    MenuItem promoteItem = createItem(menu, SWT.PUSH,
+                            promoteEnabled,
+                            "Transmitter cannot be promoted to a group when active or decommissioned.");
+                    promoteItem.setText("Promote to Group");
+                    promoteItem.addSelectionListener(new SelectionAdapter() {
+                        @Override
+                        public void widgetSelected(SelectionEvent e) {
+                            if (enabledWidget(e.widget)) {
+                                promoteMenuAction();
+                            }
+                        }
+                    });
                 }
 
                 transmitterPrimary = ((groupTransmitter != null) && (groupTransmitter
@@ -913,6 +934,51 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             public void dialogClosed(Object returnValue) {
                 if (returnValue instanceof String) {
                     executeRename(objectToRename, (String) returnValue);
+                }
+            }
+        });
+        inputDlg.open();
+    }
+
+    /**
+     * Promotes the currently selected {@link Transmitter} to a
+     * {@link TransmitterGroup}. The goal of promoting a transmitter to a group
+     * is to maintain all existing information for that transmitter while
+     * creating a group that additional transmitters can be added to. The
+     * information that is maintained includes any existing static messages as
+     * well as the areas and zones that have been assigned to the transmitter.
+     * When an existing transmitter is moved into a completely new group, a lot
+     * of that information is lost as part of the migration.
+     */
+    private void promoteMenuAction() {
+        Object o = tree.getSelection()[0].getData();
+        // should be a standalone transmitter group.
+        if (o instanceof TransmitterGroup == false) {
+            statusHandler.error("Unable to promote object of type: "
+                    + o.getClass().getName() + " to a Transmitter Group.");
+            return;
+        }
+
+        final TransmitterGroup transmitterGroup = (TransmitterGroup) o;
+        /*
+         * a transmitter is in a standalone group whenever the name of the
+         * transmitter and the name of the associated group are the same. so,
+         * promoting a transmitter to a group while maintaining all existing
+         * information is easily accomplished by allowing the user to assign a
+         * unique name to the group.
+         */
+
+        InputTextDlg inputDlg = new InputTextDlg(this.getShell(),
+                "Promote Transmitter",
+                "Enter a name for the Transmitter Group:",
+                transmitterGroup.getName(),
+                new PromoteTransmitterGroupNameValidator(transmitterGroup
+                        .getName(), transmitterGroup), false);
+        inputDlg.setCloseCallback(new ICloseCallback() {
+            @Override
+            public void dialogClosed(Object returnValue) {
+                if (returnValue instanceof String) {
+                    executeRename(transmitterGroup, (String) returnValue);
                 }
             }
         });

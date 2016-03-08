@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Apr 02, 2015   4248     rjpeter      Use ordered fragments.
  * Apr 07, 2015   4293     bkowal       Return audio from the latest broadcast contents.
  * Jun 12, 2015   4482     rjpeter      Removed exception on no ValidatedMessage.
+ * Feb 04, 2016   5308     rjpeter      Removed AllInputMessages case.
  * </pre>
  * 
  * @author lvenable
@@ -85,9 +86,6 @@ public class InputMessageHandler extends
         InputMessageResponse inputMessageResponse = new InputMessageResponse();
 
         switch (request.getAction()) {
-        case AllInputMessages:
-            inputMessageResponse = getAllInputMessages(request);
-            break;
         case ListIdNameAfosCreationActive:
             inputMessageResponse = getIdNameAfosCreation(request);
             break;
@@ -136,24 +134,6 @@ public class InputMessageHandler extends
 
         List<InputMessage> inputMessageList = dao
                 .getInputMsgsIdNameAfosCreation();
-        response.setInputMessageList(inputMessageList);
-
-        return response;
-    }
-
-    /**
-     * Get all of the input messages fully populated with data.
-     * 
-     * @param request
-     *            Input Message request.
-     * @return Input message response containing the requested information.
-     */
-    private InputMessageResponse getAllInputMessages(InputMessageRequest request) {
-        InputMessageDao dao = new InputMessageDao(request.isOperational(),
-                this.getMessageLogger(request));
-        InputMessageResponse response = new InputMessageResponse();
-
-        List<InputMessage> inputMessageList = dao.getInputMessages();
         response.setInputMessageList(inputMessageList);
 
         return response;
@@ -210,7 +190,7 @@ public class InputMessageHandler extends
             /*
              * Verify that fragments exist.
              */
-            if (contents == null || contents.getFragments() == null
+            if ((contents == null) || (contents.getFragments() == null)
                     || contents.getFragments().isEmpty()) {
                 throw new AudioRetrievalException(
                         "Unable to find audio information associated with broadcast msg: "

@@ -85,6 +85,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 25, 2015   4122     rferrel     Message type constructor now take data to populate table.
  * Apr 20, 2015   4420     rferrell    Allow Read Only display of the dialog.
  * Jun 12, 2015   4482     rjpeter     Added DO_NOT_BLOCK.
+ * Jan 04, 2015   4497     bkowal      Allow users to toggle between both transmitters and
+ *                                     transmitter groups on the transmitter tab.
  * </pre>
  * 
  * @author mpduff
@@ -110,6 +112,10 @@ public class AreaSelectionDlg extends CaveSWTDialog {
     private final String[] COLUMN_NAMES = { "ID", "Name", "Type" };
 
     private final int MOVE_BUTTON_WIDTH = 45;
+
+    private static final String MOVE_ONE_TEXT = ">";
+
+    private static final String MOVE_ALL_TEXT = ">>";
 
     private boolean readOnly = false;
 
@@ -161,6 +167,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
      */
     private java.util.List<Transmitter> transmitterObjectList;
 
+    private java.util.List<TransmitterGroup> transmitterGroupObjectList;
+
     /**
      * List of Zone objects
      */
@@ -174,6 +182,31 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
     /** List of all areas */
     private List areaList;
+
+    /**
+     * Checkbox used to toggle between transmitters/groups in the transmitter
+     * tab.
+     */
+    private Button groupToggleBtn;
+
+    /**
+     * Label describing the contents of the transmitters/groups list box.
+     */
+    private Label xmitLbl;
+
+    /**
+     * Label describing the contents of the areas for transmitters/groups list
+     * box.
+     */
+    private Label areaLbl;
+
+    private static final String LBL_TRX_TXT = "Transmitters:";
+
+    private static final String LBL_TRX_GROUP_TXT = "Transmitter Groups:";
+
+    private static final String LBL_AREA_FOR_TRX_TXT = "Areas for Transmitter(s):";
+
+    private static final String LBL_AREA_FOR_TRX_GROUP_TXT = "Areas for Transmitter Group(s):";
 
     /** The Message Type */
     private MessageType messageType = null;
@@ -337,8 +370,20 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gd.horizontalSpan = 2;
-        Label xmitLbl = new Label(comp, SWT.NONE);
-        xmitLbl.setText("Transmitters: ");
+        groupToggleBtn = new Button(comp, SWT.CHECK);
+        groupToggleBtn.setText("Transmitter Group");
+        groupToggleBtn.setLayoutData(gd);
+        groupToggleBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                populateTransmittersGroups();
+            }
+        });
+
+        gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+        gd.horizontalSpan = 2;
+        gd.widthHint = 150;
+        xmitLbl = new Label(comp, SWT.NONE);
         xmitLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -361,7 +406,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         moveComp.setLayoutData(gd);
 
         Button xmitMoveBtn = new Button(moveComp, SWT.PUSH);
-        xmitMoveBtn.setText(">");
+        xmitMoveBtn.setText(MOVE_ONE_TEXT);
         xmitMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         xmitMoveBtn
                 .setToolTipText("Move selected Transmitter(s) to the Selected Table");
@@ -374,7 +419,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         xmitMoveBtn.setEnabled(!readOnly);
 
         Button xmitMoveAllBtn = new Button(moveComp, SWT.PUSH);
-        xmitMoveAllBtn.setText(">>");
+        xmitMoveAllBtn.setText(MOVE_ALL_TEXT);
         xmitMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         xmitMoveAllBtn
@@ -395,8 +440,8 @@ public class AreaSelectionDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         gd.horizontalSpan = 2;
-        Label areaLbl = new Label(comp, SWT.NONE);
-        areaLbl.setText("Areas for Transmitter(s): ");
+        gd.widthHint = 185;
+        areaLbl = new Label(comp, SWT.NONE);
         areaLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -414,7 +459,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         moveComp2.setLayoutData(gd);
 
         Button areaMoveBtn = new Button(moveComp2, SWT.PUSH);
-        areaMoveBtn.setText(">");
+        areaMoveBtn.setText(MOVE_ONE_TEXT);
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
@@ -427,7 +472,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
-        areaMoveAllBtn.setText(">>");
+        areaMoveAllBtn.setText(MOVE_ALL_TEXT);
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
@@ -438,6 +483,47 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         });
         areaMoveAllBtn.setEnabled(!readOnly);
+    }
+
+    private void populateTransmittersGroups() {
+        boolean groups = this.groupToggleBtn.getSelection();
+        String transmitterListLabel = (groups) ? LBL_TRX_GROUP_TXT
+                : LBL_TRX_TXT;
+        String transmitterAreaListLabel = (groups) ? LBL_AREA_FOR_TRX_GROUP_TXT
+                : LBL_AREA_FOR_TRX_TXT;
+
+        xmitLbl.setText(transmitterListLabel);
+        areaLbl.setText(transmitterAreaListLabel);
+        if (groups) {
+            if (this.transmitterGroupObjectList == null) {
+                this.transmitterGroupObjectList = areaSelectionData
+                        .getTransmitterGroupList();
+            }
+            java.util.List<String> transmitterGroupList = new ArrayList<>(
+                    transmitterGroupObjectList.size());
+            for (TransmitterGroup tg : transmitterGroupObjectList) {
+                transmitterGroupList.add(tg.getName());
+            }
+            xmitList.setItems(transmitterGroupList.toArray(new String[0]));
+        } else {
+            if (this.transmitterObjectList == null) {
+                this.transmitterObjectList = areaSelectionData
+                        .getTransmitterList();
+                Collections.sort(transmitterObjectList,
+                        new TransmitterLocationComparator());
+            }
+            java.util.List<String> transmitterNameList = new ArrayList<>(
+                    transmitterObjectList.size());
+            for (Transmitter t : transmitterObjectList) {
+                transmitterNameList.add(t.getLocation());
+            }
+            xmitList.setItems(transmitterNameList.toArray(new String[0]));
+        }
+
+        if (xmitList.getItemCount() > 0) {
+            xmitList.select(0);
+            populateAreasForTransmitter();
+        }
     }
 
     /**
@@ -482,7 +568,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         moveComp.setLayoutData(gd);
 
         Button zoneMoveBtn = new Button(moveComp, SWT.PUSH);
-        zoneMoveBtn.setText(">");
+        zoneMoveBtn.setText(MOVE_ONE_TEXT);
         zoneMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         zoneMoveBtn
                 .setToolTipText("Move selected Zone(s) to the Selected Table");
@@ -495,7 +581,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         zoneMoveBtn.setEnabled(!readOnly);
 
         Button zoneMoveAllBtn = new Button(moveComp, SWT.PUSH);
-        zoneMoveAllBtn.setText(">>");
+        zoneMoveAllBtn.setText(MOVE_ALL_TEXT);
         zoneMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         zoneMoveAllBtn.setToolTipText("Move all Zones to the Selected Table");
@@ -533,7 +619,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         moveComp2.setLayoutData(gd);
 
         Button areaMoveBtn = new Button(moveComp2, SWT.PUSH);
-        areaMoveBtn.setText(">");
+        areaMoveBtn.setText(MOVE_ONE_TEXT);
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
@@ -546,7 +632,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp2, SWT.PUSH);
-        areaMoveAllBtn.setText(">>");
+        areaMoveAllBtn.setText(MOVE_ALL_TEXT);
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
@@ -595,7 +681,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         moveComp.setLayoutData(gd);
 
         Button areaMoveBtn = new Button(moveComp, SWT.PUSH);
-        areaMoveBtn.setText(">");
+        areaMoveBtn.setText(MOVE_ONE_TEXT);
         areaMoveBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH, SWT.DEFAULT));
         areaMoveBtn
                 .setToolTipText("Move selected Area(s) to the Selected Table");
@@ -608,7 +694,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         areaMoveBtn.setEnabled(!readOnly);
 
         Button areaMoveAllBtn = new Button(moveComp, SWT.PUSH);
-        areaMoveAllBtn.setText(">>");
+        areaMoveAllBtn.setText(MOVE_ALL_TEXT);
         areaMoveAllBtn.setLayoutData(new GridData(MOVE_BUTTON_WIDTH,
                 SWT.DEFAULT));
         areaMoveAllBtn.setToolTipText("Move all Areas to the Selected Table");
@@ -734,20 +820,7 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             gatherData();
         }
 
-        this.transmitterObjectList = areaSelectionData.getTransmitterList();
-        Collections.sort(transmitterObjectList,
-                new TransmitterLocationComparator());
-        java.util.List<String> transmitterNameList = new ArrayList<>(
-                transmitterObjectList.size());
-        for (Transmitter t : transmitterObjectList) {
-            transmitterNameList.add(t.getLocation());
-        }
-
-        xmitList.setItems(transmitterNameList.toArray(new String[0]));
-        if (xmitList.getItemCount() > 0) {
-            xmitList.select(0);
-            populateAreasForTransmitter();
-        }
+        this.populateTransmittersGroups();
 
         this.zoneObjectList = areaSelectionData.getZoneList();
         Collections.sort(zoneObjectList, new ZoneNameComparator());
@@ -865,8 +938,13 @@ public class AreaSelectionDlg extends CaveSWTDialog {
         int[] indices = xmitList.getSelectionIndices();
         java.util.List<Area> areas = new ArrayList<Area>();
         for (int i : indices) {
-            Transmitter t = this.transmitterObjectList.get(i);
-            areas.addAll(areaSelectionData.getAreasForTransmitter(t));
+            if (this.groupToggleBtn.getSelection()) {
+                TransmitterGroup tg = this.transmitterGroupObjectList.get(i);
+                areas.addAll(areaSelectionData.getAreasForTransmitterGroup(tg));
+            } else {
+                Transmitter t = this.transmitterObjectList.get(i);
+                areas.addAll(areaSelectionData.getAreasForTransmitter(t));
+            }
         }
 
         String[] areaNames = new String[areas.size()];
@@ -927,8 +1005,17 @@ public class AreaSelectionDlg extends CaveSWTDialog {
             }
         } else {
             int[] indices = xmitList.getSelectionIndices();
-            for (int i : indices) {
-                addTransmitterRow(transmitterObjectList.get(i));
+            if (this.groupToggleBtn.getSelection()) {
+                for (int i : indices) {
+                    for (Transmitter t : transmitterGroupObjectList.get(i)
+                            .getTransmitters()) {
+                        addTransmitterRow(t);
+                    }
+                }
+            } else {
+                for (int i : indices) {
+                    addTransmitterRow(transmitterObjectList.get(i));
+                }
             }
         }
 

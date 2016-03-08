@@ -38,6 +38,7 @@ import com.raytheon.uf.viz.bmh.BMHServers;
 import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
+import com.raytheon.viz.core.mode.CAVEMode;
 
 /**
  * An extension of the {@link BroadcastLiveDlg} that works when the bmh server
@@ -53,6 +54,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
  * Feb 05, 2015  3743      bsteffen    Initial creation
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Aug 13, 2015  4424      bkowal      Removed extra quotes around the transmitter group name.
+ * Nov 11, 2015  5114      rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -94,11 +96,11 @@ public class StandaloneBroadcastLiveDlg extends BroadcastLiveDlg {
      * Download the available transmitter groups from the comms manager.
      */
     public static String[] getGroups() throws CommsCommunicationException {
-        String commsLoc = BMHServers.getBroadcastServer();
+        String commsLoc = BMHServers.getCommsManager();
         if (commsLoc == null) {
             throw new CommsCommunicationException(
                     "No address has been specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ".");
+                            + BMHServers.getCommsManagerKey() + ".");
         }
         URI commsURI = null;
         try {
@@ -115,7 +117,17 @@ public class StandaloneBroadcastLiveDlg extends BroadcastLiveDlg {
             Object message = SerializationUtil.transformFromThrift(
                     Object.class, socket.getInputStream());
             if (message instanceof LiveBroadcastGroupsMessage) {
-                return ((LiveBroadcastGroupsMessage) message).getGroups();
+                LiveBroadcastGroupsMessage liveMessage = (LiveBroadcastGroupsMessage) message;
+                boolean modeMatches = (liveMessage.isOperational() && (CAVEMode
+                        .getMode() == CAVEMode.OPERATIONAL))
+                        || (!liveMessage.isOperational() && (CAVEMode.getMode() != CAVEMode.OPERATIONAL));
+                if (!modeMatches) {
+                    throw new CommsCommunicationException(
+                            "Connected to wrong CommsManager.  Need "
+                                    + (liveMessage.isOperational() ? "Practice"
+                                            : "Operational") + " CommsManager");
+                }
+                return liveMessage.getGroups();
             } else if (message == null) {
                 throw new NullPointerException(
                         "Unexpected null response from comms manager.");

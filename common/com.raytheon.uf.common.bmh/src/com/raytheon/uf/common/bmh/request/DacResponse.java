@@ -37,6 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Aug 27, 2014    3173    mpduff      Initial creation
  * Oct 19, 2014    3699    mpduff      Added addDac method.
+ * Nov 23, 2015    5113    bkowal      Added {@link #desyncedDacs}.
  * 
  * </pre>
  * 
@@ -48,6 +49,9 @@ public class DacResponse {
 
     @DynamicSerializeElement
     private List<Dac> dacList;
+
+    @DynamicSerializeElement
+    private List<Integer> desyncedDacs;
 
     /**
      * @return the dacList
@@ -70,5 +74,20 @@ public class DacResponse {
         }
 
         dacList.add(dac);
+    }
+
+    /**
+     * @return the desyncedDacs
+     */
+    public List<Integer> getDesyncedDacs() {
+        return desyncedDacs;
+    }
+
+    /**
+     * @param desyncedDacs
+     *            the desyncedDacs to set
+     */
+    public void setDesyncedDacs(List<Integer> desyncedDacs) {
+        this.desyncedDacs = desyncedDacs;
     }
 }

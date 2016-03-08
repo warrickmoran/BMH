@@ -25,18 +25,19 @@ import java.net.NetworkInterface;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
+import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.uf.common.bmh.comms.LineTapRequest;
 import com.raytheon.uf.common.bmh.dac.DacReceiveThread;
-import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
 
@@ -54,13 +55,14 @@ import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
  * Sep 23, 2014  3485     bsteffen    Enable multicast
  * Apr 14, 2015  4394     bkowal      Eliminated the need to iteratively search for
  *                                    dac configuration information.
- * 
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class LineTapServer extends AbstractServerThread {
+public class LineTapServer extends AbstractServer {
 
     private static final Logger logger = LoggerFactory
             .getLogger(LineTapServer.class);
@@ -69,8 +71,9 @@ public class LineTapServer extends AbstractServerThread {
 
     private volatile NetworkInterface multicastInterface;
 
-    public LineTapServer(CommsConfig config) throws IOException {
-        super(config.getLineTapPort());
+    public LineTapServer(CommsManager manager, CommsConfig config)
+            throws IOException {
+        super(manager.getSocketListener());
         reconfigure(config);
     }
 
@@ -91,19 +94,32 @@ public class LineTapServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnection(Socket socket)
-            throws SerializationException, IOException {
-        LineTapRequest message = SerializationUtil.transformFromThrift(
-                LineTapRequest.class, socket.getInputStream());
-        DacReceiveThread receiver = getReceiver(message);
-        if (receiver != null) {
-            LineTapCommunicator comms = new LineTapCommunicator(this,
-                    message.getTransmitterGroup(), message.getChannel(), socket);
-            receiver.subscribe(comms);
-            comms.start();
-        } else {
-            socket.close();
+    public boolean handleConnection(Socket socket, Object obj) {
+        if (!(obj instanceof LineTapRequest)) {
+            logger.warn("Received unexpected message with type: "
+                    + obj.getClass().getName() + ". Disconnecting ...");
+            return true;
         }
+
+        LineTapRequest message = (LineTapRequest) obj;
+        DacReceiveThread receiver = null;
+        try {
+            receiver = getReceiver(message);
+        } catch (UnknownHostException | SocketException e) {
+            logger.error("Error occurred looking address for request {}",
+                    message, e);
+        }
+
+        if (receiver == null) {
+            // no receiver found
+            return true;
+        }
+
+        LineTapCommunicator comms = new LineTapCommunicator(this,
+                message.getTransmitterGroup(), message.getChannel(), socket);
+        receiver.subscribe(comms);
+        comms.start();
+        return false;
     }
 
     private DacReceiveThread getReceiver(LineTapRequest request)
@@ -118,7 +134,7 @@ public class LineTapServer extends AbstractServerThread {
                     ReceiveKey key = new ReceiveKey(receiverAddress,
                             receivePort);
                     receiver = receivers.get(key);
-                    if (receiver == null || !receiver.isAlive()) {
+                    if ((receiver == null) || !receiver.isAlive()) {
                         receiver = new DacReceiveThread(multicastInterface,
                                 address, receivePort);
                         receivers.put(key, receiver);
@@ -134,7 +150,7 @@ public class LineTapServer extends AbstractServerThread {
             if (receiver == null) {
                 ReceiveKey key = new ReceiveKey(receivePort);
                 receiver = receivers.get(key);
-                if (receiver == null || !receiver.isAlive()) {
+                if ((receiver == null) || !receiver.isAlive()) {
                     receiver = new DacReceiveThread(receivePort);
                     receivers.put(key, receiver);
                     receiver.start();
@@ -158,6 +174,16 @@ public class LineTapServer extends AbstractServerThread {
         }
     }
 
+    @Override
+    protected Set<Class<? extends Object>> getTypesHandled() {
+        return Collections.<Class<?>> singleton(LineTapRequest.class);
+    }
+
+    @Override
+    protected void shutdownInternal() {
+        // NOOP
+    }
+
     private static final class ReceiveKey {
 
         private final String address;
@@ -171,9 +197,9 @@ public class LineTapServer extends AbstractServerThread {
             this.port = port;
             final int prime = 31;
             int hashCode = 1;
-            hashCode = prime * hashCode
+            hashCode = (prime * hashCode)
                     + ((address == null) ? 0 : address.hashCode());
-            hashCode = prime * hashCode + port;
+            hashCode = (prime * hashCode) + port;
             this.hashCode = hashCode;
         }
 
@@ -188,20 +214,26 @@ public class LineTapServer extends AbstractServerThread {
 
         @Override
         public boolean equals(Object obj) {
-            if (this == obj)
+            if (this == obj) {
                 return true;
-            if (obj == null)
+            }
+            if (obj == null) {
                 return false;
-            if (getClass() != obj.getClass())
+            }
+            if (getClass() != obj.getClass()) {
                 return false;
+            }
             ReceiveKey other = (ReceiveKey) obj;
             if (address == null) {
-                if (other.address != null)
+                if (other.address != null) {
                     return false;
-            } else if (!address.equals(other.address))
+                }
+            } else if (!address.equals(other.address)) {
                 return false;
-            if (port != other.port)
+            }
+            if (port != other.port) {
                 return false;
+            }
             return true;
         }
 

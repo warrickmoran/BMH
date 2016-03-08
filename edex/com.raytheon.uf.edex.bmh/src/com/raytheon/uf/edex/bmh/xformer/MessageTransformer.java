@@ -59,10 +59,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
-import com.raytheon.uf.common.bmh.notify.config.NationalDictionaryConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.LanguageDictionaryConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterLanguageConfigNotification;
 import com.raytheon.uf.common.bmh.schemas.ssml.ObjectFactory;
-import com.raytheon.uf.common.bmh.schemas.ssml.Paragraph;
 import com.raytheon.uf.common.bmh.schemas.ssml.Prosody;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLConversionException;
 import com.raytheon.uf.common.bmh.schemas.ssml.SSMLDocument;
@@ -79,6 +78,7 @@ import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao;
+import com.raytheon.uf.edex.bmh.dao.TtsVoiceDao;
 import com.raytheon.uf.edex.bmh.ldad.LdadMsg;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -155,6 +155,13 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Oct 06, 2015 4904       bkowal      Set the neospeech volume in the SSML.
  * Oct 29, 2015 5065       bkowal      Update paragraph cleanup to maintain
  *                                     message boundaries.
+ * Dec 01, 2015 5157       bkowal      Eliminate the use of SSML paragraphs.
+ * Dec 03, 2015 5158       bkowal      Ensure data written by BMH correctly reflects when the language
+ * Dec 03, 2015 5159       bkowal      Log when a {@link TransmitterLanguage} is removed from cache
+ *                                     in response to an update.
+ *                                     in the message header overrides the message type language.
+ * Jan 15, 2016 5241       bkowal      Use a {@link WordLengthDescComparator} to sort dictionary
+ *                                     rules before they are applied.
  * </pre>
  * 
  * @author bkowal
@@ -167,12 +174,6 @@ public class MessageTransformer implements IContextStateProcessor {
             .getInstance(MessageTransformer.class);
 
     private static final String PLATFORM_AGNOSTIC_NEWLINE_REGEX = "[\\r\\n|\\r|\\n]";
-
-    private static final String PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX = String
-            .format("%s%s+", PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                    PLATFORM_AGNOSTIC_NEWLINE_REGEX);
-
-    private static final String BLOCK_PARAGRAPH_NEWLINE = "\n\n";
 
     private static final String SENTENCE_REGEX = "[^.!?\\s][^.!?]*(?:[.!?](?!['\"]?\\s|$)[^.!?]*)*[.!?]?['\"]?(?=\\s|$)";
 
@@ -203,19 +204,23 @@ public class MessageTransformer implements IContextStateProcessor {
     private final ConcurrentMap<Language, Dictionary> nationalDictionaryLanguageMap = new ConcurrentHashMap<>(
             Language.values().length, 1.0f);
 
+    /* Cached transmitter languages */
     private final Table<TransmitterGroup, Language, TransmitterLanguage> transmitterLanguageTableCache = HashBasedTable
             .create();
 
     /* Used to fulfill the message logging requirement. */
     private final IMessageLogger messageLogger;
 
+    private final TtsVoiceDao ttsVoiceDao;
+
     /**
      * Constructor
      */
     public MessageTransformer(final TimeMessagesGenerator tmGenerator,
-            final IMessageLogger messageLogger) {
+            final IMessageLogger messageLogger, final TtsVoiceDao ttsVoiceDao) {
         this.tmGenerator = tmGenerator;
         this.messageLogger = messageLogger;
+        this.ttsVoiceDao = ttsVoiceDao;
         statusHandler.info("Message Transformer Ready ...");
     }
 
@@ -617,6 +622,38 @@ public class MessageTransformer implements IContextStateProcessor {
          * Handle the static message type special case.
          */
         TtsVoice fragmentVoice = messageType.getVoice();
+
+        /*
+         * Verify that the {@link TtsVoice} matches the {@link Language}
+         * specified in the {@link InputMessage} header. Adjust if necessary.
+         */
+        if (fragmentVoice.getLanguage() != inputMessage.getLanguage()) {
+            /*
+             * This information can optionally be cached provided that the
+             * required listeners are setup to listen to changes to the
+             * configured {@link TtsVoice}s.
+             */
+            fragmentVoice = this.ttsVoiceDao
+                    .getDefaultVoiceForLanguage(inputMessage.getLanguage());
+            if (fragmentVoice == null) {
+                /*
+                 * Extremely unlikely due to parsing validation.
+                 */
+                throw new BMHConfigurationException(
+                        "Unable to find the default voice for language: "
+                                + inputMessage.getLanguage().name() + "!");
+            }
+
+            StringBuilder sb = new StringBuilder(" Voice: ");
+            sb.append(fragmentVoice.toString())
+                    .append(" will be used to synthesize message: ")
+                    .append(traceable.getTraceId());
+            sb.append(" instead of the voice associated with message type: ")
+                    .append(inputMessage.getAfosid()).append(".");
+
+            statusHandler.info(sb.toString());
+        }
+
         TransmitterLanguage transmitterLanguage = null;
         StaticMessageType staticMessageType = null;
         if (StaticMessageIdentifierUtil.isStaticMsgType(messageType)) {
@@ -818,13 +855,6 @@ public class MessageTransformer implements IContextStateProcessor {
     }
 
     public String formatText(String content) {
-        /*
-         * Replace multiple new line characters with a single new line
-         * character.
-         */
-        content = content.replaceAll(PLATFORM_AGNOSTIC_BLOCK_PARAGRAPH_REGEX,
-                BLOCK_PARAGRAPH_NEWLINE);
-
         return WordUtils.capitalizeFully(content);
     }
 
@@ -871,7 +901,11 @@ public class MessageTransformer implements IContextStateProcessor {
                 + TimeUtil.prettyDuration(dictionaryTimer.getElapsedTime())
                 + ".");
 
-        return new LinkedList<ITextTransformation>(mergedDictionaryMap.values());
+        List<ITextTransformation> allTransformationsList = new LinkedList<ITextTransformation>(
+                mergedDictionaryMap.values());
+        Collections
+                .sort(allTransformationsList, new WordLengthDescComparator());
+        return allTransformationsList;
     }
 
     /**
@@ -1011,27 +1045,24 @@ public class MessageTransformer implements IContextStateProcessor {
          */
         ObjectFactory objectFactory = ssmlDocument.getFactory();
 
-        String[] paragraphs = content.split(BLOCK_PARAGRAPH_NEWLINE);
-        for (String paragraph : paragraphs) {
-            paragraph = paragraph.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX,
-                    " ").trim();
+        final String cleanContent = content.replaceAll(
+                PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ").trim();
 
-            /*
-             * Analyze one paragraph worth of text at a time.
-             */
+        List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
+        transformationCandidates.add(new RulingFreeText(cleanContent));
 
-            List<ITextRuling> transformationCandidates = new LinkedList<ITextRuling>();
-            transformationCandidates.add(new RulingFreeText(paragraph));
-
-            if (textTransformations.isEmpty() == false) {
-                transformationCandidates = this.setTransformations(
-                        textTransformations, transformationCandidates);
-            }
-
-            Paragraph ssmlParagraph = this.applyTransformations(objectFactory,
-                    transformationCandidates, paragraph);
-            ssmlProsody.getContent().add(ssmlParagraph);
+        if (textTransformations.isEmpty() == false) {
+            transformationCandidates = this.setTransformations(
+                    textTransformations, transformationCandidates);
         }
+
+        List<Sentence> sentences = this
+                .applyTransformations(
+                        objectFactory,
+                        transformationCandidates,
+                        content.replaceAll(PLATFORM_AGNOSTIC_NEWLINE_REGEX, " ")
+                                .trim());
+        ssmlProsody.getContent().addAll(sentences);
 
         ssmlDocument.getRootTag().getContent().add(ssmlProsody);
 
@@ -1050,7 +1081,7 @@ public class MessageTransformer implements IContextStateProcessor {
      *            the formatted prosody speech rate.
      * @throws SSMLConversionException
      */
-    private Paragraph applyTransformations(ObjectFactory objectFactory,
+    private List<Sentence> applyTransformations(ObjectFactory objectFactory,
             List<ITextRuling> transformationCandidates,
             final String originalMessage) throws SSMLConversionException {
         /* Approximate the sentence divisions in the original message. */
@@ -1059,11 +1090,7 @@ public class MessageTransformer implements IContextStateProcessor {
         while (sentenceMatcher.find()) {
             approximateSentences.add(sentenceMatcher.group(0));
         }
-
-        /*
-         * All sentences that are discovered will be part of the same paragraph.
-         */
-        Paragraph ssmlParagraph = objectFactory.createParagraph();
+        List<Sentence> sentences = new ArrayList<>(approximateSentences.size());
 
         // Start the first sentence.
         Sentence ssmlSentence = objectFactory.createSentence();
@@ -1102,7 +1129,7 @@ public class MessageTransformer implements IContextStateProcessor {
                 boolean periodRemains = ".".equals(currentSentence.trim());
                 if ((periodRemains || currentSentence.isEmpty())
                         && (approximateSentences.isEmpty() == false)) {
-                    ssmlParagraph.getContent().add(ssmlSentence);
+                    sentences.add(ssmlSentence);
                     ssmlSentence = objectFactory.createSentence();
                     currentSentence = approximateSentences.remove(0);
                 }
@@ -1113,10 +1140,10 @@ public class MessageTransformer implements IContextStateProcessor {
          * Add the final sentence to the SSML document.
          */
         if (ssmlSentence.getContent().isEmpty() == false) {
-            ssmlParagraph.getContent().add(ssmlSentence);
+            sentences.add(ssmlSentence);
         }
 
-        return ssmlParagraph;
+        return sentences;
     }
 
     /**
@@ -1126,7 +1153,14 @@ public class MessageTransformer implements IContextStateProcessor {
      *            a notification of the {@link Dictionary} change
      */
     public void updateNationalDictionary(
-            NationalDictionaryConfigNotification notification) {
+            LanguageDictionaryConfigNotification notification) {
+        if (notification.isNational() == false) {
+            /*
+             * Just a voice-level dictionary.
+             */
+            return;
+        }
+
         if (notification.getType() == ConfigChangeType.Update) {
             this.retrieveNationalDictionaryForLanguage(notification
                     .getLanguage());
@@ -1153,9 +1187,16 @@ public class MessageTransformer implements IContextStateProcessor {
     public void updateTransmitterDictionary(
             TransmitterLanguageConfigNotification notification) {
         synchronized (this.transmitterLanguageTableCache) {
-            this.transmitterLanguageTableCache
-                    .remove(notification.getKey().getTransmitterGroup(),
-                            notification.getKey().getLanguage());
+            TransmitterLanguage tl = this.transmitterLanguageTableCache.remove(
+                    notification.getKey().getTransmitterGroup(), notification
+                            .getKey().getLanguage());
+            if (tl != null) {
+                statusHandler.info("Removed Language: "
+                        + notification.getKey().getLanguage()
+                        + " for Transmitter Group: "
+                        + notification.getKey().getTransmitterGroup().getName()
+                        + " from the Transmitter Language cache.");
+            }
         }
     }
 
@@ -1193,7 +1234,7 @@ public class MessageTransformer implements IContextStateProcessor {
      * Retrieves the national {@link Dictionary} associated with the specified
      * {@link Language}. Used to retrieve an updated national {@link Dictionary}
      * for a specific {@link Language} whenever a
-     * {@link NationalDictionaryConfigNotification} is received.
+     * {@link LanguageDictionaryConfigNotification} is received.
      * 
      * @param language
      *            the specified {@link Language}.

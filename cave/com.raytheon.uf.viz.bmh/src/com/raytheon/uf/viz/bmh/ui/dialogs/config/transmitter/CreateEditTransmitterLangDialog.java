@@ -93,6 +93,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 18, 2015 4490       bkowal      Ensure multiple static message types with the same
  *                                     afos ids are not created when creating a new transmitter.
  * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
+ * Dec 03, 2015 5159       bkowal      Keep track of {@link Dictionary} removals to ensure that messages
+ *                                     are updated when a substitution rule no longer applies.
  * </pre>
  * 
  * @author bkowal
@@ -908,6 +910,12 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog implements
         /*
          * dictionary
          */
+        if (this.dictionaryAssign.dictionaryChanged(this.transmitterLanguage
+                .getDictionary())) {
+            this.transmitterLanguage
+                    .setRemovedDictionary(this.transmitterLanguage
+                            .getDictionary());
+        }
         this.transmitterLanguage.setDictionary(this.dictionaryAssign
                 .getSelectedDictionary());
 

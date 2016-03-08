@@ -28,6 +28,8 @@ import org.eclipse.swt.widgets.Display;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.Word;
+import com.raytheon.uf.common.bmh.legacy.ImportLegacyDictionaryRequest;
+import com.raytheon.uf.common.bmh.legacy.ImportLegacyDictionaryResponse;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest;
 import com.raytheon.uf.common.bmh.request.DictionaryRequest.DictionaryAction;
 import com.raytheon.uf.common.bmh.request.DictionaryResponse;
@@ -58,6 +60,7 @@ import com.raytheon.uf.viz.core.exception.VizException;
  * Jan 07, 2015    3931    bkowal      Added {@link #verifyNameUniqueness(String)}.
  * Jan 28, 2015    4045    bkowal      Use a {@link NeoSpeechPhonemeMapping} instance.
  * Jun 11, 2015    4552    bkowal      Removed the English-specific phonemeMapping instance.
+ * Dec 10, 2015    5112    bkowal      Added {@link #getNationalCorrectWords(Language)}.
  * </pre>
  * 
  * @author mpduff
@@ -283,5 +286,24 @@ public class DictionaryManager {
         req.setAction(DictionaryAction.Delete);
         req.setDictionary(dictionary);
         BmhUtils.sendRequest(req);
+    }
+
+    /**
+     * Retrieves information about the national {@link Dictionary} as well as
+     * any words that NeoSpeech already pronounces correctly for the specified
+     * {@link Language}.
+     * 
+     * @param language
+     *            the specified {@link Language}
+     * @return a {@link ImportLegacyDictionaryResponse} containing the words
+     *         pronounced correctly be NeoSpeech as well as the current national
+     *         {@link } Dictionary
+     * @throws Exception
+     */
+    public ImportLegacyDictionaryResponse getNationalCorrectWords(
+            final Language language) throws Exception {
+        ImportLegacyDictionaryRequest request = new ImportLegacyDictionaryRequest();
+        request.setLanguage(language);
+        return (ImportLegacyDictionaryResponse) BmhUtils.sendRequest(request);
     }
 }

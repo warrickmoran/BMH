@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.dac;
 
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -28,6 +29,11 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.ListUtils;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -40,12 +46,15 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 
+import com.raytheon.uf.common.bmh.dac.DacSyncFields;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -65,6 +74,14 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 09, 2015  4235      rferrel      Check for duplicate channel numbers.
  * Jul 01, 2015  4602      rjpeter      Port order now matters.
  * Nov 05, 2015  5092      bkowal       Use {@link DacChannel}.
+ * Nov 09, 2015  5113      bkowal       Updated to support the new {@link Dac} fields as well
+ *                                      as {@link DacChannel}s.
+ * Nov 11, 2015  5114      rjpeter      Update port numbering scheme.
+ * Nov 12, 2015  5113      bkowal       Support executing DAC configuration changes.
+ * Nov 23, 2015  5113      bkowal       Display a common status indicating whether or not a {@link Dac}
+ *                                      has sync. Allow the user to sync a {@link Dac}.
+ * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
+ *                                      DACs using the generated configuration.                                     
  * </pre>
  * 
  * @author lvenable
@@ -73,17 +90,59 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
-    private final String CHANNEL_BASE_PORT = "Channel Base Port:";
+    private final String CHANNEL_BASE_PORT = DacSyncFields.FIELD_DAC_CHANNEL_FMT
+            + ":";
+
+    private final String NET_MASK_LABEL = DacSyncFields.FIELD_DAC_NET_MASK
+            + ":";
+
+    private final String GATEWAY_LABEL = DacSyncFields.FIELD_DAC_GATEWAY + ":";
+
+    private final String BROADCAST_BUFFER_LABEL = DacSyncFields.FIELD_BROADCAST_BUFFER
+            + ":";
+
+    private final String LEVEL_LABEL = "Level:";
+
+    private final String REBOOT_TEXT = "Reboot";
+
+    private final String AUTO_CONFIGURE_TEXT = "Auto-Configure (Requires DAC Reboot)";
+
+    private final String CONFIGURE_TEXT = "Configure...";
+
+    private final String SAVE_TEXT = "Save";
+
+    private final String SYNC_TEXT = "Sync";
+
+    private static final String SYNC_MESSAGE = "DAC and BMH are in sync.";
+
+    private static final String NO_SYNC_MESSAGE = "DAC and BMH are NOT in sync.";
+
+    private static final String NO_EXIST_MESSAGE = "DAC sync status unknown.";
 
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CreateEditDacConfigDlg.class);
+
+    /**
+     * Label indicating whether the DAC and {@link Dac} are out of sync or in
+     * sync.
+     */
+    private Label dacSyncLabel;
 
     /** DAC Name text field */
     private Text dacNameTF;
 
     /** DAC IP text control. */
     private Text dacIpTF;
+
+    /** DAC Net Mask text control. */
+    private Text dacNetMaskTF;
+
+    /** DAC Gateway text control. */
+    private Text dacGatewayTF;
+
+    /** DAC Broadcast Buffer text control. */
+    private Text dacBroadcastBufferTF;
 
     /** Receive Port text control. */
     private Text receivePortTF;
@@ -94,23 +153,50 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     /** Channel 1 text control. */
     private Text channel1TF;
 
+    /** Channel 1 level text field. */
+    private Text channel1LvlTF;
+
     /** Channel 2 text control. */
     private Text channel2TF;
+
+    /** Channel 2 level text field. */
+    private Text channel2LvlTF;
 
     /** Channel 3 text control. */
     private Text channel3TF;
 
+    /** Channel 3 level text field. */
+    private Text channel3LvlTF;
+
     /** Channel 4 text control. */
     private Text channel4TF;
 
+    /** Channel 4 level text field. */
+    private Text channel4LvlTF;
+
+    /** The Reboot / Auto-Configure checkbox */
+    private Button rebootAutoConfigureChk;
+
+    private Button createSaveBtn;
+
     /** The new/edited dac */
     private Dac dac;
+
+    /**
+     * boolean flag indicating whether the edited {@link Dac} is in our out of
+     * sync with the associated DAC
+     */
+    private boolean deSync;
+
+    private final DacConfigDlg parent;
 
     /** Data access manager */
     private final DacDataManager dataManager;
 
     /** List of the port text fields */
     private final List<Text> dacPortTxtFldList = new ArrayList<>(4);
+
+    private final List<Text> dacLevelTxtFldList = new ArrayList<>(4);
 
     /** Enumeration of dialog types. */
     public enum DialogType {
@@ -121,6 +207,14 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     private DialogType dialogType = DialogType.CREATE;
 
     /**
+     * Keep track of the address of the DAC that is currently being edited (when
+     * applicable).
+     */
+    private String currentConfigAddress;
+
+    private DacConfigResponse latestConfigResponse;
+
+    /**
      * Constructor.
      * 
      * @param parentShell
@@ -129,11 +223,12 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      *            Dialog type.
      */
     public CreateEditDacConfigDlg(Shell parentShell, DialogType dialogType,
-            DacDataManager dataManager) {
+            DacDataManager dataManager, DacConfigDlg parent) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dialogType = dialogType;
         this.dataManager = dataManager;
+        this.parent = parent;
     }
 
     @Override
@@ -161,6 +256,13 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
+        
+        if (dialogType == DialogType.CREATE) {
+            /*
+             * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+             */
+            this.createSaveBtn.forceFocus();
+        }
     }
 
     @Override
@@ -169,6 +271,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             populateNew();
         } else {
             populate();
+            this.currentConfigAddress = dac.getAddress();
         }
     }
 
@@ -181,15 +284,21 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         controlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
+        // Out of Sync Message.
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        this.dacSyncLabel = new Label(controlComp, SWT.NONE);
+        this.dacSyncLabel.setLayoutData(gd);
+
         int textFieldMinWidth = 200;
 
         // DAC ID
         Label dacNameDescLbl = new Label(controlComp, SWT.NONE);
         dacNameDescLbl.setText("DAC Name:");
 
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         dacNameTF = new Text(controlComp, SWT.BORDER);
-        dacNameTF.setTextLimit(10);
+        dacNameTF.setTextLimit(Dac.DAC_NAME_LENGTH);
         dacNameTF.setLayoutData(gd);
 
         // DAC IP
@@ -199,7 +308,37 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         dacIpTF = new Text(controlComp, SWT.BORDER);
+        dacIpTF.setTextLimit(Dac.IP_LENGTH);
         dacIpTF.setLayoutData(gd);
+
+        // Net Mask
+        Label netMaskLbl = new Label(controlComp, SWT.NONE);
+        netMaskLbl.setText(NET_MASK_LABEL);
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = textFieldMinWidth;
+        dacNetMaskTF = new Text(controlComp, SWT.BORDER);
+        dacNetMaskTF.setTextLimit(Dac.IP_LENGTH);
+        dacNetMaskTF.setLayoutData(gd);
+
+        // Gateway
+        Label gatewayLbl = new Label(controlComp, SWT.NONE);
+        gatewayLbl.setText(GATEWAY_LABEL);
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = textFieldMinWidth;
+        dacGatewayTF = new Text(controlComp, SWT.BORDER);
+        dacGatewayTF.setTextLimit(Dac.IP_LENGTH);
+        dacGatewayTF.setLayoutData(gd);
+
+        // Broadcast Buffer
+        Label broadcastBufferLbl = new Label(controlComp, SWT.NONE);
+        broadcastBufferLbl.setText(BROADCAST_BUFFER_LABEL);
+
+        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
+        gd.widthHint = 50;
+        dacBroadcastBufferTF = new Text(controlComp, SWT.BORDER);
+        dacBroadcastBufferTF.setLayoutData(gd);
 
         // Receive Address
         Label receiveAddressDescLbl = new Label(controlComp, SWT.NONE);
@@ -208,6 +347,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.minimumWidth = textFieldMinWidth;
         receiveAddressTF = new Text(controlComp, SWT.BORDER);
+        receiveAddressTF.setTextLimit(Dac.IP_LENGTH);
         receiveAddressTF.setLayoutData(gd);
 
         // Receive Port
@@ -220,41 +360,111 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         receivePortTF.setLayoutData(gd);
 
         // Channels
-        Label channel1DescLbl = new Label(controlComp, SWT.NONE);
-        channel1DescLbl.setText(CHANNEL_BASE_PORT);
+        Composite channelComposite = new Composite(controlComp, SWT.NONE);
+        channelComposite.setLayout(new GridLayout(4, false));
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        channelComposite.setLayoutData(gd);
+
+        final int channelTxtWidth = 75;
+        final int levelTxtWidth = 45;
+
+        Label channel1DescLbl = new Label(channelComposite, SWT.NONE);
+        channel1DescLbl.setText(String.format(CHANNEL_BASE_PORT, 1));
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
-        channel1TF = new Text(controlComp, SWT.BORDER);
+        gd.minimumWidth = channelTxtWidth;
+        channel1TF = new Text(channelComposite, SWT.BORDER);
         channel1TF.setLayoutData(gd);
+
+        Label channel1LvlLbl = new Label(channelComposite, SWT.NONE);
+        channel1LvlLbl.setText(LEVEL_LABEL);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = levelTxtWidth;
+        channel1LvlTF = new Text(channelComposite, SWT.BORDER);
+        channel1LvlTF.setLayoutData(gd);
+
         dacPortTxtFldList.add(channel1TF);
+        dacLevelTxtFldList.add(channel1LvlTF);
 
-        Label channel2DescLbl = new Label(controlComp, SWT.NONE);
-        channel2DescLbl.setText(CHANNEL_BASE_PORT);
+        Label channel2DescLbl = new Label(channelComposite, SWT.NONE);
+        channel2DescLbl.setText(String.format(CHANNEL_BASE_PORT, 2));
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
-        channel2TF = new Text(controlComp, SWT.BORDER);
+        gd.minimumWidth = channelTxtWidth;
+        channel2TF = new Text(channelComposite, SWT.BORDER);
         channel2TF.setLayoutData(gd);
+
+        Label channel2LvlLbl = new Label(channelComposite, SWT.NONE);
+        channel2LvlLbl.setText(LEVEL_LABEL);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = levelTxtWidth;
+        channel2LvlTF = new Text(channelComposite, SWT.BORDER);
+        channel2LvlTF.setLayoutData(gd);
+
         dacPortTxtFldList.add(channel2TF);
+        dacLevelTxtFldList.add(channel2LvlTF);
 
-        Label channel3DescLbl = new Label(controlComp, SWT.NONE);
-        channel3DescLbl.setText(CHANNEL_BASE_PORT);
+        Label channel3DescLbl = new Label(channelComposite, SWT.NONE);
+        channel3DescLbl.setText(String.format(CHANNEL_BASE_PORT, 3));
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
-        channel3TF = new Text(controlComp, SWT.BORDER);
+        gd.minimumWidth = channelTxtWidth;
+        channel3TF = new Text(channelComposite, SWT.BORDER);
         channel3TF.setLayoutData(gd);
-        dacPortTxtFldList.add(channel3TF);
 
-        Label channel4DescLbl = new Label(controlComp, SWT.NONE);
-        channel4DescLbl.setText(CHANNEL_BASE_PORT);
+        Label channel3LvlLbl = new Label(channelComposite, SWT.NONE);
+        channel3LvlLbl.setText(LEVEL_LABEL);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = levelTxtWidth;
+        channel3LvlTF = new Text(channelComposite, SWT.BORDER);
+        channel3LvlTF.setLayoutData(gd);
+
+        dacPortTxtFldList.add(channel3TF);
+        dacLevelTxtFldList.add(channel3LvlTF);
+
+        Label channel4DescLbl = new Label(channelComposite, SWT.NONE);
+        channel4DescLbl.setText(String.format(CHANNEL_BASE_PORT, 4));
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
-        channel4TF = new Text(controlComp, SWT.BORDER);
+        gd.minimumWidth = channelTxtWidth;
+        channel4TF = new Text(channelComposite, SWT.BORDER);
         channel4TF.setLayoutData(gd);
+
+        Label channel4LvlLbl = new Label(channelComposite, SWT.NONE);
+        channel4LvlLbl.setText(LEVEL_LABEL);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = levelTxtWidth;
+        channel4LvlTF = new Text(channelComposite, SWT.BORDER);
+        channel4LvlTF.setLayoutData(gd);
+
         dacPortTxtFldList.add(channel4TF);
+        dacLevelTxtFldList.add(channel4LvlTF);
+
+        // Reboot / Auto-Configure
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        this.rebootAutoConfigureChk = new Button(controlComp, SWT.CHECK);
+        final String chkText = (dialogType == DialogType.CREATE) ? AUTO_CONFIGURE_TEXT
+                : REBOOT_TEXT;
+        this.rebootAutoConfigureChk.setText(chkText);
+        this.rebootAutoConfigureChk
+                .setSelection((dialogType == DialogType.CREATE));
+        this.rebootAutoConfigureChk.setLayoutData(gd);
+        rebootAutoConfigureChk.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                if (dialogType == DialogType.EDIT) {
+                    return;
+                }
+
+                if (rebootAutoConfigureChk.getSelection()) {
+                    createSaveBtn.setText(CONFIGURE_TEXT);
+                } else {
+                    createSaveBtn.setText(SAVE_TEXT);
+                }
+            }
+        });
     }
 
     /**
@@ -266,15 +476,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 75;
+        int buttonWidth = 90;
 
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
         gd.widthHint = buttonWidth;
-        Button createSaveBtn = new Button(buttonComp, SWT.PUSH);
+        createSaveBtn = new Button(buttonComp, SWT.PUSH);
         if (dialogType == DialogType.CREATE) {
-            createSaveBtn.setText(" Create ");
+            createSaveBtn.setText(CONFIGURE_TEXT);
         } else if (dialogType == DialogType.EDIT) {
-            createSaveBtn.setText(" Save ");
+            createSaveBtn.setText(SAVE_TEXT);
         }
 
         createSaveBtn.setLayoutData(gd);
@@ -313,22 +523,51 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     private void populate() {
         this.dacNameTF.setText(dac.getName());
         this.dacIpTF.setText(dac.getAddress());
+        this.dacNetMaskTF.setText(dac.getNetMask());
+        this.dacGatewayTF.setText(dac.getGateway());
+        this.dacBroadcastBufferTF.setText(String.valueOf(dac
+                .getBroadcastBuffer()));
         this.receiveAddressTF.setText(dac.getReceiveAddress());
         this.receivePortTF.setText(String.valueOf(dac.getReceivePort()));
-        List<Integer> ports = new ArrayList<Integer>(dac.getDataPorts());
-        Collections.sort(ports);
 
-        if (ports.size() > dacPortTxtFldList.size()) {
-            statusHandler
-                    .warn("The DAC's only have 4 ports.  The database has "
-                            + ports.size()
-                            + " ports configured.  This should be investigated");
+        List<DacChannel> channels = dac.getChannels();
+        if (channels.size() != dacPortTxtFldList.size()) {
+            statusHandler.warn("The DAC's have 4 ports.  The database has "
+                    + channels.size()
+                    + " ports configured.  This should be investigated");
         }
 
-        for (int i = 0; i < ports.size(); i++) {
-            int port = ports.get(i);
-            Text tf = dacPortTxtFldList.get(i);
-            tf.setText(String.valueOf(port));
+        /*
+         * Our implementation guarantees that four ports will always be
+         * specified. However, there is nothing to prevent a user from manually
+         * adding information to the BMH database.
+         */
+        final int channelCount = Math.min(channels.size(),
+                dacPortTxtFldList.size());
+        for (int i = 0; i < channelCount; i++) {
+            DacChannel channel = channels.get(i);
+
+            Text portTF = dacPortTxtFldList.get(i);
+            portTF.setText(String.valueOf(channel.getPort()));
+
+            Text levelTF = dacLevelTxtFldList.get(i);
+            levelTF.setText(String.valueOf(channel.getLevel()));
+        }
+
+        if (this.deSync) {
+            this.dacSyncLabel.setText(NO_SYNC_MESSAGE);
+            this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
+                    SWT.COLOR_RED));
+            /*
+             * Only allow the user to complete a sync operation with the DAC in
+             * this case.
+             */
+            this.createSaveBtn.setText(SYNC_TEXT);
+            this.rebootAutoConfigureChk.setEnabled(false);
+        } else {
+            this.dacSyncLabel.setText(SYNC_MESSAGE);
+            this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
+                    SWT.COLOR_GREEN));
         }
     }
 
@@ -372,7 +611,11 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             if (!names.contains(name) && !addresses.contains(address)) {
                 this.dacNameTF.setText(name);
                 this.dacIpTF.setText(address);
-                int basePort = 20000 + 1000 * i;
+                this.dacNetMaskTF.setText(Dac.DEFAULT_NET_MASK);
+                this.dacGatewayTF.setText(Dac.DEFAULT_GATEWAY);
+                this.dacBroadcastBufferTF.setText(String
+                        .valueOf(Dac.DEFAULT_BROADCAST_BUFFER));
+                int basePort = 18000 + (10 * i);
                 if (!recievePorts.contains(basePort)) {
                     this.receiveAddressTF.setText(Dac.DEFAULT_RECEIVE_ADDRESS);
                     this.receivePortTF.setText(String.valueOf(basePort));
@@ -381,14 +624,22 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
                 for (int p = 2; p <= 8; p += 2) {
                     int port = basePort + p;
                     if (!ports.contains(port)) {
-                        Text tf = dacPortTxtFldList.get(portIndex);
-                        tf.setText(String.valueOf(port));
+                        Text portTF = dacPortTxtFldList.get(portIndex);
+                        portTF.setText(String.valueOf(port));
+
+                        Text levelTF = dacLevelTxtFldList.get(portIndex);
+                        levelTF.setText(String
+                                .valueOf(DacChannel.DEFAULT_LEVEL));
                     }
                     portIndex += 1;
                 }
                 break;
             }
         }
+
+        this.dacSyncLabel.setText(NO_EXIST_MESSAGE);
+        this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
+                SWT.COLOR_YELLOW));
     }
 
     private InetAddress getBaseDacInetAddress() {
@@ -427,108 +678,209 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      * @return true if successful
      */
     private boolean handleSaveAction() {
+        /*
+         * First, determine if this is a sync operation.
+         */
+        if (this.dialogType == DialogType.EDIT && this.deSync) {
+            return this.syncWithDAC();
+        }
+
         boolean isValid = true;
         StringBuilder errMsg = new StringBuilder("Invalid values entered \n\n");
 
         String name = dacNameTF.getText().trim();
-        if (name.length() == 0) {
+        if (name.isEmpty()) {
             isValid = false;
             errMsg.append("DAC name is required\n");
         }
-        List<Dac> dacs = Collections.emptyList();
-        try {
-            dacs = dataManager.getDacs();
-        } catch (Exception e) {
-            errMsg.append("Unable to load existing dacs for validation\n");
-            isValid = false;
-        }
-
-        // TODO: Optimize
-        for (Dac d : dacs) {
-            if (name.equals(d.getName()) && dac.getId() != d.getId()) {
-                isValid = false;
-                errMsg.append("Dac name must be unique. Use a different name\n");
-                break;
-            }
-        }
 
         String address = this.dacIpTF.getText().trim();
-        for (Dac d : dacs) {
-            if (address.equals(d.getAddress()) && dac.getId() != d.getId()) {
-                isValid = false;
-                errMsg.append("Dac address ").append(address)
-                        .append(" is already in use by ").append(d.getName())
-                        .append(".\n");
-                break;
-            }
+        if (address.isEmpty()) {
+            isValid = false;
+            errMsg.append("DAC address is required\n");
         }
-
+        String netMask = this.dacNetMaskTF.getText().trim();
+        if (netMask.isEmpty()) {
+            isValid = false;
+            errMsg.append("DAC net mask is required\n");
+        }
+        String gateway = this.dacGatewayTF.getText().trim();
+        if (gateway.isEmpty()) {
+            isValid = false;
+            errMsg.append("DAC gateway is required\n");
+        }
+        String broadcastBuffer = this.dacBroadcastBufferTF.getText().trim();
+        int broadcastBufferInt = 0;
+        try {
+            broadcastBufferInt = Integer.parseInt(broadcastBuffer);
+            if ((broadcastBufferInt < Dac.BROADCAST_BUFFER_MIN)
+                    || (broadcastBufferInt > Dac.BROADCAST_BUFFER_MAX)) {
+                isValid = false;
+                errMsg.append("The dac broadcast buffer size must be in the range: "
+                        + Dac.BROADCAST_BUFFER_MIN
+                        + " to "
+                        + Dac.BROADCAST_BUFFER_MAX + "!");
+            }
+        } catch (NumberFormatException e) {
+            isValid = false;
+            errMsg.append("Broadcast buffer must be an integer value\n");
+        }
         String receiveAddress = this.receiveAddressTF.getText().trim();
+        if (receiveAddress.isEmpty()) {
+            isValid = false;
+            errMsg.append("DAC receive address is required\n");
+        }
         String receivePort = this.receivePortTF.getText().trim();
         int receivePortInt = 0;
-        if (receivePort.length() > 0) {
-            try {
-                receivePortInt = Integer.parseInt(receivePort);
-            } catch (NumberFormatException e) {
-                isValid = false;
-                errMsg.append("Receive port must be an integer value\n");
-            }
-        }
-        for (Dac d : dacs) {
-            if (receiveAddress.equals(d.getReceiveAddress())
-                    && d.getReceivePort() == receivePortInt
-                    && dac.getId() != d.getId()) {
-                isValid = false;
-                errMsg.append("Dac receive address/port ")
-                        .append(receiveAddress).append(":").append(receivePort)
-                        .append(" is already in use by ").append(d.getName())
-                        .append(".\n");
-                break;
-            }
+        try {
+            receivePortInt = Integer.parseInt(receivePort);
+        } catch (NumberFormatException e) {
+            isValid = false;
+            errMsg.append("Receive port must be an integer value\n");
         }
 
-        Set<Integer> ports = Collections.emptySet();
         List<DacChannel> channels = new LinkedList<>();
-
         int portNum = 1;
         try {
             for (int i = 0; i < dacPortTxtFldList.size(); i++) {
                 String text = this.dacPortTxtFldList.get(i).getText().trim();
-                if (text.length() > 0) {
+                /*
+                 * Only populate {@link DacChannel}s if all of the data up to
+                 * this point has been valid.
+                 */
+                if (isValid) {
                     channels.add(new DacChannel(Integer.valueOf(text)));
                 }
                 portNum++;
             }
         } catch (NumberFormatException e) {
             isValid = false;
-            errMsg.append("Channel " + portNum + " must be an integer value.\n");
+            errMsg.append("The channel " + portNum
+                    + " port must be an integer value.\n");
         }
 
-        // TODO: Optimize
-        for (Integer port : ports) {
-            for (Dac d : dacs) {
-                if (d.getDataPorts().contains(port) && dac.getId() != d.getId()) {
+        int levelNum = 1;
+        try {
+            for (int i = 0; i < dacLevelTxtFldList.size(); i++) {
+                String text = this.dacLevelTxtFldList.get(i).getText().trim();
+                double setLevel = Double.valueOf(text);
+                if ((setLevel < DacChannel.LEVEL_MIN)
+                        || (setLevel > DacChannel.LEVEL_MAX)) {
                     isValid = false;
-                    errMsg.append("Channel base Port ").append(port)
-                            .append(" is already in use by ")
-                            .append(d.getName()).append(".\n");
-                    break;
+                    errMsg.append("The channel " + levelNum
+                            + " level must be in the range: "
+                            + DacChannel.LEVEL_MIN + " to "
+                            + DacChannel.LEVEL_MAX + ".\n");
+                    continue;
                 }
+                /*
+                 * Only populate {@link DacChannel}s if all of the data up to
+                 * this point has been valid.
+                 */
+                if (isValid) {
+                    channels.get(i).setLevel(setLevel);
+                }
+                levelNum++;
+            }
+        } catch (NumberFormatException e) {
+            isValid = false;
+            errMsg.append("The channel " + levelNum
+                    + " level must be a decimal value.\n");
+        }
+
+        if (isValid) {
+            Dac validateDac = new Dac();
+            validateDac.setId(dac.getId());
+            validateDac.setAddress(address);
+            validateDac.setName(name);
+            validateDac.setReceiveAddress(receiveAddress);
+            validateDac.setReceivePort(receivePortInt);
+            validateDac.setChannels(channels);
+
+            List<Dac> conflictDacs = Collections.emptyList();
+            try {
+                conflictDacs = this.dataManager
+                        .validateDacUniqueness(validateDac);
+            } catch (Exception e) {
+                errMsg.append("Unable to validate that the DAC is unique.\n");
+                isValid = false;
+            }
+            if (CollectionUtils.isNotEmpty(conflictDacs)) {
+                /*
+                 * Determine how the dac being updated / saved is in conflict.
+                 */
+                for (Dac conflictDac : conflictDacs) {
+                    if (validateDac.getName().equals(conflictDac.getName())) {
+                        errMsg.append("DAC name must be unique. Use a different name\n");
+                    }
+                    if (validateDac.getAddress().equals(
+                            conflictDac.getAddress())) {
+                        errMsg.append("DAC address ").append(address)
+                                .append(" is already in use by ")
+                                .append(conflictDac.getName()).append(".\n");
+                    }
+                    if (validateDac.getReceiveAddress().equals(
+                            conflictDac.getReceiveAddress())
+                            && (validateDac.getReceivePort() == conflictDac
+                                    .getReceivePort())) {
+                        errMsg.append("DAC receive address/port ")
+                                .append(receiveAddress).append(":")
+                                .append(receivePort)
+                                .append(" is already in use by ")
+                                .append(conflictDac.getName()).append(".\n");
+                    }
+
+                    /*
+                     * Determine if there are any port conflicts.
+                     */
+                    List<?> portConflicts = ListUtils.intersection(
+                            validateDac.getDataPorts(),
+                            conflictDac.getDataPorts());
+                    if (CollectionUtils.isNotEmpty(portConflicts)) {
+                        StringBuilder sb = new StringBuilder(
+                                "Channel Base Port");
+                        if (portConflicts.size() == 1) {
+                            sb.append(": ")
+                                    .append(portConflicts.get(0))
+                                    .append(" has already been assigned to DAC: ");
+                        } else {
+                            sb.append("s: ")
+                                    .append(portConflicts)
+                                    .append(" have already been assigned to DAC: ");
+                        }
+                        sb.append(conflictDac.getName()).append(".\n");
+                        errMsg.append(sb.toString());
+                    }
+                }
+
+                isValid = false;
             }
         }
 
         if (isValid) {
             dac.setAddress(address);
             dac.setName(name);
+            dac.setNetMask(netMask);
+            dac.setGateway(gateway);
+            dac.setBroadcastBuffer(broadcastBufferInt);
             dac.setReceiveAddress(receiveAddress);
             dac.setReceivePort(receivePortInt);
             dac.setChannels(channels);
 
-            try {
-                dac = dataManager.saveDac(dac);
-                setReturnValue(dac);
-            } catch (Exception e) {
-                statusHandler.error("Error saving DAC configuation.", e);
+            if ((this.dialogType == DialogType.CREATE && this.rebootAutoConfigureChk
+                    .getSelection()) || this.dialogType == DialogType.EDIT) {
+                return configureDac();
+            } else {
+                /*
+                 * This path only exists to support adding a {@link Dac}
+                 * associated with an already fully configured DAC to BMH.
+                 */
+                try {
+                    dac = dataManager.saveDac(dac);
+                    setReturnValue(dac);
+                } catch (Exception e) {
+                    statusHandler.error("Error saving DAC configuation.", e);
+                }
             }
         } else {
             DialogUtility.showMessageBox(getShell(), SWT.ICON_ERROR,
@@ -536,6 +888,97 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         }
 
         return isValid;
+    }
+
+    private boolean syncWithDAC() {
+        try {
+            latestConfigResponse = this.dataManager.syncWithDAC(this.dac);
+        } catch (Exception e) {
+            statusHandler.error("The DAC sync has failed.", e);
+            return false;
+        }
+
+        if (latestConfigResponse == null) {
+            return false;
+        }
+        if (latestConfigResponse.isSuccess()) {
+            dac = latestConfigResponse.getDac();
+            this.parent.updateDacSync(dac.getId());
+            setReturnValue(dac);
+        }
+
+        return latestConfigResponse.isSuccess();
+    }
+
+    private boolean configureDac() {
+        /*
+         * Display any prompts that are necessary to retrieve additional
+         * information and/or confirm the user's decision.
+         */
+        final String configAddress;
+        if (this.dialogType == DialogType.CREATE) {
+            /*
+             * The DAC associated with the {@link Dac} has never been previously
+             * configured. Request the address of the DAC to configure.
+             */
+            final InputTextDlg inputDlg = new InputTextDlg(shell,
+                    "Configure DAC",
+                    "Enter the IP Address of the DAC to configure:",
+                    DacConfigDlg.MANUFACTURER_DAC_IP,
+                    new ConfigureDacAddressValidator(), false, true);
+            configAddress = (String) inputDlg.open();
+            if (configAddress == null) {
+                // Cancel
+                return false;
+            }
+        } else {
+            configAddress = this.currentConfigAddress;
+        }
+
+        final boolean reboot = rebootAutoConfigureChk.getSelection();
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(shell);
+        try {
+            dialog.run(true, false, new IRunnableWithProgress() {
+                @Override
+                public void run(IProgressMonitor monitor)
+                        throws InvocationTargetException, InterruptedException {
+                    monitor.beginTask("Configuring DAC: " + dac.getName()
+                            + " ...", IProgressMonitor.UNKNOWN);
+                    try {
+                        latestConfigResponse = dataManager.configureSaveDac(
+                                dac, reboot, configAddress);
+
+                    } catch (Exception e) {
+                        statusHandler.error(
+                                "Failed to configure DAC: " + dac.getName()
+                                        + ".", e);
+                    }
+                }
+            });
+        } catch (Exception e) {
+            statusHandler.error("Failed to configure DAC: " + dac.getName()
+                    + ".", e);
+            return false;
+        }
+
+        if (latestConfigResponse == null) {
+            return false;
+        }
+        if (latestConfigResponse.isSuccess()) {
+            dac = latestConfigResponse.getDac();
+            /*
+             * Update the address that would be used to configure the DAC if any
+             * additional changes are made before this dialog is closed.
+             */
+            this.currentConfigAddress = dac.getAddress();
+            setReturnValue(dac);
+        }
+
+        DacConfigEventDlg dacEventDlg = new DacConfigEventDlg(shell,
+                latestConfigResponse.getEvents(), null);
+        dacEventDlg.open();
+
+        return latestConfigResponse.isSuccess();
     }
 
     /**
@@ -549,7 +992,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      * @param dac
      *            the dac to set
      */
-    public void setDac(Dac dac) {
+    public void setDac(Dac dac, final boolean deSync) {
         this.dac = dac;
+        this.deSync = deSync;
     }
 }

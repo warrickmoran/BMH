@@ -19,7 +19,10 @@
  **/
 package com.raytheon.uf.common.bmh.datamodel.language;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import javax.persistence.CascadeType;
@@ -69,6 +72,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Dec 16, 2014 3618       bkowal      Added {@link #GET_NON_NATIONAL_DICTIONARIES_FOR_LANGUAGE}.
  * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Dec 03, 2015 5159       bkowal      Added {@link #getAllWordsAsStrings()}.
  * </pre>
  * 
  * @author rjpeter
@@ -205,6 +209,24 @@ public class Dictionary {
         }
 
         return null;
+    }
+
+    /**
+     * Returns a {@link List} of {@link String}s consisting of all of the
+     * {@link Word#getWord()}.
+     * 
+     * @return a {@link List} of {@link String}s.
+     */
+    public List<String> getAllWordsAsStrings() {
+        if (words == null || words.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<String> wordList = new ArrayList<>(words.size());
+        for (Word word : words) {
+            wordList.add(word.getWord());
+        }
+        return wordList;
     }
 
     /*

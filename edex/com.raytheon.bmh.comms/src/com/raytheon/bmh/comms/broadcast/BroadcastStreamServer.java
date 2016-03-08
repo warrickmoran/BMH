@@ -22,6 +22,7 @@ package com.raytheon.bmh.comms.broadcast;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,7 +32,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.cluster.ClusterServer;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitCommunicator;
@@ -49,7 +50,6 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
-import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 
 /**
  * Listens for and handles @{link StartLiveBroadcastRequest}. Creates a
@@ -74,14 +74,15 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Aug 24, 2015 4770       bkowal      Handle {@link AudioRegulationSettingsCommand}.
  * Aug 25, 2015 4775       bkowal      Added {@link #remoteDacConnections} to track remote
  *                                     dac transmit connections.
- * 
+ * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015 5114       rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bkowal
  * @version 1.0
  */
 
-public class BroadcastStreamServer extends AbstractServerThread {
+public class BroadcastStreamServer extends AbstractServer {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -107,27 +108,16 @@ public class BroadcastStreamServer extends AbstractServerThread {
      * @throws IOException
      */
     public BroadcastStreamServer(ClusterServer clusterServer,
-            final DacTransmitServer transmitServer, CommsConfig config,
+            final DacTransmitServer transmitServer,
             final CommsManager commsManager) throws IOException {
-        super(config.getBroadcastLivePort());
+        super(commsManager.getSocketListener());
         this.clusterServer = clusterServer;
         this.transmitServer = transmitServer;
         this.commsManager = commsManager;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.bmh.comms.AbstractServerThread#handleConnection(java.net
-     * .Socket)
-     */
     @Override
-    protected void handleConnection(Socket socket) throws Exception {
-        Object obj = SerializationUtil.transformFromThrift(Object.class,
-                socket.getInputStream());
-        logger.info("Handling {} request.", obj.getClass().getName());
-
+    public boolean handleConnection(Socket socket, Object obj) {
         if (obj instanceof LiveBroadcastListGroupsCommand) {
             List<String> availableDacs = new ArrayList<>();
             synchronized (this.availableDacConnections) {
@@ -137,18 +127,37 @@ public class BroadcastStreamServer extends AbstractServerThread {
                 availableDacs.addAll(this.remoteDacConnections);
             }
 
-            SerializationUtil.transformToThriftUsingStream(
-                    new LiveBroadcastGroupsMessage(availableDacs),
-                    socket.getOutputStream());
-            socket.close();
-            return;
+            try {
+                SerializationUtil.transformToThriftUsingStream(
+                        new LiveBroadcastGroupsMessage(commsManager
+                                .getOperational(), availableDacs), socket
+                                .getOutputStream());
+            } catch (SerializationException | IOException e) {
+                logger.error("Error occurred sending response to "
+                        + LiveBroadcastListGroupsCommand.class.getSimpleName()
+                        + " request", e);
+            }
+            return true;
         }
+
         if (obj instanceof AudioRegulationSettingsCommand) {
-            SerializationUtil.transformToThriftUsingStream(
-                    LoadedAudioRegulationConfiguration.getConfiguration(),
-                    socket.getOutputStream());
-            socket.close();
-            return;
+            try {
+                SerializationUtil.transformToThriftUsingStream(
+                        LoadedAudioRegulationConfiguration.getConfiguration(),
+                        socket.getOutputStream());
+            } catch (Exception e) {
+                logger.error("Error occurred sending response to "
+                        + AudioRegulationSettingsCommand.class.getSimpleName()
+                        + " request", e);
+            }
+
+            return true;
+        }
+
+        if (!(obj instanceof IOnDemandBroadcastMsg)) {
+            logger.warn("Received unexpected message with type: "
+                    + obj.getClass().getName() + ". Disconnecting ...");
+            return true;
         }
 
         IOnDemandBroadcastMsg command = (IOnDemandBroadcastMsg) obj;
@@ -158,8 +167,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
              * An existing {@link AbstractBroadcastingTask} is already using one
              * of the requested {@link TransmitterGroup}.
              */
-            socket.close();
-            return;
+            return true;
         }
 
         AbstractBroadcastingTask task = null;
@@ -173,11 +181,11 @@ public class BroadcastStreamServer extends AbstractServerThread {
             logger.error(
                     "On Demand Broadcast Command {} is not currently supported!",
                     command.getClass().getName());
-            socket.close();
-            return;
+            return true;
         }
 
         this.runDelegate(task);
+        return false;
     }
 
     /**
@@ -222,7 +230,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
             BroadcastStatus status = new BroadcastStatus();
             status.setMsgSource(MSGSOURCE.COMMS);
-            status.setBroadcastId(this.getName());
+            status.setBroadcastId(BroadcastStreamServer.class.getSimpleName());
             status.setStatus(false);
             status.setTransmitterGroups(command.getTransmitterGroups());
             status.setMessage(clientMsg.toString());
@@ -273,8 +281,7 @@ public class BroadcastStreamServer extends AbstractServerThread {
     }
 
     @Override
-    public void shutdown() {
-        super.shutdown();
+    protected void shutdownInternal() {
         for (AbstractBroadcastingTask task : this.broadcastStreamingTasksMap
                 .values()) {
             task.shutdown();
@@ -407,12 +414,21 @@ public class BroadcastStreamServer extends AbstractServerThread {
 
             return null;
         }
-        if (task instanceof BroadcastStreamTask == false) {
+        if ((task instanceof BroadcastStreamTask) == false) {
             // unlikely scenario
             logger.warn("Ignoring dac live broadcast {} msg. Broadcast {} is not a live streamed broadcast.");
             return null;
         }
 
         return (BroadcastStreamTask) task;
+    }
+
+    @Override
+    protected Set<Class<?>> getTypesHandled() {
+        Set<Class<?>> rval = new HashSet<>(4, 1);
+        rval.add(LiveBroadcastListGroupsCommand.class);
+        rval.add(AudioRegulationSettingsCommand.class);
+        rval.add(IOnDemandBroadcastMsg.class);
+        return Collections.unmodifiableSet(rval);
     }
 }
