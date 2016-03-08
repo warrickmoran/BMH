@@ -39,7 +39,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Dec 05, 2014  3287     lvenable    Check for null when retrieving connectedTransmitterGroups.
  * Jan 27, 2015  4029     bkowal      Added {@link #equals(Object)}.
  * Mar 11, 2015  4186     bsteffen    Add silentTransmitterGroups
- * 
+ * Dec 21, 2015  5218     rjpeter     Added toString
  * </pre>
  * 
  * @author bsteffen
@@ -114,12 +114,10 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime
-                * result
+        result = (prime * result)
                 + ((connectedTransmitterGroups == null) ? 0
                         : connectedTransmitterGroups.hashCode());
-        result = prime
-                * result
+        result = (prime * result)
                 + ((silentTransmitterGroups == null) ? 0
                         : silentTransmitterGroups.hashCode());
         return result;
@@ -127,26 +125,44 @@ public class CommsManagerStatus extends PeriodicStatusMessage {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj)
+        if (this == obj) {
             return true;
-        if (!super.equals(obj))
+        }
+        if (!super.equals(obj)) {
             return false;
-        if (getClass() != obj.getClass())
+        }
+        if (getClass() != obj.getClass()) {
             return false;
+        }
         CommsManagerStatus other = (CommsManagerStatus) obj;
         if (connectedTransmitterGroups == null) {
-            if (other.connectedTransmitterGroups != null)
+            if (other.connectedTransmitterGroups != null) {
                 return false;
+            }
         } else if (!connectedTransmitterGroups
-                .equals(other.connectedTransmitterGroups))
+                .equals(other.connectedTransmitterGroups)) {
             return false;
+        }
         if (silentTransmitterGroups == null) {
-            if (other.silentTransmitterGroups != null)
+            if (other.silentTransmitterGroups != null) {
                 return false;
+            }
         } else if (!silentTransmitterGroups
-                .equals(other.silentTransmitterGroups))
+                .equals(other.silentTransmitterGroups)) {
             return false;
+        }
         return true;
+    }
+
+    @Override
+    public String toString() {
+        return new StringBuilder(128).append("CommsManagerStatus [host=")
+                .append(getHost()).append(", statusTime=")
+                .append(getStatusTime())
+                .append(", connectedTransmitterGroups=")
+                .append(connectedTransmitterGroups)
+                .append(", silentTransmitterGroups=")
+                .append(silentTransmitterGroups).append("]").toString();
     }
 
 }
