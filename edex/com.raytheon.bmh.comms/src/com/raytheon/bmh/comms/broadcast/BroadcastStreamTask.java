@@ -79,6 +79,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Aug 12, 2015 4424       bkowal      Eliminate Dac Transmit Key.
  * Oct 26, 2015 5034       bkowal      Halt any resources that are managed by this
  *                                     task when this task halts due to error.
+ * Dec 15, 2015 5114       rjpeter     Updated name to include EO/BL.
  * </pre>
  * 
  * @author bkowal
@@ -134,8 +135,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
-        return command.getMsgSource() == MSGSOURCE.COMMS ? command
-                .getBroadcastId() : UUID.randomUUID().toString().toUpperCase();
+        return (command.getMsgSource() == MSGSOURCE.COMMS ? command
+                .getBroadcastId() : command.getType().toString() + "_"
+                + UUID.randomUUID().toString().toUpperCase());
     }
 
     private void handleStateTransition() {
@@ -143,7 +145,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 this.state.toString());
         logger.info("CURRENT MANAGED STATE: {}", this.tgManager.toString());
 
-        if (this.state == STATE.READY || this.state == STATE.TRIGGER) {
+        if ((this.state == STATE.READY) || (this.state == STATE.TRIGGER)) {
             /**
              * Lock on the READY state and the TRIGGER state for both the
              * {@link BroadcastStreamTask} and the
@@ -230,8 +232,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * Every specified transmitter group must be a transmitter group that we
          * can access or that a different cluster member can access.
          */
-        if ((count > 0 && this.communicationWait(this.calculateWaitDuration()) == false)
-                || this.tgManager.allTransmittersAssigned() == false) {
+        if (((count > 0) && (this.communicationWait(this
+                .calculateWaitDuration()) == false))
+                || (this.tgManager.allTransmittersAssigned() == false)) {
             final String preText = "Failed to start broadcast "
                     + this.getName()
                     + ". Unable to access the following transmitter groups: ";
@@ -331,9 +334,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         /*
          * verify all transmitter groups are available for streaming.
          */
-        if (this.communicationWait(this.calculateWaitDuration()) == false
-                || this.tgManager
-                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE) == false) {
+        if ((this.communicationWait(this.calculateWaitDuration()) == false)
+                || (this.tgManager
+                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE) == false)) {
             StringBuilder msgBuilder = new StringBuilder(
                     "Failed to start broadcast " + this.getName() + ".");
             if (this.tgManager
@@ -427,9 +430,9 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * indicating that the required tones have been played and all existing
          * playback has been paused.
          */
-        if (this.communicationWait(this.calculateWaitDuration()) == false
-                || this.tgManager
-                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.READY) == false) {
+        if ((this.communicationWait(this.calculateWaitDuration()) == false)
+                || (this.tgManager
+                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.READY) == false)) {
             StringBuilder msgBuilder = new StringBuilder(
                     "Failed to start broadcast " + this.getName() + ".");
             if (this.tgManager
@@ -546,7 +549,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             }
 
             this.state = STATE.INIT;
-            while (this.state != STATE.STOP && this.state != STATE.ERROR) {
+            while ((this.state != STATE.STOP) && (this.state != STATE.ERROR)) {
                 this.handleStateTransition();
             }
         } finally {
@@ -638,8 +641,8 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             BroadcastStatus status = (BroadcastStatus) msg;
             switch (this.state) {
             case INIT:
-                if (status.getStatus() == false
-                        || status.getTransmitterGroups() == null) {
+                if ((status.getStatus() == false)
+                        || (status.getTransmitterGroups() == null)) {
                     return;
                 }
 
@@ -741,7 +744,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             break;
         case READY:
         case TRIGGER:
-            if (msg instanceof BroadcastStatus == false) {
+            if ((msg instanceof BroadcastStatus) == false) {
                 return;
             }
 
@@ -772,12 +775,12 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
             // have all transmitters been accounted for?
             if (this.isPrimary()
-                    && this.tgManager
-                            .doAnyTransmittersHaveStreamStatus(notWantedStatus) == false) {
+                    && (this.tgManager
+                            .doAnyTransmittersHaveStreamStatus(notWantedStatus) == false)) {
                 this.communicationLock.release();
-            } else if (this.isPrimary() == false
-                    && this.tgManager
-                            .doManagedTransmittersHaveStreamStatus(notWantedStatus) == false) {
+            } else if ((this.isPrimary() == false)
+                    && (this.tgManager
+                            .doManagedTransmittersHaveStreamStatus(notWantedStatus) == false)) {
                 this.communicationLock.release();
             }
 
@@ -899,8 +902,8 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         /*
          * Verify that the request is actually for us.
          */
-        if (playCommand.getBroadcastId().equals(this.getName()) == false
-                || this.state != STATE.LIVE) {
+        if ((playCommand.getBroadcastId().equals(this.getName()) == false)
+                || (this.state != STATE.LIVE)) {
             return;
         }
         playCommand.setMsgSource(MSGSOURCE.COMMS);

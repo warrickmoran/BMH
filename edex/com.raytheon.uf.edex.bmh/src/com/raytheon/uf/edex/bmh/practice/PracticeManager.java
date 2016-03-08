@@ -51,8 +51,10 @@ import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.core.EdexException;
+import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
 import com.raytheon.uf.edex.database.cluster.ClusterLocker;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
+import com.raytheon.uf.edex.database.cluster.handler.CurrentTimeClusterLockHandler;
 
 /**
  * 
@@ -73,6 +75,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 01, 2015  4602     rjpeter     Update DacPort collection type.
  * Nov 05, 2015  5092     bkowal      Use {@link DacChannel}.
  * Nov 06, 2015  5092     bkowal      Add generated Dac Channel to the list.
+ * Nov 11, 2015  5114     rjpeter     Updated dac port numbering scheme.
  * </pre>
  * 
  * @author bsteffen
@@ -86,6 +89,8 @@ public class PracticeManager {
     private static final String LOCK_NAME = "practice";
 
     private static final String LOCK_DETAILS = "start_time";
+
+    private static final String DAC_LOCK_DETAILS = "start_time";
 
     private final SimpleDateFormat logDateFormat = new SimpleDateFormat(
             "yyyyMMdd");
@@ -139,7 +144,7 @@ public class PracticeManager {
         long time = System.currentTimeMillis();
         ClusterTask task = locker.lookupLock(LOCK_NAME, LOCK_DETAILS);
         long runTime = time - task.getLastExecution();
-        if (task.isRunning() && runTime > timeoutMinutes * 60 * 1000l) {
+        if (task.isRunning() && (runTime > (timeoutMinutes * 60 * 1000l))) {
             logger.info("Practice mode has timed out after {} minutes",
                     runTime / 1000 / 60);
             try {
@@ -179,11 +184,11 @@ public class PracticeManager {
                 Enumeration<NetworkInterface> nics = NetworkInterface
                         .getNetworkInterfaces();
                 if (nics != null) {
-                    while (nics.hasMoreElements() && address == null) {
+                    while (nics.hasMoreElements() && (address == null)) {
                         nic = nics.nextElement();
                         Enumeration<InetAddress> addresses = nic
                                 .getInetAddresses();
-                        while (addresses.hasMoreElements() && address == null) {
+                        while (addresses.hasMoreElements() && (address == null)) {
                             address = addresses.nextElement();
                             if (address.isLoopbackAddress()) {
                                 address = null;
@@ -196,39 +201,9 @@ public class PracticeManager {
             } catch (SocketException e) {
                 logger.error("Unable to determine address for dac.", e);
             }
-            if (address != null) {
-                Dac dac = new Dac();
-                dac.setAddress(address.getHostAddress());
-                dac.setReceiveAddress(Dac.DEFAULT_RECEIVE_ADDRESS);
-                int basePort = 30000 + ((Math.abs(address.hashCode()) % 1000) * 10);
 
-                dac.setReceivePort(basePort);
-                List<DacChannel> channels = new ArrayList<>(4);
-                for (int i = 2; i <= 8; i += 2) {
-                    DacChannel channel = new DacChannel();
-                    channel.setPort(basePort + i);
-                    channels.add(channel);
-                }
-                dac.setChannels(channels);
-                String name = address.getHostName();
-                if (name != null) {
-                    int index = name.indexOf('.');
-                    if (index > 0) {
-                        name = name.substring(0, index);
-                    }
-                    dac.setName(name);
-                } else {
-                    dac.setName(address.getHostAddress());
-                }
-                logger.info("Creating a new dac for {}", dac.getName());
-                new DacDao(false).persist(dac);
-                try {
-                    BmhMessageProducer.sendConfigMessage(
-                            new DacConfigNotification(ConfigChangeType.Update,
-                                    dac, traceable), false);
-                } catch (EdexException | SerializationException e) {
-                    logger.error("Unable to properly configure new dac.", e);
-                }
+            if (address != null) {
+                createNewDac(traceable, address);
             }
 
         }
@@ -256,6 +231,64 @@ public class PracticeManager {
             }
         }
         return startedDac;
+    }
+
+    private boolean createNewDac(ITraceable traceable, InetAddress address) {
+        boolean rval = true;
+        DacDao dao = new DacDao(false);
+
+        ClusterTask ct = null;
+        try {
+            do {
+                ct = locker.lock(LOCK_NAME, DAC_LOCK_DETAILS,
+                        new CurrentTimeClusterLockHandler(10000, true), true);
+            } while (ct.getLockState() != LockState.SUCCESSFUL);
+
+            int basePort = 18510;
+            for (Dac dac : dao.getAll()) {
+                if (dac.getReceivePort() >= basePort) {
+                    basePort = dac.getReceivePort() + 10;
+                }
+            }
+
+            Dac dac = new Dac();
+            dac.setAddress(address.getHostAddress());
+            dac.setReceiveAddress(Dac.DEFAULT_RECEIVE_ADDRESS);
+            dac.setReceivePort(basePort);
+            List<DacChannel> channels = new ArrayList<>(4);
+            for (int i = 2; i <= 8; i += 2) {
+                DacChannel channel = new DacChannel();
+                channel.setPort(basePort + i);
+                channels.add(channel);
+            }
+            dac.setChannels(channels);
+            String name = address.getHostName();
+            if (name != null) {
+                int index = name.indexOf('.');
+                if (index > 0) {
+                    name = name.substring(0, index);
+                }
+                dac.setName(name);
+            } else {
+                dac.setName(address.getHostAddress());
+            }
+
+            logger.info("Creating a new dac for {}", dac.getName());
+            dao.persist(dac);
+            try {
+                BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
+                        ConfigChangeType.Update, dac, traceable), false);
+            } catch (EdexException | SerializationException e) {
+                logger.error("Unable to properly configure new dac.", e);
+                rval = false;
+            }
+        } finally {
+            if ((ct != null) && (ct.getLockState() == LockState.SUCCESSFUL)) {
+                locker.deleteLock(LOCK_NAME, DAC_LOCK_DETAILS);
+            }
+        }
+
+        return rval;
     }
 
     private synchronized void handlePracticeShutdown() {

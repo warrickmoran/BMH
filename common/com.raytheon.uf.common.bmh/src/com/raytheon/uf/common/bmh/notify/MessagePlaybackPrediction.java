@@ -43,7 +43,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 04, 2014  #3286     dgilling     Added additional fields for GUI.
  * Jan 08, 2015  #3912     bsteffen     Add convenience constructors
  * May 22, 2015  #4481     bkowal       Added {@link #dynamic}.
- * 
+ * Feb 04, 2016  #5308     rjpeter      Added additional constructor.
  * </pre>
  * 
  * @author dgilling
@@ -55,6 +55,9 @@ public final class MessagePlaybackPrediction {
 
     @DynamicSerializeElement
     private long broadcastId;
+    
+    @DynamicSerializeElement
+    private long timestamp;
 
     @DynamicSerializeElement
     private Calendar nextTransmitTime;
@@ -89,6 +92,7 @@ public final class MessagePlaybackPrediction {
         this.playedAlertTone = false;
         this.playedSameTone = false;
         this.dynamic = message.isDynamic();
+        this.timestamp = message.getTimestamp();
     }
 
     public MessagePlaybackPrediction(Calendar playbackTime,
@@ -102,12 +106,30 @@ public final class MessagePlaybackPrediction {
         this(TimeUtil.newGmtCalendar(new Date(playbackTime)), message);
     }
 
+    public MessagePlaybackPrediction(MessagePlaybackStatusNotification notif) {
+        this.broadcastId = notif.getBroadcastId();
+        this.playCount = notif.getPlayCount();
+        this.lastTransmitTime = notif.getTransmitTime();
+        this.nextTransmitTime = null;
+        this.playedAlertTone = notif.isPlayedAlertTone();
+        this.playedSameTone = notif.isPlayedSameTone();
+        this.dynamic = notif.isDynamic();
+    }
+
     public long getBroadcastId() {
         return broadcastId;
     }
 
     public void setBroadcastId(long broadcastId) {
         this.broadcastId = broadcastId;
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public Calendar getNextTransmitTime() {

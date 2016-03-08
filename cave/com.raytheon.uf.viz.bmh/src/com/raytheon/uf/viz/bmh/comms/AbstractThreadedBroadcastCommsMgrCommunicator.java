@@ -42,7 +42,7 @@ import com.raytheon.uf.viz.bmh.ui.recordplayback.live.BroadcastException;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 12, 2014 3630       bkowal      Initial creation
- * 
+ * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bkowal
@@ -65,11 +65,11 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
     }
 
     protected void openCommsConnection() throws CommsCommunicationException {
-        String commsLoc = BMHServers.getBroadcastServer();
+        String commsLoc = BMHServers.getCommsManager();
         if (commsLoc == null) {
             throw new CommsCommunicationException(
                     "No address has been specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ".");
+                            + BMHServers.getCommsManagerKey() + ".");
         }
 
         URI commsURI = null;
@@ -78,8 +78,8 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
         } catch (URISyntaxException e) {
             throw new CommsCommunicationException(
                     "Invalid address specified for comms manager "
-                            + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc + ".", e);
+                            + BMHServers.getCommsManagerKey() + ": " + commsLoc
+                            + ".", e);
         }
 
         try {
@@ -88,13 +88,13 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
         } catch (IOException e) {
             throw new CommsCommunicationException(
                     "Failed to connect to comms manager "
-                            + BMHServers.getBroadcastServerKey() + ": "
-                            + commsLoc + ".", e);
+                            + BMHServers.getCommsManagerKey() + ": " + commsLoc
+                            + ".", e);
         }
     }
 
     protected void closeCommsConnection() {
-        if (this.socket != null && this.socket.isClosed() == false) {
+        if ((this.socket != null) && (this.socket.isClosed() == false)) {
             try {
                 this.socket.close();
             } catch (IOException e) {
@@ -105,7 +105,7 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
 
     protected synchronized void writeToCommsManager(Object msg)
             throws BroadcastException {
-        if (this.socket == null || this.socket.isClosed()) {
+        if ((this.socket == null) || this.socket.isClosed()) {
             return;
         }
         try {
@@ -114,7 +114,7 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
         } catch (SerializationException | IOException e) {
             throw new BroadcastException(
                     "Failed to send data to comms manager "
-                            + BMHServers.getBroadcastServer() + ".", e);
+                            + BMHServers.getCommsManager() + ".", e);
         }
     }
 
@@ -126,7 +126,7 @@ public abstract class AbstractThreadedBroadcastCommsMgrCommunicator extends
         } catch (SerializationException | IOException e) {
             throw new BroadcastException(
                     "Failed to receive data from comms manager "
-                            + BMHServers.getBroadcastServer() + ".", e);
+                            + BMHServers.getCommsManager() + ".", e);
         }
         return object;
     }

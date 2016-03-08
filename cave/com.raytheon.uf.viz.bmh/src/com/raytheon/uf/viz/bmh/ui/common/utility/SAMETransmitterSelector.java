@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.common.utility;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,10 +30,17 @@ import java.util.Set;
 import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.SelectionAdapter;
+import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
+import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterMnemonicComparator;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -45,7 +53,7 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
 /**
  * 
  * Provides a widget and a variety of methods for dealing with the same
- * transmitters for a sepcifc message. The widget is a
+ * transmitters for a specific message. The widget is a
  * {@link CheckScrollListComp} containing all possible transmitters, individual
  * check boxes are enabled/disabled according to the state of this object.
  * 
@@ -59,6 +67,7 @@ import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
  * Mar 18, 2015  4282     rferrel      Added method setAllowEnableTransmitters.
  * Apr 07, 2014  4304     rferrel      Added {@link #getAffectedTransmitters(boolean)}.
  * May 04, 2015  4447     bkowal       Added {@link #overrideMessageTypeSAME(Set)}.
+ * Jan 05, 2016  4997     bkowal       Allow toggling between transmitters/groups.
  * 
  * </pre>
  * 
@@ -70,9 +79,19 @@ public class SAMETransmitterSelector {
     private static final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EmergencyOverrideDlg.class);
 
+    private final TransmitterDataManager tdm = new TransmitterDataManager();
+
+    protected Button groupToggleBtn;
+
     protected final CheckScrollListComp checks;
 
     protected final Map<String, Transmitter> transmitterMap = new HashMap<>();
+
+    protected CheckListData transmitterCLD;
+
+    protected final Map<String, TransmitterGroup> transmitterGroupMap = new HashMap<>();
+
+    protected CheckListData transmitterGroupCLD;
 
     protected MessageType messageType;
 
@@ -88,8 +107,70 @@ public class SAMETransmitterSelector {
      */
     public SAMETransmitterSelector(Composite parentComp,
             boolean showSelectControls, int width, int height) {
-        checks = new CheckScrollListComp(parentComp, "SAME: ",
-                createTransmitterListData(), showSelectControls, width, height);
+        final Composite sameComposite = new Composite(parentComp, SWT.NONE);
+        sameComposite.setLayout(new GridLayout(1, false));
+
+        this.buildTransmitterGroupListData();
+        this.groupToggleBtn = new Button(sameComposite, SWT.CHECK);
+        this.groupToggleBtn.setText("Transmitter Group");
+        this.groupToggleBtn.setSelection(true);
+        this.groupToggleBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                toggleGroupsTransmitters();
+            }
+        });
+        checks = new CheckScrollListComp(sameComposite, "SAME: ",
+                this.transmitterGroupCLD, showSelectControls, width, height);
+    }
+
+    private void toggleGroupsTransmitters() {
+        boolean groupsSelected = this.groupToggleBtn.getSelection();
+        CheckListData replacementCLD = (groupsSelected) ? this.transmitterGroupCLD
+                : this.transmitterCLD;
+
+        /*
+         * Determine which checkboxes should be checked when switching back and
+         * forth based on what is currently selected.
+         */
+        CheckListData currentlyCheckedItems = this.checks.getCheckedItems();
+        CheckListData itemsToCheck = new CheckListData();
+        if (groupsSelected) {
+            /*
+             * currently selected items are transmitters.
+             */
+            for (String checked : currentlyCheckedItems.getCheckedItems()) {
+                Transmitter t = this.transmitterMap.get(checked);
+                if (t == null) {
+                    continue;
+                }
+                itemsToCheck.addDataItem(t.getTransmitterGroup().getName(),
+                        true);
+            }
+        } else {
+            /*
+             * currently selected items are transmitter groups. Note: if the
+             * user intentionally toggles back and forth between transmitter and
+             * transmitter groups unnecessarily, all transmitters associated
+             * with a group will be checked even if a subset of the transmitters
+             * were only originally checked before the toggle back and forth.
+             */
+            for (String checked : currentlyCheckedItems.getCheckedItems()) {
+                TransmitterGroup tg = this.transmitterGroupMap.get(checked);
+                if (tg == null
+                        || CollectionUtils.isEmpty(tg.getTransmitterList())) {
+                    continue;
+                }
+                for (Transmitter t : tg.getTransmitters()) {
+                    itemsToCheck.addDataItem(t.getMnemonic(), true);
+                }
+            }
+        }
+
+        this.checks.replaceCheckboxes(replacementCLD);
+
+        this.refreshDisabled();
+        this.checks.selectCheckboxes(itemsToCheck);
     }
 
     /** Reset all state, this will disable the checkboxes. */
@@ -149,11 +230,7 @@ public class SAMETransmitterSelector {
      * Set which same transmitters should be selected.
      */
     public void setSAMETransmitters(Set<Transmitter> transmitters) {
-        CheckListData cld = new CheckListData();
-        for (Transmitter transmitter : transmitters) {
-            cld.addDataItem(transmitter.getMnemonic(), true);
-        }
-        checks.selectCheckboxes(cld);
+        this.selectTransmitterCheckboxes(convertTransmittersToMnemonics(transmitters));
     }
 
     /**
@@ -167,7 +244,25 @@ public class SAMETransmitterSelector {
      * Get the mnemonics of the transmitters that SAME Tones should be sent to.
      */
     public Set<String> getSAMETransmitterMnemonics() {
-        return new HashSet<String>(checks.getCheckedItems().getCheckedItems());
+        List<String> checkedItems = checks.getCheckedItems().getCheckedItems();
+        Set<String> trxMnemonics = null;
+        if (this.groupToggleBtn.getSelection()) {
+            trxMnemonics = new HashSet<>();
+            for (String checked : checkedItems) {
+                TransmitterGroup tg = this.transmitterGroupMap.get(checked);
+                if (tg == null
+                        || CollectionUtils.isEmpty(tg.getTransmitterList())) {
+                    continue;
+                }
+                for (Transmitter t : tg.getTransmitters()) {
+                    trxMnemonics.add(t.getMnemonic());
+                }
+            }
+        } else {
+            trxMnemonics = new HashSet<>(checkedItems);
+        }
+
+        return new HashSet<String>(trxMnemonics);
     }
 
     /**
@@ -273,14 +368,8 @@ public class SAMETransmitterSelector {
         if (messageType == null) {
             checks.selectCheckboxes(false);
         } else {
-            CheckListData cld = new CheckListData();
             Set<Transmitter> transSet = messageType.getSameTransmitters();
-            if (transSet != null) {
-                for (Transmitter t : transSet) {
-                    cld.addDataItem(t.getMnemonic(), transSet.contains(t));
-                }
-            }
-            checks.selectCheckboxes(cld);
+            this.selectTransmitterCheckboxes(convertTransmittersToMnemonics(transSet));
         }
     }
 
@@ -289,16 +378,65 @@ public class SAMETransmitterSelector {
         if (CollectionUtils.isEmpty(sameTransmitterSet)) {
             return;
         }
+        this.selectTransmitterCheckboxes(sameTransmitterSet);
+    }
+
+    /**
+     * Select the Transmitter or Transmitter Group checkboxes associated with
+     * the specified {@link Set} of transmitter mnemonics. In the case that
+     * group toggle is enabled, this function will perform the necessary
+     * mnemonic to transmitter group mapping.
+     * 
+     * @param sameTransmitterSet
+     *            the specified {@link Set} of transmitter mnemonics
+     */
+    private void selectTransmitterCheckboxes(Set<String> sameTransmitterSet) {
+        if (CollectionUtils.isEmpty(sameTransmitterSet)) {
+            return;
+        }
+
         CheckListData cld = new CheckListData();
-        for (String sameTransmitter : sameTransmitterSet) {
-            cld.addDataItem(sameTransmitter, true);
+        Set<String> selections = null;
+        if (this.groupToggleBtn.getSelection()) {
+            selections = new HashSet<>();
+            for (String mnemonic : sameTransmitterSet) {
+                Transmitter t = this.transmitterMap.get(mnemonic);
+                if (t == null) {
+                    continue;
+                }
+                selections.add(t.getTransmitterGroup().getName());
+            }
+        } else {
+            selections = sameTransmitterSet;
+        }
+        for (String select : selections) {
+            cld.addDataItem(select, true);
         }
         this.checks.selectCheckboxes(cld);
     }
 
     protected void refreshDisabled() {
         checks.setHelpText(getAffectedTransmitterStatus().getMessage());
-        checks.enableCheckboxes(getAffectedTransmitterMnemonics());
+        checks.enableCheckboxes(this.determineEnabled());
+    }
+
+    private Set<String> determineEnabled() {
+        Set<String> mnemonics = this.getAffectedTransmitterMnemonics();
+        Set<String> enabled = null;
+        if (this.groupToggleBtn.getSelection()) {
+            enabled = new HashSet<>();
+            for (String mnemonic : mnemonics) {
+                Transmitter t = this.transmitterMap.get(mnemonic);
+                if (t == null) {
+                    continue;
+                }
+                enabled.add(t.getTransmitterGroup().getName());
+            }
+        } else {
+            enabled = mnemonics;
+        }
+
+        return enabled;
     }
 
     protected Set<Transmitter> getTransmittersInArea() {
@@ -331,25 +469,41 @@ public class SAMETransmitterSelector {
         return new HashSet<>(transmittersWithMessageType);
     }
 
-    protected CheckListData createTransmitterListData() {
-        CheckListData cld = new CheckListData();
+    protected void buildTransmitterGroupListData() {
+        this.transmitterCLD = new CheckListData();
+        this.transmitterGroupCLD = new CheckListData();
 
-        TransmitterDataManager tdm = new TransmitterDataManager();
         try {
-            List<Transmitter> transmitters = tdm.getTransmitters();
-            if (transmitters == null) {
-                return cld;
+            List<TransmitterGroup> transmitterGroups = tdm
+                    .getTransmitterGroups(new PositionComparator());
+            if (transmitterGroups == null || transmitterGroups.isEmpty()) {
+                return;
             }
-            for (Transmitter t : transmitters) {
-                cld.addDataItem(t.getMnemonic(), false);
-                transmitterMap.put(t.getMnemonic(), t);
+            Set<Transmitter> allTransmitters = new HashSet<>();
+            for (TransmitterGroup tg : transmitterGroups) {
+                this.transmitterGroupCLD.addDataItem(tg.getName(), false);
+                this.transmitterGroupMap.put(tg.getName(), tg);
+                allTransmitters.addAll(tg.getTransmitters());
             }
-            Collections.sort(transmitters, new TransmitterMnemonicComparator());
+            if (allTransmitters.isEmpty()) {
+                return;
+            }
+            /*
+             * sort the transmitters for use in a checklist.
+             */
+            List<Transmitter> sortedTransmitters = new ArrayList<>(
+                    allTransmitters);
+            Collections.sort(sortedTransmitters,
+                    new TransmitterMnemonicComparator());
+            for (Transmitter t : sortedTransmitters) {
+                this.transmitterCLD.addDataItem(t.getMnemonic(), false);
+                this.transmitterMap.put(t.getMnemonic(), t);
+            }
         } catch (Exception e) {
-            statusHandler.error(
-                    "Error retrieving transmitter data from the database: ", e);
+            statusHandler
+                    .error("Error retrieving transmitter group data from the database.",
+                            e);
         }
-        return cld;
     }
 
     protected final Set<Transmitter> convertMnemonicsToTransmitters(

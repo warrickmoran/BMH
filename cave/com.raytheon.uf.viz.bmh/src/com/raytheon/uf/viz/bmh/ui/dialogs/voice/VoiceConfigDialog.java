@@ -63,6 +63,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jul 22, 2015 4676       bkowal      Toggle adding/removing dictionaries.
  * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
+ * Dec 08, 2015 5159       bkowal      Keep track of a {@link Dictionary} when it is
+ *                                     removed from a voice.
  * </pre>
  * 
  * @author bkowal
@@ -480,6 +482,12 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
     public void dictionarySelected(Dictionary dictionary) {
         this.saveBtn.setEnabled(this.dictionaryAssign
                 .dictionaryChanged(this.selectedVoice.getDictionary()));
+        if (this.saveBtn.isEnabled()) {
+            this.selectedVoice.setRemovedDictionary(this.selectedVoice
+                    .getDictionary());
+        } else {
+            this.selectedVoice.setRemovedDictionary(null);
+        }
     }
 
     private void handleAddVoiceAction() {

@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Jul 29, 2015  4690     rjpeter     Added reject/checkReject methods.
  * Sep 24, 2015  4924     bkowal      Added {@link #getValidationNotificationCategory(TransmissionStatus)}.
  * Nov 16, 2015  5127     rjpeter     Renamed BMHRejectionDataManager to FileManager.
+ * Feb 04, 2016  5308     rjpeter     Removed duplicate handling.
  * </pre>
  * 
  * @author bsteffen
@@ -96,7 +97,7 @@ public class InputMessageValidator {
             final FileManager rejectionManager) {
         this.messageLogger = messageLogger;
         this.ldadCheck = new LdadValidator(true, messageLogger);
-        this.transmissionCheck = new TransmissionValidator(messageLogger);
+        this.transmissionCheck = new TransmissionValidator();
         this.inputMessageDao = new InputMessageDao(true, messageLogger);
         this.validatedMessageDao = new ValidatedMessageDao(true, messageLogger);
         this.rejectionManager = rejectionManager;
@@ -139,9 +140,9 @@ public class InputMessageValidator {
                      */
                     MessageType mt = this.messageTypeDao.getByAfosId(input
                             .getAfosid());
-                    if (mt != null
-                            && (mt.getDesignation() == Designation.Watch || mt
-                                    .getDesignation() == Designation.Warning)) {
+                    if ((mt != null)
+                            && ((mt.getDesignation() == Designation.Watch) || (mt
+                                    .getDesignation() == Designation.Warning))) {
                         /*
                          * notify the user that the watch/warning will not be
                          * broadcast.
@@ -206,8 +207,6 @@ public class InputMessageValidator {
         }
 
         switch (status) {
-        case DUPLICATE:
-            return BMH_CATEGORY.MESSAGE_VALIDATION_DUPLICATE;
         case ERROR:
             return BMH_CATEGORY.MESSAGE_VALIDATION_ERROR;
         case EXPIRED:
@@ -239,8 +238,6 @@ public class InputMessageValidator {
         case UNDEFINED: // fall through
         case UNACCEPTABLE:
             reject(im);
-            // fall through
-        case DUPLICATE:
             inputMessageDao.delete(im);
             break;
         default:

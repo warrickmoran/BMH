@@ -57,7 +57,7 @@ import com.raytheon.uf.common.status.UFStatus;
  *                                     too many packets arrive out-of-order within
  *                                     a set amount of time.
  * Jan 13, 2016 3976       bkowal      Do not pass subscribers by reference.
- * 
+ * Dec 15, 2016 5114       rjpeter     Updated thread name.
  * </pre>
  * 
  * @author bkowal
@@ -184,7 +184,7 @@ public class DacReceiveThread extends Thread {
      */
     public DacReceiveThread(final NetworkInterface netIf,
             final InetAddress multicastAddress, final int port) {
-        super(DacReceiveThread.class.getName());
+        super(DacReceiveThread.class.getSimpleName() + "-port-" + port);
         this.subscribers = new ArrayList<>();
         this.port = port;
         this.multicastAddress = multicastAddress;
@@ -274,8 +274,8 @@ public class DacReceiveThread extends Thread {
         if (this.dacConnection == null) {
             return;
         }
-        if (this.dacConnection instanceof MulticastSocket
-                && multicastAddress != null) {
+        if ((this.dacConnection instanceof MulticastSocket)
+                && (multicastAddress != null)) {
             MulticastSocket multicast = (MulticastSocket) this.dacConnection;
             try {
                 multicast.leaveGroup(multicastAddress);
@@ -347,8 +347,8 @@ public class DacReceiveThread extends Thread {
                     + this.lastContributingSource + ".");
         } else {
             /* verify that the packet arrived in order. */
-            if (rtpHeader.getSequenceNumber() < this.lastSequenceNumber
-                    && this.potentialWrapAround == false) {
+            if ((rtpHeader.getSequenceNumber() < this.lastSequenceNumber)
+                    && (this.potentialWrapAround == false)) {
                 /* a packet has arrived late. */
                 if (this.adjustSequencing(rtpHeader.getSequenceNumber()) == false) {
                     statusHandler.warn("Received packet: "
@@ -357,7 +357,7 @@ public class DacReceiveThread extends Thread {
                             + this.logLastKnownState() + " Skipping ...");
                     return;
                 }
-            } else if (rtpHeader.getSequenceNumber() < this.lastSequenceNumber
+            } else if ((rtpHeader.getSequenceNumber() < this.lastSequenceNumber)
                     && this.potentialWrapAround) {
                 /* the packet sequence has wrapped around and restarted from 0. */
                 statusHandler
@@ -386,7 +386,7 @@ public class DacReceiveThread extends Thread {
         }
 
         /* Determine if there is wrap-around potential for the sequence number. */
-        if (this.lastSequenceNumber >= MAX_SEQUENCE_VALUE - WRAP_AROUND_RANGE) {
+        if (this.lastSequenceNumber >= (MAX_SEQUENCE_VALUE - WRAP_AROUND_RANGE)) {
             this.potentialWrapAround = true;
         }
 
@@ -415,7 +415,7 @@ public class DacReceiveThread extends Thread {
             /*
              * 
              */
-            if (this.outOfOrderArrivalTime + MAX_NOT_CONSECUTIVE_TIME >= System
+            if ((this.outOfOrderArrivalTime + MAX_NOT_CONSECUTIVE_TIME) >= System
                     .currentTimeMillis()) {
                 // time to re-key the sequence
                 statusHandler
@@ -461,8 +461,8 @@ public class DacReceiveThread extends Thread {
      * @param dacListener
      */
     public void subscribe(final IDacListener dacListener) {
-        if (dacListener.getChannel() < 0
-                || dacListener.getChannel() > DAC_CHANNELS) {
+        if ((dacListener.getChannel() < 0)
+                || (dacListener.getChannel() > DAC_CHANNELS)) {
             throw new InvalidParameterException(
                     "The specified DAC channel to listen to must be > 0 and <= "
                             + DAC_CHANNELS + "!");

@@ -51,6 +51,8 @@ import java.util.Map;
  *                                     and {@link #WTCH_OR_WRN_NOT_BROADCAST}.
  * Sep 24, 2015 4924       bkowal      Added Validation Failure specific categories.
  * Nov 16, 2015 5127       rjpeter     Added MESSAGE_ARCHIVE_FAILED.
+ * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
+ * Feb 04, 2016 5308       rjpeter     Removed MESSAGE_VALIDATION_DUPLICATE.
  * </pre>
  * 
  * @author bkowal
@@ -203,11 +205,6 @@ public enum BMH_CATEGORY {
      * the message.
      */
     MESSAGE_VALIDATION_UNASSIGNED(31, "MESSAGE_VALIDATION"),
-    /*
-     * indicates that a message failed validation because it was a duplicate of
-     * a message that had been previously processed.
-     */
-    MESSAGE_VALIDATION_DUPLICATE(32, "MESSAGE_VALIDATION"),
 
     /*
      * indicates that a message failed validation because it contained
@@ -219,7 +216,15 @@ public enum BMH_CATEGORY {
      * indicates that a message failed to copy to the archive.
      */
     MESSAGE_ARCHIVE_FAILED(34, "MESSAGE_PARSE"),
-
+    /*
+     * indicates that a DAC and BMH {@link Dac} are out of sync.
+     */
+    DAC_SYNC_ISSUE(35, "BMH"),
+    /*
+     * indicates that an attempt to verify that BMH {@link Dac}s were in sync
+     * with the DACs has failed.
+     */
+    DAC_SYNC_VERIFY_FAIL(36, "BMH"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

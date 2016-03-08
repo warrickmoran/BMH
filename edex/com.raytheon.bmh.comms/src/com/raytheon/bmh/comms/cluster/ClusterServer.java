@@ -24,6 +24,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -38,10 +39,8 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.raytheon.bmh.comms.AbstractServerThread;
+import com.raytheon.bmh.comms.AbstractServer;
 import com.raytheon.bmh.comms.CommsManager;
-import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.comms.CommsConfig;
 import com.raytheon.uf.edex.bmh.comms.CommsHostConfig;
@@ -77,12 +76,14 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  *                                    that failed to start and load balance state will clear
  *                                    if the transmitter ever stops running on the remote host.
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
-public class ClusterServer extends AbstractServerThread {
+public class ClusterServer extends AbstractServer {
 
     /**
      * When load balancing, after a remote comms manager has disconnect from a
@@ -130,7 +131,7 @@ public class ClusterServer extends AbstractServerThread {
      */
     public ClusterServer(CommsManager manager, CommsConfig config)
             throws IOException {
-        super(config.getClusterPort());
+        super(manager.getSocketListener());
         this.manager = manager;
         if (config.getClusterHosts() == null) {
             logger.warn("No cluster members in config, continuing without clustering.");
@@ -212,7 +213,7 @@ public class ClusterServer extends AbstractServerThread {
             try {
                 logger.info("Initiating cluster communication with {}",
                         remoteAddress);
-                Socket socket = new Socket(address, config.getClusterPort());
+                Socket socket = new Socket(address, config.getPort());
                 socket.setTcpNoDelay(true);
                 communicator = new ClusterCommunicator(manager, this, socket,
                         host.getIpAddress());
@@ -271,8 +272,7 @@ public class ClusterServer extends AbstractServerThread {
      * should only be called for cluster failover.
      */
     @Override
-    public void shutdown() {
-        super.shutdown();
+    protected void shutdownInternal() {
         synchronized (communicatorLock) {
             for (ClusterCommunicator communicator : communicators.values()) {
                 communicator.shutdown();
@@ -282,42 +282,30 @@ public class ClusterServer extends AbstractServerThread {
     }
 
     @Override
-    protected void handleConnection(Socket socket)
-            throws SerializationException, IOException {
+    public boolean handleConnection(Socket socket, Object obj) {
+        if (!(obj instanceof String)) {
+            logger.warn("Received unexpected message with type: "
+                    + obj.getClass().getName() + ". Disconnecting ...");
+            return true;
+        }
+
+        // first message from socket is to be its ip from comms.xml
+        String id = (String) obj;
         InetAddress address = socket.getInetAddress();
-        String id = getRemoteServerHost(socket);
-        if (configuredAddresses.contains(id)) {
-            if (id != null) {
-                logger.info("Received new cluster request from {}", id);
-                ClusterCommunicator communicator = new ClusterCommunicator(
-                        manager, this, socket, id);
-                addCommunicator(communicator);
-            } else {
-                logger.warn(
-                        "Cluster request did not send server id as first message, rejecting request from {}",
-                        address.getHostName());
-                socket.close();
-            }
-        } else {
+
+        if (!configuredAddresses.contains(id)) {
             // reject socket, not from known host
             logger.warn(
                     "Cluster request from unknown host, rejecting request from {}",
                     address.getHostName());
-            socket.close();
+            return true;
         }
-    }
 
-    protected String getRemoteServerHost(Socket socket) {
-        try {
-            // first message from socket is to be its ip from comms.xml
-            return SerializationUtil.transformFromThrift(String.class,
-                    socket.getInputStream());
-        } catch (Throwable e) {
-            logger.error(
-                    "Error getting server id from remote server: {}.  Rejecting cluster request",
-                    socket.getInetAddress().getHostAddress(), e);
-            return null;
-        }
+        logger.info("Received new cluster request from {}", id);
+        ClusterCommunicator communicator = new ClusterCommunicator(manager,
+                this, socket, id);
+        addCommunicator(communicator);
+        return false;
     }
 
     protected void addCommunicator(ClusterCommunicator communicator) {
@@ -328,7 +316,7 @@ public class ClusterServer extends AbstractServerThread {
             if (prev != null) {
                 // reject new communicator?
                 if (prev.remoteAccepted()
-                        || (localIp.compareTo(remoteAddress) < 0 && prev
+                        || ((localIp.compareTo(remoteAddress) < 0) && prev
                                 .isConnected())) {
                     logger.info(
                             "Already connected to {}, closing new connection",
@@ -456,7 +444,7 @@ public class ClusterServer extends AbstractServerThread {
                 for (ClusterCommunicator communicator : communicators.values()) {
                     ClusterStateMessage otherState = communicator
                             .getClusterState();
-                    if (otherState == null
+                    if ((otherState == null)
                             || otherState.hasRequestedTransmitter()) {
                         /*
                          * another comms manager already clustering or just
@@ -481,7 +469,7 @@ public class ClusterServer extends AbstractServerThread {
                              * request anything
                              */
                             break;
-                        } else if (key > numConnected + 1) {
+                        } else if (key > (numConnected + 1)) {
                             /*
                              * another entry has more than 1 more than me,
                              * request 1
@@ -521,8 +509,8 @@ public class ClusterServer extends AbstractServerThread {
                             if (otherTrans.isEmpty() == false) {
                                 Iterator<String> iter = otherTrans.iterator();
 
-                                while (numRequested < numToRequest
-                                        && numAllowedToTake > 0
+                                while ((numRequested < numToRequest)
+                                        && (numAllowedToTake > 0)
                                         && iter.hasNext()) {
                                     String group = iter.next();
                                     logger.info(
@@ -544,7 +532,7 @@ public class ClusterServer extends AbstractServerThread {
                         sendStateToAll();
                     }
                 }
-            } else if (pendingRequest && failedRequests.isEmpty() == false) {
+            } else if (pendingRequest && (failedRequests.isEmpty() == false)) {
                 for (String transmitter : failedRequests) {
                     logger.error(
                             "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
@@ -621,5 +609,10 @@ public class ClusterServer extends AbstractServerThread {
                         transmitterGroup);
             }
         }
+    }
+
+    @Override
+    protected Set<Class<?>> getTypesHandled() {
+        return Collections.<Class<?>> singleton(String.class);
     }
 }

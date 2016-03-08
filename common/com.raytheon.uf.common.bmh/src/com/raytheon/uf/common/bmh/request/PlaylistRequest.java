@@ -19,6 +19,8 @@
  **/
 package com.raytheon.uf.common.bmh.request;
 
+import java.util.Set;
+
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -33,7 +35,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------- -------- ----------- --------------------------
  * Aug 15, 2014  3432     mpduff      Initial creation
  * Oct 07, 2014  3687     bsteffen    Extend AbstractBMHServerRequest
- * 
+ * Jan 28, 2016  5300     rjpeter     Added GET_PLAYLIST_DATA_FOR_IDS
+ * Feb 04, 2016  5308     rjpeter     Removed GET_PLAYLIST_DATA_FOR_TRANSMITTER
  * </pre>
  * 
  * @author mpduff
@@ -42,20 +45,14 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 @DynamicSerialize
 public class PlaylistRequest extends AbstractBMHServerRequest {
     public enum PlaylistAction {
-        GET_PLAYLIST_BY_SUITE_GROUP, GET_PLAYLIST_DATA_FOR_TRANSMITTER
+        GET_PLAYLIST_DATA_FOR_IDS
     }
 
     @DynamicSerializeElement
     private PlaylistAction action;
 
     @DynamicSerializeElement
-    private String suiteName;
-
-    @DynamicSerializeElement
-    private String groupName;
-
-    @DynamicSerializeElement
-    private String transmitterName;
+    private Set<Long> broadcastIds;
 
     /**
      * @return the action
@@ -73,47 +70,18 @@ public class PlaylistRequest extends AbstractBMHServerRequest {
     }
 
     /**
-     * @return the suiteName
+     * @return the broadcastIds
      */
-    public String getSuiteName() {
-        return suiteName;
+    public Set<Long> getBroadcastIds() {
+        return broadcastIds;
     }
 
     /**
-     * @param suiteName
-     *            the suiteName to set
+     * @param broadcastIds
+     *            the broadcastIds to set
      */
-    public void setSuiteName(String suiteName) {
-        this.suiteName = suiteName;
+    public void setBroadcastIds(Set<Long> broadcastIds) {
+        this.broadcastIds = broadcastIds;
     }
 
-    /**
-     * @return the groupName
-     */
-    public String getGroupName() {
-        return groupName;
-    }
-
-    /**
-     * @param groupName
-     *            the groupName to set
-     */
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
-    }
-
-    /**
-     * @return the transmitterName
-     */
-    public String getTransmitterName() {
-        return transmitterName;
-    }
-
-    /**
-     * @param transmitterName
-     *            the transmitterName to set
-     */
-    public void setTransmitterName(String transmitterName) {
-        this.transmitterName = transmitterName;
-    }
 }

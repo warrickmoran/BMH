@@ -24,8 +24,8 @@ import java.util.List;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.AbstractTraceableSystemConfigNotification;
+import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.MessageTypeConfigNotification;
 import com.raytheon.uf.common.bmh.request.MessageTypeRequest;
 import com.raytheon.uf.common.bmh.request.MessageTypeResponse;
@@ -58,7 +58,7 @@ import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
  * Mar 13, 2015  4213     bkowal      Added {@link #getByDesignationAndLanguage(MessageTypeRequest)}.
  * Apr 22, 2015  4397     bkowal      Construct a {@link AbstractTraceableSystemConfigNotification}
  *                                    notification when database changes occur.
- * 
+ * Jan 27, 2016  5160     rjpeter     Added {@link #getDemoMsgAfosIds(MessageTypeRequest)}.
  * </pre>
  * 
  * @author mpduff
@@ -103,6 +103,9 @@ public class MessageTypeHandler extends
             break;
         case GetByDesignationAndLanguage:
             response = getByDesignationAndLanguage(request);
+            break;
+        case GetDemoMsgAfosIds:
+            response = getDemoMsgAfosIds(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -252,6 +255,18 @@ public class MessageTypeHandler extends
 
         List<MessageType> mTypes = dao.getMessageTypeForDesignationAndLanguage(
                 request.getDesignation(), request.getLanguage());
+        response.setMessageTypeList(mTypes);
+
+        return response;
+    }
+
+    private MessageTypeResponse getDemoMsgAfosIds(MessageTypeRequest request) {
+        MessageTypeResponse response = new MessageTypeResponse();
+        MessageTypeDao dao = new MessageTypeDao(request.isOperational());
+
+        @SuppressWarnings("unchecked")
+        List<MessageType> mTypes = (List<MessageType>) dao
+                .findByNamedQuery(MessageType.GET_DEMO_AFOSIDS);
         response.setMessageTypeList(mTypes);
 
         return response;

@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -115,6 +116,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 10, 2015   4250     rferrel     Confirm removal of Message Types only when editing existing suite.
  * Mar 31, 2015   4248     rjpeter     Use ordered view of suite messages.
  * Apr 28, 2015   4428     rferrel     Track changes to trigger message summary types and apply at save/create.
+ * Jan 27, 2016   5160     rjpeter     Don't allow DMO messages to be added to a Suite.
  * </pre>
  * 
  * @author lvenable
@@ -1247,6 +1249,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             availMessageTypes.clear();
             availMessageTypes.addAll(allMsgTypesList);
         }
+
         for (SuiteMessage sm : msgTypesInSuiteList) {
             TableRowData trd = new TableRowData();
 
@@ -1266,6 +1269,16 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
 
             selectedMsgTypeTableData.addDataRow(trd);
+        }
+
+        // Remove DMO messages
+        for (Iterator<MessageType> iter = availMessageTypes.iterator(); iter
+                .hasNext();) {
+            MessageType mt = iter.next();
+            String afosId = mt.getAfosid();
+            if ((afosId.length() >= 6) && "DMO".equals(afosId.substring(3, 6))) {
+                iter.remove();
+            }
         }
     }
 

@@ -7,7 +7,7 @@
 Name: awips2-neospeech
 Summary: AWIPS II BMH Installation
 Version: %{_version}
-Release: 2
+Release: 3
 Group: AWIPSII
 BuildRoot: %{_build_root}
 BuildArch: x86_64
@@ -64,7 +64,19 @@ fi
 
 %pre
 %post
+# register the service script; multiple add class will not fail
+/sbin/chkconfig --add neospeech_tts
+
 %preun
+if [ "${1}" = "1" ]; then
+   # still a package installed indicating upgrade; do nothing
+   exit 0
+fi
+if [ -f /etc/init.d/neospeech_tts ]; then
+   # unregister the service script
+   /sbin/chkconfig --del neospeech_tts
+fi
+
 %postun
 
 %clean
@@ -88,3 +100,13 @@ rm -rf ${RPM_BUILD_ROOT}
 /awips2/bmh/neospeech/bin/*
 
 %attr(744,root,root) /etc/init.d/* 
+
+%changelog
+* Mon Jan 4 2016 Raytheon
+- updated to release 3
+- added chkconfig information to the neospeech_tts init.d script.
+- register/unregister the init.d script with chkconfig.
+
+* Thu Oct 22 2015 Raytheon
+- updated to release 2
+- include /etc/dictlist.ini in the set of installed files

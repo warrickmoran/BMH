@@ -38,6 +38,7 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
+import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
@@ -155,7 +156,8 @@ public class BroadcastLiveDlg extends AbstractBMHDialog {
 
         List<TransmitterGroup> transmitterGroups = null;
         try {
-            transmitterGroups = this.tdm.getTransmitterGroups();
+            transmitterGroups = this.tdm
+                    .getTransmitterGroups(new PositionComparator());
         } catch (Exception e) {
             statusHandler
                     .error("Failed to retrieve the transmitter groups.", e);

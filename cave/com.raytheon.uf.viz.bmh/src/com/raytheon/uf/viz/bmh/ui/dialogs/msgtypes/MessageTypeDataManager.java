@@ -19,6 +19,7 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -55,7 +56,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Mar 12, 2015   #4213    bkowal      {@link #getStaticMessageAfosIds()} now includes
  *                                     all station id messages.
  * Jun 23, 2015   #4572    bkowal      Added {@link #getMessageTypesForValidAfosIds(Set)}.
- * 
+ * Jan 27, 2016   #5160    rjpeter     Added {@link #getDemoMsgAfosIds()}.
  * </pre>
  * 
  * @author lvenable
@@ -87,7 +88,7 @@ public class MessageTypeDataManager {
             messageTypeList = Collections.emptyList();
         }
 
-        if (comparator != null && messageTypeList.isEmpty() == false) {
+        if ((comparator != null) && (messageTypeList.isEmpty() == false)) {
             Collections.sort(messageTypeList, comparator);
         }
 
@@ -119,7 +120,7 @@ public class MessageTypeDataManager {
             messageTypeList = Collections.emptyList();
         }
 
-        if (comparator != null && messageTypeList.isEmpty() == false) {
+        if ((comparator != null) && (messageTypeList.isEmpty() == false)) {
             Collections.sort(messageTypeList, comparator);
         }
 
@@ -274,7 +275,7 @@ public class MessageTypeDataManager {
             return Collections.emptyList();
         }
 
-        if (comparator != null && messageTypeList.isEmpty() == false) {
+        if ((comparator != null) && (messageTypeList.isEmpty() == false)) {
             Collections.sort(messageTypeList, comparator);
         }
 
@@ -300,5 +301,31 @@ public class MessageTypeDataManager {
         staticAfosIds.addAll(stationIdAfosIds);
 
         return staticAfosIds;
+    }
+
+    /**
+     * Returns the afos ids for all {@link MessageType}(s) that are Demo
+     * messages.
+     * 
+     * @return
+     * @throws Exception
+     */
+    public List<String> getDemoMsgAfosIds() throws Exception {
+        MessageTypeRequest req = new MessageTypeRequest();
+        req.setAction(MessageTypeAction.GetDemoMsgAfosIds);
+        MessageTypeResponse response = (MessageTypeResponse) BmhUtils
+                .sendRequest(req);
+        List<MessageType> msgTypeList = response.getMessageTypeList();
+
+        if (msgTypeList == null) {
+            return Collections.emptyList();
+        }
+
+        List<String> rval = new ArrayList<>(msgTypeList.size());
+        for (MessageType msgType : msgTypeList) {
+            rval.add(msgType.getAfosid());
+        }
+
+        return rval;
     }
 }

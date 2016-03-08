@@ -36,7 +36,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date          Ticket#   Engineer    Description
  * ------------- --------- ----------- --------------------------
  * Feb 05, 2015  3743      bsteffen    Initial creation
- * 
+ * Nov 11, 2015  5114      rjpeter     Updated to return mode of comms manager.
  * </pre>
  * 
  * @author bsteffen
@@ -44,20 +44,40 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  */
 @DynamicSerialize
 public class LiveBroadcastGroupsMessage {
+    @DynamicSerializeElement
+    private boolean operational;
 
     @DynamicSerializeElement
     private String[] groups;
 
-    public LiveBroadcastGroupsMessage(Collection<String> groups) {
+    public LiveBroadcastGroupsMessage(boolean operational,
+            Collection<String> groups) {
+        this.operational = operational;
         this.groups = groups.toArray(new String[0]);
     }
 
-    public LiveBroadcastGroupsMessage(String[] groups) {
+    public LiveBroadcastGroupsMessage(boolean operational, String[] groups) {
+        this.operational = operational;
         this.groups = groups;
     }
 
     public LiveBroadcastGroupsMessage() {
 
+    }
+
+    /**
+     * @return the operational
+     */
+    public boolean isOperational() {
+        return operational;
+    }
+
+    /**
+     * @param operational
+     *            the operational to set
+     */
+    public void setOperational(boolean operational) {
+        this.operational = operational;
     }
 
     public String[] getGroups() {

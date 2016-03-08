@@ -80,6 +80,7 @@ import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
 import com.raytheon.uf.edex.bmh.dao.DictionaryDao;
 import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
+import com.raytheon.uf.edex.bmh.dao.LdadConfigDao;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
 import com.raytheon.uf.edex.bmh.dao.PlaylistDao;
 import com.raytheon.uf.edex.bmh.dao.ProgramDao;
@@ -127,6 +128,8 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                    the practice database tables are truncated.
  * Aug 03, 2015  4350     bkowal      Only assign a practice dac to a practice transmitter group if a
  *                                    dac was originally assigned to the operational group.
+ * Dec 09, 2015  5175     bkowal      Practice LDAD Configuration will be removed prior to an
+ *                                    operational database copy. 
  * 
  * </pre>
  * 
@@ -192,6 +195,7 @@ public class BmhDatabaseCopier {
         clearTable(new ZoneDao(false));
         clearTable(new AreaDao(false));
         clearTable(new TransmitterLanguageDao(false));
+        clearTable(new LdadConfigDao(false));
         clearTable(new TtsVoiceDao(false));
         List<?> objects = clearTable(new TransmitterGroupDao(false));
         if (CollectionUtils.isEmpty(objects) == false) {

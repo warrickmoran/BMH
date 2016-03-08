@@ -19,15 +19,25 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.notify.config.ConfigNotification.ConfigChangeType;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
+import com.raytheon.uf.common.bmh.request.DacConfigRequest;
+import com.raytheon.uf.common.bmh.request.DacConfigResponse;
 import com.raytheon.uf.common.bmh.request.DacRequest;
 import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
+import com.raytheon.uf.edex.bmh.dac.DacSyncValidator;
+import com.raytheon.uf.edex.bmh.dac.OrionPost;
+import com.raytheon.uf.edex.bmh.dao.DacChannelDao;
 import com.raytheon.uf.edex.bmh.dao.DacDao;
+import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
+import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
 /**
  * Handles any requests to get or modify the state of {@link Dac}s
@@ -44,6 +54,9 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  * Oct 19, 2014  3699     mpduff      Added save and delete actions
  * Oct 22, 2014  3687     bsteffen    Send notifications.
  * May 28, 2015  4429     rjpeter     Add ITraceable
+ * Nov 09, 2015  5113     bkowal      Added {@link #validateUnique(DacRequest)}.
+ * Nov 12, 2015  5113     bkowal      Handle {@link DacConfigRequest}s.
+ * Nov 23, 2015  5113     bkowal      Maintain sync with DAC sync information.
  * </pre>
  * 
  * @author mpduff
@@ -51,6 +64,23 @@ import com.raytheon.uf.edex.bmh.dao.DacDao;
  */
 
 public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
+
+    private static final IBMHStatusHandler statusHandler = BMHStatusHandler
+            .getInstance(DacHandler.class);
+
+    /*
+     * Used to retrieve information about any {@link Dac}s that are out of sync
+     * to be returned when all {@link Dac}s are requested.
+     */
+    private final DacSyncValidator dacSyncValidator;
+
+    public DacHandler(DacSyncValidator dacSyncValidator) {
+        if (dacSyncValidator == null) {
+            throw new IllegalArgumentException(
+                    "Required argument dacSyncValidator has not been provided!");
+        }
+        this.dacSyncValidator = dacSyncValidator;
+    }
 
     @Override
     public Object handleRequest(DacRequest request) throws Exception {
@@ -61,16 +91,30 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
             response = getAllDacs(request);
             break;
         case SaveDac:
-            response = saveDac(request);
-            BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
-                    ConfigChangeType.Update, request.getDac(), request),
-                    request.isOperational());
+            if (request instanceof DacConfigRequest) {
+                DacConfigResponse configResponse = configureSaveDac((DacConfigRequest) request);
+                if (configResponse.isSuccess() && request.getDac() != null) {
+                    BmhMessageProducer.sendConfigMessage(
+                            new DacConfigNotification(ConfigChangeType.Update,
+                                    request.getDac(), request), request
+                                    .isOperational());
+                }
+                return configResponse;
+            } else {
+                response = saveDac(request);
+                BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
+                        ConfigChangeType.Update, request.getDac(), request),
+                        request.isOperational());
+            }
             break;
         case DeleteDac:
             deleteDac(request);
             BmhMessageProducer.sendConfigMessage(new DacConfigNotification(
                     ConfigChangeType.Delete, request.getDac(), request),
                     request.isOperational());
+            break;
+        case ValidateUnique:
+            response = validateUnique(request);
             break;
         default:
             throw new UnsupportedOperationException(this.getClass()
@@ -88,6 +132,7 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         List<Dac> dacList = dao.getAll();
 
         response.setDacList(dacList);
+        response.setDesyncedDacs(this.dacSyncValidator.getOutOfSyncDacs());
         return response;
     }
 
@@ -101,8 +146,73 @@ public class DacHandler extends AbstractBMHServerRequestHandler<DacRequest> {
         return response;
     }
 
+    private DacConfigResponse configureSaveDac(DacConfigRequest request)
+            throws Exception {
+        if (request.isOperational() == false) {
+            throw new IllegalStateException(
+                    "A DAC cannot be configured in PRACTICE mode.");
+        }
+
+        if (request.getDac() == null) {
+            statusHandler.info("Handling request to reboot DAC at IP: "
+                    + request.getConfigAddress() + " ...");
+        } else {
+            final String action = (request.isSync()) ? "sync" : "configure";
+            final String address = (request.isSync()) ? request.getDac()
+                    .getAddress() : request.getConfigAddress();
+            statusHandler.info("Handling request to " + action + " DAC: "
+                    + request.getDac().getName() + " at IP: " + address
+                    + " ...");
+        }
+        final OrionPost orionPost = new OrionPost(request.getDac(),
+                request.getConfigAddress());
+        DacConfigResponse response = new DacConfigResponse();
+        if (request.isSync()) {
+            /*
+             * Verify it is possible to connect to the DAC.
+             */
+            orionPost.verifyDacAvailability(OrionPost.DEFAULT_TIMEOUT_SECONDS);
+            orionPost.verifySync(true);
+            request.setDac(orionPost.getDac());
+            response.setSuccess(true);
+        } else {
+            response.setSuccess(orionPost.configureDAC(request.isReboot()));
+            response.setEvents(orionPost.getEvents());
+        }
+        if (response.isSuccess() && request.getDac() != null) {
+            /*
+             * Persist the {@link Dac} record to the database.
+             */
+            final DacResponse dacResponse = this.saveDac(request);
+            response.setDac(dacResponse.getDacList().get(0));
+        }
+
+        return response;
+    }
+
     private void deleteDac(DacRequest request) {
         DacDao dao = new DacDao(request.isOperational());
         dao.delete(request.getDac());
+    }
+
+    private DacResponse validateUnique(DacRequest request) {
+        DacResponse response = new DacResponse();
+
+        final Dac dac = request.getDac();
+        DacDao dacDao = new DacDao(request.isOperational());
+        DacChannelDao dacChannelDao = new DacChannelDao(request.isOperational());
+
+        Set<Dac> conflictDacs = new HashSet<>();
+        Dac conflictDac = dacDao.validateDacUniqueness(dac.getId(),
+                dac.getName(), dac.getAddress(), dac.getReceiveAddress(),
+                dac.getReceivePort());
+        if (conflictDac != null) {
+            conflictDacs.add(conflictDac);
+        }
+        conflictDacs.addAll(dacChannelDao.validateChannelsUniqueness(
+                dac.getId(), new HashSet<Integer>(dac.getDataPorts())));
+        response.setDacList(new ArrayList<>(conflictDacs));
+
+        return response;
     }
 }

@@ -89,11 +89,18 @@
         <constructor-arg ref="playlistHandler" />
     </bean>
 
-    <bean id="dacHandler" class="com.raytheon.uf.edex.bmh.handler.DacHandler" />
+    <bean id="dacHandler" class="com.raytheon.uf.edex.bmh.handler.DacHandler">
+    	<constructor-arg ref="dacSyncValidator" />
+    </bean>
     <bean factory-bean="handlerRegistry" factory-method="register">
         <constructor-arg
             value="com.raytheon.uf.common.bmh.request.DacRequest" />
         <constructor-arg ref="dacHandler" />
+    </bean>
+    <bean factory-bean="handlerRegistry" factory-method="register">
+    	<constructor-arg
+    		value="com.raytheon.uf.common.bmh.request.DacConfigRequest" />
+    	<constructor-arg ref="dacHandler" />
     </bean>
 
     <bean id="broadcastMsgHandler" class="com.raytheon.uf.edex.bmh.handler.BroadcastMessageHandler">
@@ -247,4 +254,12 @@
     		</doTry>
     	</route>
     </camelContext>
+    
+    <bean id="importLegacyDictionaryHandler"
+    	class="com.raytheon.uf.edex.bmh.legacy.handler.ImportLegacyDictionaryHandler" />
+    <bean factory-bean="handlerRegistry" factory-method="register">
+        <constructor-arg
+            value="com.raytheon.uf.common.bmh.legacy.ImportLegacyDictionaryRequest" />
+        <constructor-arg ref="importLegacyDictionaryHandler" />
+    </bean>
 </beans>

@@ -24,6 +24,8 @@ import javax.persistence.EmbeddedId;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapsId;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
@@ -38,7 +40,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * The {@link #port} is unique because a port should only be used by one channel
  * on one dac to prevent broadcast crossover. We have further made port unique
  * across all dacs to ensure that our port setting convention is followed in
- * which the port number increased by 1000 for each additional dac.
+ * which the port number is increased by 1000 for each additional dac.
  * 
  * <pre>
  * 
@@ -47,6 +49,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Nov 3, 2015  5092       bkowal      Initial creation
+ * Nov 09, 2015 5113       bkowal      Created named queries to validate uniqueness. Defined
+ *                                     default values.
  * 
  * </pre>
  * 
@@ -54,12 +58,21 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 
+@NamedQueries({ @NamedQuery(name = DacChannel.VALIDATE_CHANNEL_UNIQUENESS, query = DacChannel.VALIDATE_CHANNEL_UNIQUENESS_QUERY) })
 @Entity
 @Table(name = "dac_channel", uniqueConstraints = @UniqueConstraint(name = "uk_port", columnNames = { "port" }))
 @DynamicSerialize
 public class DacChannel {
 
+    public static final String VALIDATE_CHANNEL_UNIQUENESS = "validateChannelUniqueness";
+
+    protected static final String VALIDATE_CHANNEL_UNIQUENESS_QUERY = "SELECT DISTINCT c.dac FROM DacChannel c WHERE c.id.dac_id != :dacId AND c.port IN :ports";
+
     public static final double DEFAULT_LEVEL = 6.0;
+
+    public static final double LEVEL_MIN = -16.0;
+
+    public static final double LEVEL_MAX = 6.0;
 
     @DynamicSerializeElement
     @EmbeddedId
@@ -151,9 +164,10 @@ public class DacChannel {
      *            the level to set
      */
     public void setLevel(double level) {
-        if (level < -16.0 || level > 6.0) {
+        if (level < LEVEL_MIN || level > LEVEL_MAX) {
             throw new IllegalArgumentException(
-                    "The specified level must be in the range: -16.0 to 6.0!");
+                    "The specified level must be in the range: " + LEVEL_MIN
+                            + " to " + LEVEL_MAX + "!");
         }
 
         this.level = level;

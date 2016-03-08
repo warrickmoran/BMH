@@ -37,7 +37,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 
 /**
  * 
- * Basic confic object for comms manager.
+ * Basic config object for comms manager.
  * 
  * <pre>
  * 
@@ -53,6 +53,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
  * Oct 16, 2014  3687     bsteffen    Implement practice mode.
  * Apr 07, 2015  4370     rjpeter     Added hashCode, equals, toString.
  * Oct 28, 2015  5029     rjpeter     getDacs cannot return null.
+ * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * </pre>
  * 
  * @author bsteffen
@@ -63,16 +64,7 @@ import com.raytheon.uf.edex.bmh.BMHConstants;
 public class CommsConfig {
 
     @XmlAttribute
-    private int clusterPort = 58258;
-
-    @XmlAttribute
-    private int dacTransmitPort = 58259;
-
-    @XmlAttribute
-    private int lineTapPort = 58260;
-
-    @XmlAttribute
-    private int broadcastLivePort = 58269;
+    private int port = 18000;
 
     @XmlElement
     private String dacTransmitStarter = BMHConstants.getBmhHomeDirectory()
@@ -98,43 +90,12 @@ public class CommsConfig {
         this.dacs = dacs;
     }
 
-    public int getClusterPort() {
-        return clusterPort;
+    public int getPort() {
+        return port;
     }
 
-    public void setClusterPort(int clusterPort) {
-        this.clusterPort = clusterPort;
-    }
-
-    public int getDacTransmitPort() {
-        return dacTransmitPort;
-    }
-
-    public void setDacTransmitPort(int dacTransmitPort) {
-        this.dacTransmitPort = dacTransmitPort;
-    }
-
-    public int getLineTapPort() {
-        return lineTapPort;
-    }
-
-    public void setLineTapPort(int lineTapPort) {
-        this.lineTapPort = lineTapPort;
-    }
-
-    /**
-     * @return the broadcastLivePort
-     */
-    public int getBroadcastLivePort() {
-        return broadcastLivePort;
-    }
-
-    /**
-     * @param broadcastLivePort
-     *            the broadcastLivePort to set
-     */
-    public void setBroadcastLivePort(int broadcastLivePort) {
-        this.broadcastLivePort = broadcastLivePort;
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public String getDacTransmitStarter() {
@@ -190,18 +151,15 @@ public class CommsConfig {
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = (prime * result) + broadcastLivePort;
+        result = (prime * result) + port;
         result = (prime * result)
                 + ((clusterHosts == null) ? 0 : clusterHosts.hashCode());
-        result = (prime * result) + clusterPort;
-        result = (prime * result) + dacTransmitPort;
         result = (prime * result)
                 + ((dacTransmitStarter == null) ? 0 : dacTransmitStarter
                         .hashCode());
         result = (prime * result) + ((dacs == null) ? 0 : dacs.hashCode());
         result = (prime * result)
                 + ((jmsConnection == null) ? 0 : jmsConnection.hashCode());
-        result = (prime * result) + lineTapPort;
         return result;
     }
 
@@ -217,7 +175,7 @@ public class CommsConfig {
             return false;
         }
         CommsConfig other = (CommsConfig) obj;
-        if (broadcastLivePort != other.broadcastLivePort) {
+        if (port != other.port) {
             return false;
         }
         if (clusterHosts == null) {
@@ -225,12 +183,6 @@ public class CommsConfig {
                 return false;
             }
         } else if (!clusterHosts.equals(other.clusterHosts)) {
-            return false;
-        }
-        if (clusterPort != other.clusterPort) {
-            return false;
-        }
-        if (dacTransmitPort != other.dacTransmitPort) {
             return false;
         }
         if (dacTransmitStarter == null) {
@@ -254,19 +206,13 @@ public class CommsConfig {
         } else if (!jmsConnection.equals(other.jmsConnection)) {
             return false;
         }
-        if (lineTapPort != other.lineTapPort) {
-            return false;
-        }
         return true;
     }
 
     @Override
     public String toString() {
-        return "CommsConfig [clusterPort=" + clusterPort + ", dacTransmitPort="
-                + dacTransmitPort + ", lineTapPort=" + lineTapPort
-                + ", broadcastLivePort=" + broadcastLivePort
-                + ", dacTransmitStarter=" + dacTransmitStarter
-                + ", jmsConnection=" + jmsConnection + ", dacs=" + dacs
-                + ", clusterHosts=" + clusterHosts + "]";
+        return "CommsConfig [port=" + port + ", dacTransmitStarter="
+                + dacTransmitStarter + ", jmsConnection=" + jmsConnection
+                + ", dacs=" + dacs + ", clusterHosts=" + clusterHosts + "]";
     }
 }

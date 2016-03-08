@@ -37,7 +37,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Apr 14, 2015  4394     bkowal      Added {@link #dacReceiveAddress}, {@link #receivePort},
  *                                    and {@link #channels}. {@link #transmitterGroup} is just
  *                                    descriptive text now.
- * 
+ * Dec 15, 2015  5114     rjpeter     Added toString.
  * </pre>
  * 
  * @author bsteffen
@@ -121,6 +121,18 @@ public class LineTapRequest {
      */
     public void setChannel(int channel) {
         this.channel = channel;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#toString()
+     */
+    @Override
+    public String toString() {
+        return "LineTapRequest [transmitterGroup=" + transmitterGroup
+                + ", dacReceiveAddress=" + dacReceiveAddress + ", receivePort="
+                + receivePort + ", channel=" + channel + "]";
     }
 
 }

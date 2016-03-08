@@ -19,11 +19,15 @@
  **/
 package com.raytheon.uf.edex.bmh.handler;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.BMHLoggerUtils;
+import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
@@ -63,6 +67,8 @@ import com.raytheon.uf.edex.bmh.msg.validator.UnacceptableWordFilter;
  * May 22, 2015  4481     bkowal      Added {@link #getStaticMsgTypeForTransmitterGroupAndMessageType(TransmitterLanguageRequest)}.
  * May 28, 2015  4429     rjpeter     Add ITraceable
  * Jul 06, 2015  4603     bkowal      Return a {@link StaticMsgValidationResult} when validating static message text.
+ * Dec 03, 2015  5159     bkowal      Potentially trigger message re-generation even when a non-national
+ *                                    {@link Dictionary} is altered.
  * </pre>
  * 
  * @author bkowal
@@ -77,6 +83,7 @@ public class TransmitterLanguageRequestHandler extends
             throws Exception {
         TransmitterLanguageResponse response = null;
         ConfigNotification notification = null;
+
         switch (request.getAction()) {
         case GetTransmitterLanguagesForTransmitterGrp:
             response = this.getTransmitterLanguagesForTransmitterGroup(request);
@@ -90,6 +97,19 @@ public class TransmitterLanguageRequestHandler extends
             notification = new TransmitterLanguageConfigNotification(
                     ConfigChangeType.Update, request.getTransmitterLanguage(),
                     request);
+            Set<String> updatedWords = new HashSet<>();
+            if (request.getTransmitterLanguage().getDictionary() != null) {
+                updatedWords.addAll(request.getTransmitterLanguage()
+                        .getDictionary().getAllWordsAsStrings());
+            }
+            if (request.getTransmitterLanguage().getRemovedDictionary() != null) {
+                updatedWords.addAll(request.getTransmitterLanguage()
+                        .getRemovedDictionary().getAllWordsAsStrings());
+            }
+            if (updatedWords.isEmpty() == false) {
+                ((TransmitterLanguageConfigNotification) notification)
+                        .setUpdatedWords(new ArrayList<>(updatedWords));
+            }
             break;
         case DeleteTransmitterLanguage:
             response = new TransmitterLanguageResponse();
