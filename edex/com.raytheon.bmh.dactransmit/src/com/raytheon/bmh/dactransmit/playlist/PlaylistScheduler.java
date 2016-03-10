@@ -19,21 +19,21 @@
  **/
 package com.raytheon.bmh.dactransmit.playlist;
 
+import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -41,9 +41,9 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ExecutorService;
+import java.util.regex.Pattern;
 
 import javax.xml.bind.JAXB;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -159,6 +159,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      expired message.
  * Jan 21, 2015  5278      bkowal       Determine if future playlists can be replaced
  *                                      by new incoming future playlists.
+ * Feb 23, 2016  5382      bkowal       Pre-order the playlists based on name. Load remaining
+ *                                      playlists as a high priority background task.
  * </pre>
  * 
  * @author dgilling
@@ -169,8 +171,6 @@ public final class PlaylistScheduler implements
         IPlaylistUpdateNotificationHandler {
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
-
-    private static final String PLAYLIST_EXT = "*.xml";
 
     /**
      * The amount of time (in hours) before an invalid playlist will be deleted.
@@ -267,6 +267,11 @@ public final class PlaylistScheduler implements
 
     private volatile BROADCASTTYPE type;
 
+    private static final String PLAYLIST_NAME_REGEX = "^P([0-3])_.*_(\\d{17})_T(\\d{6})\\.xml$";
+
+    private static final Pattern PLAYLIST_NAME_PATTERN = Pattern
+            .compile(PLAYLIST_NAME_REGEX);
+
     /**
      * Reads the directory specified in DacSession for valid playlist files
      * (ones that have not already passed their expiration time) and sorts them
@@ -284,10 +289,6 @@ public final class PlaylistScheduler implements
         this.futurePlaylists = new LinkedList<>();
         this.messageIndex = 0;
 
-        Map<String, DacPlaylist> uniqueActivePlaylists = new HashMap<>();
-        List<DacPlaylist> expiredPlaylists = new ArrayList<>();
-        int interruptCounter = 0;
-
         try {
             Files.createDirectories(this.playlistDirectory);
         } catch (Exception e) {
@@ -295,103 +296,89 @@ public final class PlaylistScheduler implements
                     + this.playlistDirectory, e);
         }
 
-        try (DirectoryStream<Path> dirStream = Files.newDirectoryStream(
-                this.playlistDirectory, PLAYLIST_EXT)) {
-            for (Path entry : dirStream) {
-                DacPlaylist playlist = null;
-                try {
-                    playlist = JAXB
-                            .unmarshal(entry.toFile(), DacPlaylist.class);
-                } catch (Exception e) {
-                    logger.error(
-                            "Unable to parse playlist file: "
-                                    + entry.toString() + ".", e);
-                    DefaultMessageLogger.getInstance().logPlaylistError(
-                            BMH_COMPONENT.PLAYLIST_MANAGER,
-                            BMH_ACTIVITY.PLAYLIST_READ, entry.toString(), e);
-                    this.checkPurgeUnusablePlaylist(entry);
-                    continue;
-                }
-                playlist.setPath(entry);
-
-                if (playlist.isValid()) {
-                    String key = playlist.getPriority() + ":"
-                            + playlist.getSuite();
-                    if (playlist.isInterrupt()) {
-                        key += interruptCounter++;
+        final String[] playlistNames = this.playlistDirectory.toFile().list(
+                new FilenameFilter() {
+                    @Override
+                    public boolean accept(File dir, String name) {
+                        return PLAYLIST_NAME_PATTERN.matcher(name).matches();
                     }
+                });
 
-                    DacPlaylist otherPlaylist = uniqueActivePlaylists.get(key);
-                    if (otherPlaylist == null) {
-                        uniqueActivePlaylists.put(key, playlist);
-                    } else {
-                        if (playlist.getCreationTime().after(
-                                otherPlaylist.getCreationTime())) {
-                            uniqueActivePlaylists.put(key, playlist);
-                            expiredPlaylists.add(otherPlaylist);
-                        } else {
-                            expiredPlaylists.add(playlist);
-                        }
-                    }
-                } else if (!playlist.isExpired()) {
-                    this.futurePlaylists.add(playlist);
-                } else {
-                    expiredPlaylists.add(playlist);
-                }
-            }
-        } catch (IOException e) {
-            logger.warn(
-                    "Unable to list initial collection of playlists/messages.",
-                    e);
-        }
+        List<String> playlists = new LinkedList<String>(
+                Arrays.asList(playlistNames));
+        Collections.sort(playlists, new PlaylistNameComparator(
+                PLAYLIST_NAME_PATTERN));
 
         this.activePlaylists = new TreeSet<>(PLAYBACK_ORDER);
-        activePlaylists.addAll(uniqueActivePlaylists.values());
-
-        Collections.sort(this.futurePlaylists, QUEUE_ORDER);
-
         this.cache = new PlaylistMessageCache(dacSession, this);
-        for (DacPlaylist playlist : this.activePlaylists) {
+        this.interrupts = new ConcurrentSkipListSet<>(
+                new DacPlaylistStartTimeComparator());
+        this.playlistMessgeLock = new Object();
+        if (playlists.isEmpty() == false) {
             /*
-             * Verify that all messages in the playlist exist before caching
-             * them.
+             * Read the very first playlist during startup. Based on the
+             * pre-ordering of the playlists by priority and trigger, the
+             * playlist will contain the first set of messages that are eligible
+             * for initial playback.
              */
-            Iterator<DacPlaylistMessageId> messageIterator = playlist
+            final String playlist = playlists.remove(0);
+            this.processPlaylist(playlist);
+            logger.info("Loaded initial playlist: {}.", playlist);
+            this.schedulePlaylistLoad(playlists);
+        }
+        this.warnNoMessages = true;
+    }
+
+    private void processPlaylist(final String playlistName) {
+        Path playlistPath = this.playlistDirectory.resolve(playlistName);
+        DacPlaylist playlist = null;
+        try {
+            playlist = JAXB.unmarshal(playlistPath.toFile(), DacPlaylist.class);
+        } catch (Exception e) {
+            logger.error(
+                    "Unable to parse playlist file: " + playlistPath.toString()
+                            + ".", e);
+            DefaultMessageLogger.getInstance().logPlaylistError(
+                    BMH_COMPONENT.PLAYLIST_MANAGER, BMH_ACTIVITY.PLAYLIST_READ,
+                    playlistPath.toString(), e);
+            this.checkPurgeUnusablePlaylist(playlistPath);
+        }
+        playlist.setPath(playlistPath);
+
+        DacPlaylist retrieveAudioPlaylist = null;
+        synchronized (playlistMessgeLock) {
+            if (playlist.isValid()) {
+                if (playlist.isInterrupt()) {
+                    this.interrupts.add(playlist);
+                    retrieveAudioPlaylist = playlist;
+                } else if (this.checkForReplacementPlaylist(playlist,
+                        activePlaylists)) {
+                    retrieveAudioPlaylist = playlist;
+                }
+            } else if (!playlist.isExpired()) {
+                if (this.checkForReplacementPlaylist(playlist, futurePlaylists)) {
+                    Collections.sort(this.futurePlaylists, QUEUE_ORDER);
+                    retrieveAudioPlaylist = playlist;
+                }
+            } else {
+                expirePlaylist(playlist);
+            }
+        }
+
+        if (retrieveAudioPlaylist != null) {
+            Iterator<DacPlaylistMessageId> messageIterator = retrieveAudioPlaylist
                     .getMessages().iterator();
             while (messageIterator.hasNext()) {
                 DacPlaylistMessageId id = messageIterator.next();
                 if (this.cache.doesMessageFileExist(id) == false) {
-                    logger.error(id.toString() + " referenced by playlist "
-                            + playlist.toString()
+                    logger.warn(id.toString() + " referenced by playlist "
+                            + retrieveAudioPlaylist.toString()
                             + " no longer exists. Ignoring message ...");
                     messageIterator.remove();
                 }
             }
-
-            this.cache.retrieveAudio(playlist);
+            this.cache.retrieveAudio(retrieveAudioPlaylist);
         }
-
-        expirePlaylists(expiredPlaylists);
-
-        this.interrupts = new ConcurrentSkipListSet<>(
-                new DacPlaylistStartTimeComparator());
-        /*
-         * On startup we may have some unplayed interrupts. find them and
-         * transfer them to interrupt queue
-         */
-        for (Iterator<DacPlaylist> iter = activePlaylists.iterator(); iter
-                .hasNext();) {
-            DacPlaylist playlist = iter.next();
-            if (playlist.isInterrupt()) {
-                // TODO: Order interrupts by oldest start time
-                this.interrupts.add(playlist);
-                iter.remove();
-            }
-        }
-
-        this.playlistMessgeLock = new Object();
-
-        this.warnNoMessages = true;
     }
 
     private void checkPurgeUnusablePlaylist(final Path playlistPath) {
@@ -632,8 +619,7 @@ public final class PlaylistScheduler implements
                              * playlist. If this playlist so happens to only
                              * have a single message, we'll just loop back to
                              * the beginning at the next call to nextMessage()
-                             * and generate an updated
-                             * PlaylistNotification.
+                             * and generate an updated PlaylistNotification.
                              */
                             nextMessage = cache.getMessage(currentMessages
                                     .get(0));
@@ -1306,6 +1292,7 @@ public final class PlaylistScheduler implements
              * ensure that the associated messages are retained.
              */
             playlists.addAll(futurePlaylists);
+            playlists.addAll(interrupts);
         }
         return playlists;
     }
@@ -1345,5 +1332,42 @@ public final class PlaylistScheduler implements
      */
     public void sendNoPlaybackNotification() {
         this.eventBus.post(new NoPlaybackMessageNotification());
+    }
+
+    private void schedulePlaylistLoad(final List<String> playlistsToLoad) {
+        if (playlistsToLoad.isEmpty()) {
+            return;
+        }
+        this.executorService.submit(new LoadPlaylistTask(playlistsToLoad));
+    }
+
+    private class LoadPlaylistTask implements PrioritizableCallable<Object> {
+
+        private final List<String> playlistsToLoad;
+
+        public LoadPlaylistTask(final List<String> playlistsToLoad) {
+            if (playlistsToLoad == null || playlistsToLoad.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "Required argument playlistsToLoad must include at least one playlist.");
+            }
+            this.playlistsToLoad = playlistsToLoad;
+        }
+
+        @Override
+        public Object call() throws Exception {
+            for (String playlist : playlistsToLoad) {
+                logger.info("LoadPlaylistTask processing playlist: {} ...",
+                        playlist);
+                processPlaylist(playlist);
+            }
+
+            logger.info("LoadPlaylistTask has finished loading additional playlists.");
+            return null;
+        }
+
+        @Override
+        public Integer getPriority() {
+            return PriorityBasedExecutorService.PRIORITY_HIGH;
+        }
     }
 }

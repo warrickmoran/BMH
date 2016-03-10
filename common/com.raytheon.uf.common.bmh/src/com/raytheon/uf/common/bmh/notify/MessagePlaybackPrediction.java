@@ -44,6 +44,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 08, 2015  #3912     bsteffen     Add convenience constructors
  * May 22, 2015  #4481     bkowal       Added {@link #dynamic}.
  * Feb 04, 2016  #5308     rjpeter      Added additional constructor.
+ * Feb 23, 2016  #5382     bkowal       Always copy the same and alert tones
+ *                                      played flag during construction.
  * </pre>
  * 
  * @author dgilling
@@ -55,7 +57,7 @@ public final class MessagePlaybackPrediction {
 
     @DynamicSerializeElement
     private long broadcastId;
-    
+
     @DynamicSerializeElement
     private long timestamp;
 
@@ -89,8 +91,8 @@ public final class MessagePlaybackPrediction {
         this.broadcastId = message.getBroadcastId();
         this.playCount = message.getPlayCount();
         this.lastTransmitTime = message.getLastTransmitTime();
-        this.playedAlertTone = false;
-        this.playedSameTone = false;
+        this.playedAlertTone = message.isPlayedAlertTone();
+        this.playedSameTone = message.isPlayedSameTone();
         this.dynamic = message.isDynamic();
         this.timestamp = message.getTimestamp();
     }

@@ -6,7 +6,7 @@
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-java-repack-jars[[:space:]].*$!!g')
 
-Name: awips2-edex-request-bmh
+Name: awips2-common-bmh
 Summary: AWIPS II EDEX BMH Installation
 Version: 1.0
 Release: %{_component_release}
@@ -16,21 +16,19 @@ URL: N/A
 License: N/A
 Distribution: N/A
 Vendor: Raytheon
-Packager: %{_build_site}
 
 BuildRequires: awips2-ant
 BuildRequires: awips2-java
-provides: awips2-edex-request-bmh
+provides: awips2-common-bmh
 requires: awips2
 requires: awips2-edex-base
 requires: awips2-edex
 requires: awips2-python
 requires: awips2-java
 requires: awips2-psql
-requires: awips2-common-bmh
 
 %description
-AWIPS II Edex BMH - Installs AWIPS II BMH Edex Request Plugins and Configuration.
+AWIPS II Edex BMH - Installs AWIPS II BMH Edex Common Plugins.
 
 %prep
 # Verify That The User Has Specified A BuildRoot.
@@ -46,7 +44,7 @@ fi
 
 %build
 # determine if the EDEX BMH plugins need to be built.
-if [ -f %{_baseline_workspace}/build.edex/edex/dist/edex-request-bmh.zip ]; then
+if [ -f %{_baseline_workspace}/build.edex/edex/dist/common-bmh.zip ]; then
    exit 0
 fi
 
@@ -66,7 +64,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # prepare the BMH EDEX plugins
-unzip %{_baseline_workspace}/build.edex/edex/dist/edex-request-bmh.zip \
+unzip %{_baseline_workspace}/build.edex/edex/dist/common-bmh.zip \
    -d %{_build_root}
 if [ $? -ne 0 ]; then
    echo "FAILED TO INSTALL THE BMH EDEX REQUEST PLUGINS!"

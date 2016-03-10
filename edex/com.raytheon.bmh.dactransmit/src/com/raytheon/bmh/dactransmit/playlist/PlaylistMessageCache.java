@@ -123,6 +123,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Oct 06, 2015 4904       bkowal       Handle the case when the last purge time is not set.
  * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
  * Feb 04, 2016 5308       bkowal       Utilize {@link DacPlaylistMessageMetadata}.
+ * Feb 15, 2016 5308       bkowal       Playlist file purge will happen independently of message purge.
+ * Feb 23, 2016 5382       bkowal       Prevent unlikely NPE.
  * </pre>
  * 
  * @author dgilling
@@ -781,7 +783,6 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         logger.debug("Removing message " + messageId + " from cache.");
 
         cachedMessages.remove(messageId);
-
     }
 
     private void purgeAudio(final DacPlaylistMessageId messageId) {
@@ -793,14 +794,15 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
 
         DacPlaylistMessage message = cachedMessages.get(messageId);
-        if (message != null) {
-            cachedFiles.remove(message);
+        if (message == null) {
+            return;
         }
 
         /*
          * With all references to this version of the message being removed, we
          * no longer need the last read version of the metadata on disk.
          */
+        cachedFiles.remove(message);
         if (message.getMetadata() != null
                 && Files.exists(message.getMetadata().getPath())) {
             try {
@@ -869,22 +871,28 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
         @Override
         public Object call() {
+            DacPlaylistMessageId logMessageId = null;
             try {
                 for (DacPlaylistMessageId messageId : playlist.getMessages()) {
+                    logMessageId = messageId;
                     /*
-                     * The message metadata file will have already been removed
-                     * for this message if it has been updated. So, the rare
-                     * case in which message metadata does not exist on disk and
-                     * this is the last time the message has been referenced in
-                     * a playlist will be handled by the periodic purge task
-                     * because this message will not be present in active
-                     * messages.
+                     * Only allow the playlist purge to remove the message
+                     * information if this is the last version of the message (a
+                     * metadata file still remains) and the message has expired
+                     * (there are not any updated versions of the message
+                     * metadata file). All other cases will be handled by the
+                     * {@link PurgeTask}.
                      */
-                    if (isExpired(messageId)) {
+                    if (doesMessageFileExist(messageId) && isExpired(messageId)) {
                         purgeAudio(messageId);
                     }
                 }
+            } catch (Throwable e) {
+                logger.error("Error removing message audio for message: "
+                        + logMessageId + ".", e);
+            }
 
+            try {
                 /*
                  * Playlist may be deleted before the purge runs if a newer
                  * version of the playlist is received.
@@ -897,6 +905,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 logger.error("Error deleting playlist " + playlist.getPath()
                         + " from disk.", e);
             }
+
             return null;
         }
 
