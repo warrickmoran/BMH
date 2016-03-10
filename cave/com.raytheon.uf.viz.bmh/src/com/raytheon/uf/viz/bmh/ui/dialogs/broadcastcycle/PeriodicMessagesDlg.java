@@ -58,6 +58,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014    3843    mpduff      Implement periodic messages.
  * Jan 13, 2015    3843    bsteffen    Use playlist data to populate table correctly.
  * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
+ * Mar 10, 2016    5465    tgurney     Add missing trim button style
  * </pre>
  * 
  * @author mpduff
@@ -86,8 +87,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     public PeriodicMessagesDlg(Shell parent,
             BroadcastCycleDataManager dataManager, PlaylistData playlistData,
             String selectedTransmitterGrp) {
-        super(parent, CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT
-                | CAVE.DO_NOT_BLOCK);
+        super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
+                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         setText("Periodic Messages");
         this.dataManager = dataManager;
         this.playlistData = playlistData;

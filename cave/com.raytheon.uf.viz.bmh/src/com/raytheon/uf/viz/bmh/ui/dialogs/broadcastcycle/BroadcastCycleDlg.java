@@ -209,6 +209,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 05, 2016  4997      bkowal      Allow toggling between transmitters/groups.
  * Jan 27, 2016  5160      rjpeter     Left align MRD column.
  * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
+ * Mar 10, 2016  5465      tgurney     Add missing trim button style
  * </pre>
  * 
  * @author mpduff
@@ -346,8 +347,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The parent shell
      */
     public BroadcastCycleDlg(Shell parent) {
-        super(parent, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
-                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
+        super(parent, SWT.DIALOG_TRIM | SWT.MIN | SWT.MAX | SWT.RESIZE,
+                CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT
+                        | CAVE.DO_NOT_BLOCK);
         this.dataManager = new BroadcastCycleDataManager();
         this.dacDataManager = new DacDataManager();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle());
