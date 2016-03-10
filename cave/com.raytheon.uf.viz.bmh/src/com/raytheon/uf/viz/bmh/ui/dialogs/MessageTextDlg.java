@@ -49,6 +49,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Dec 15, 2014 3824       rferrel     Initial creation
  * Jan 15, 2016 5054       randerso    Change to subclass CaveSWTDialog
+ * Mar 10, 2016 5465       tgurney     Add missing dialog trim style
  * 
  * </pre>
  * 
@@ -68,8 +69,8 @@ public class MessageTextDlg extends CaveSWTDialog {
 
     public MessageTextDlg(Shell parentShell, String titleText,
             String labelText, String messageText, int swtIcon) {
-        super(parentShell, SWT.PRIMARY_MODAL | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parentShell, SWT.CLOSE | SWT.PRIMARY_MODAL | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
 
         if (titleText != null) {
             setText(titleText);

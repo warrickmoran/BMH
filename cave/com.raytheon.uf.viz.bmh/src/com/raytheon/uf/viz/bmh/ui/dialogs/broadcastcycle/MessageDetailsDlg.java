@@ -89,6 +89,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 12, 2015    4482     rjpeter    Added DO_NOT_BLOCK.
  * Jan 27, 2016    5160     rjpeter    Added MRD and fixed Time Zone.
  * Jan 28, 2016    5300     rjpeter    Fixed transmitters to be based on broadcast messages.
+ * Mar 10, 2016    5465     tgurney    Add missing dialog trim style
  * </pre>
  * 
  * @author mpduff
@@ -135,7 +136,7 @@ public class MessageDetailsDlg extends CaveSWTDialog {
 
     public MessageDetailsDlg(Shell parent, MessageType mType,
             BroadcastMsg broadcastMsg) {
-        super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
+        super(parent, SWT.DIALOG_TRIM | SWT.MIN, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         this.messageType = mType;
         this.broadcastMsg = broadcastMsg;

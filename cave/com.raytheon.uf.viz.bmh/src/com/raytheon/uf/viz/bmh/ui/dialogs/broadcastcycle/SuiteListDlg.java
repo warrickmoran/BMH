@@ -57,6 +57,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 31, 2015    4340    bkowal      Allow optional filtering of the currently
  *                                     active suite.
  * Jan 25, 2016    5054    randerso    Change to subclass CaveSWTDialog
+ * Mar 10, 2016    5465    tgurney     Add missing trim button style
  * 
  * </pre>
  * 
@@ -77,7 +78,7 @@ public class SuiteListDlg extends CaveSWTDialog {
     private Button cancelBtn;
 
     public SuiteListDlg(Shell parent, List<Suite> suiteList, String activeSuite) {
-        super(parent, SWT.MIN | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
+        super(parent, SWT.MIN | SWT.MAX | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT);
         this.suiteList = suiteList;
         setText("Change Suite");

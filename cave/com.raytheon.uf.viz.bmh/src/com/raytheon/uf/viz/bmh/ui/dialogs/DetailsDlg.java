@@ -45,6 +45,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 8, 2014     3173    mpduff      Initial creation
+ * Mar 10, 2016    5465    tgurney     Add missing trim button style
  * 
  * </pre>
  * 
@@ -95,8 +96,8 @@ public class DetailsDlg extends CaveSWTDialog {
      */
     public DetailsDlg(Shell parentShell, String detailsStr, String titleStr,
             int dialogWidth, int dialogHeight) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.INDEPENDENT_SHELL
-                | CAVE.DO_NOT_BLOCK);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.MAX | SWT.RESIZE,
+                CAVE.INDEPENDENT_SHELL | CAVE.DO_NOT_BLOCK);
         setText(titleStr);
         this.detailsStr = detailsStr;
         this.dialogHeight = dialogHeight;

@@ -156,6 +156,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     notifications.
  * Jun 04, 2015   4490     rjpeter     Fix memory leak.
  * Jan 26, 2016   5054     randerso    Allow dialog to be parented by display
+ * Mar 10, 2016   5465     tgurney     Add missing trim button style
  * 
  * </pre>
  * 
@@ -223,8 +224,9 @@ public class BMHLauncherDlg extends CaveSWTDialog implements
      *            Parent shell.
      */
     public BMHLauncherDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.RESIZE, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.INDEPENDENT_SHELL);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.MAX | SWT.RESIZE,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT
+                        | CAVE.INDEPENDENT_SHELL);
         if (CAVEMode.getMode() != CAVEMode.OPERATIONAL) {
             practiceJob = new PracticeKeepAliveJob();
             practiceJob.schedule();
