@@ -211,6 +211,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    {@link DacPlaylistMessage}.
  * Jan 26, 2016  5278     bkowal      Include all triggers in a playlist.
  * Feb 04, 2016  5308     bkowal      Utilize {@link DacPlaylistMessageMetadata}.
+ * Mar 01, 2016  5382     bkowal      Potentially restore a message file from the archive when
+ *                                    a message that was previously archived is updated.
  * </pre>
  * 
  * @author bsteffen
@@ -1030,15 +1032,6 @@ public class PlaylistManager implements IContextStateProcessor {
         return sortedWithFollows;
     }
 
-    private Path determineMessageFile(BroadcastMsg broadcast)
-            throws IOException {
-        Path playlistDir = this.playlistDir.resolve(broadcast
-                .getTransmitterGroup().getName());
-        Path messageDir = playlistDir.resolve("messages");
-        Files.createDirectories(messageDir);
-        return messageDir.resolve(broadcast.getId() + ".xml");
-    }
-
     private Path determineMessageMetadataFile(BroadcastMsg broadcast,
             long metadataTimestamp) throws IOException {
         Path playlistDir = this.playlistDir.resolve(broadcast
@@ -1059,39 +1052,38 @@ public class PlaylistManager implements IContextStateProcessor {
             final BroadcastContents contents = broadcast
                     .getLatestBroadcastContents();
             InputMessage input = broadcast.getInputMessage();
-            Path messageFile = this.determineMessageFile(broadcast);
-            if (!Files.exists(messageFile)) {
-                dac.setBroadcastId(id);
-                dac.setTimestamp(metadataTimestamp);
+            Path messageMetadataFile = this.determineMessageMetadataFile(
+                    broadcast, metadataTimestamp);
+            if (!Files.exists(messageMetadataFile)) {
+                /*
+                 * Prepare new message metadata.
+                 */
+                DacPlaylistMessageMetadata dacMetadata = new DacPlaylistMessageMetadata(
+                        dac);
+                dacMetadata.setVersion(DacPlaylistMessageId.CURRENT_VERSION);
+                for (BroadcastFragment fragment : contents
+                        .getOrderedFragments()) {
+                    dacMetadata.addSoundFile(fragment.getOutputName());
+                }
+                dacMetadata.setName(input.getName());
+                dacMetadata.setStart(broadcast.getEffectiveTime());
                 String afosid = input.getAfosid();
-                dac.setName(input.getName());
-                dac.setMessageType(afosid);
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
                 if (messageType != null) {
                     /*
                      * determine if we need to notify the user when the message
                      * expires before it is broadcast at least once.
                      */
-                    dac.setWatch(messageType.getDesignation() == Designation.Watch);
-                    dac.setWarning(messageType.getDesignation() == Designation.Warning);
+                    dacMetadata
+                            .setWatch(messageType.getDesignation() == Designation.Watch);
+                    dacMetadata
+                            .setWarning(messageType.getDesignation() == Designation.Warning);
                 }
-                dac.setTraceId(traceable.getTraceId());
-                if (broadcast.getInputMessage().getConfirm() != null) {
-                    /*
-                     * determine if the initial broadcast of the message should
-                     * be confirmed.
-                     */
-                    dac.setConfirm(broadcast.getInputMessage().getConfirm());
-                }
-                dac.setToneBlackoutEnabled(messageType.isToneBlackoutEnabled());
-                if (dac.isToneBlackoutEnabled()) {
-                    dac.setToneBlackoutStart(messageType.getToneBlackOutStart());
-                    dac.setToneBlackoutEnd(messageType.getToneBlackOutEnd());
-                }
-
-                dac.setStart(broadcast.getEffectiveTime());
-                dac.setExpire(input.getExpirationTime());
-                dac.setAlertTone(input.getAlertTone());
+                dacMetadata.setMessageType(afosid);
+                dacMetadata.setPeriodicity(broadcast.getInputMessage()
+                        .getPeriodicity());
+                dacMetadata.setMessageText(broadcast.getInputMessage()
+                        .getContent());
 
                 if (Boolean.TRUE.equals(input.getNwrsameTone())) {
                     if (input.getAfosid().length() >= 6
@@ -1106,7 +1098,7 @@ public class PlaylistManager implements IContextStateProcessor {
                         builder.setEffectiveTime(input.getEffectiveTime());
                         builder.setExpireTime(input.getExpirationTime());
                         builder.setNwsSiteId(SiteUtil.getSite());
-                        dac.setSAMEtone(builder.build().toString());
+                        dacMetadata.setSAMEtone(builder.build().toString());
                     } else if (((input.getAreaCodes() != null) || (input
                             .getSelectedTransmitters() != null))) {
                         // Build a Standard SAME Tone.
@@ -1203,34 +1195,35 @@ public class PlaylistManager implements IContextStateProcessor {
                             builder.setEffectiveTime(input.getEffectiveTime());
                             builder.setExpireTime(input.getExpirationTime());
                             builder.setNwsSiteId(SiteUtil.getSite());
-                            dac.setSAMEtone(builder.build().toString());
+                            dacMetadata.setSAMEtone(builder.build().toString());
                         }
                     }
                 }
-                this.jaxbManager.marshalToXmlFile(dac, messageFile.toString());
-            }
-            Path messageMetadataFile = this.determineMessageMetadataFile(
-                    broadcast, metadataTimestamp);
-            if (!Files.exists(messageMetadataFile)) {
-                /*
-                 * Prepare new message metadata.
-                 */
-                DacPlaylistMessageMetadata dacMetadata = new DacPlaylistMessageMetadata(
-                        dac);
-                for (BroadcastFragment fragment : contents
-                        .getOrderedFragments()) {
-                    dacMetadata.addSoundFile(fragment.getOutputName());
+                dacMetadata.setAlertTone(input.getAlertTone());
+                dacMetadata.setToneBlackoutEnabled(messageType
+                        .isToneBlackoutEnabled());
+                if (dacMetadata.isToneBlackoutEnabled()) {
+                    dacMetadata.setToneBlackoutStart(messageType
+                            .getToneBlackOutStart());
+                    dacMetadata.setToneBlackoutEnd(messageType
+                            .getToneBlackOutEnd());
                 }
-                dacMetadata.setPeriodicity(broadcast.getInputMessage()
-                        .getPeriodicity());
-                dacMetadata.setMessageText(broadcast.getInputMessage()
-                        .getContent());
+                if (broadcast.getInputMessage().getConfirm() != null) {
+                    /*
+                     * determine if the initial broadcast of the message should
+                     * be confirmed.
+                     */
+                    dacMetadata.setConfirm(broadcast.getInputMessage()
+                            .getConfirm());
+                }
                 dacMetadata.setInitialRecognitionTime(input.getLastUpdateTime()
                         .getTime());
+                dacMetadata.setExpire(input.getExpirationTime());
                 this.jaxbManager.marshalToXmlFile(dacMetadata,
                         messageMetadataFile.toString());
                 statusHandler.info("Wrote message metadata file: "
                         + messageMetadataFile.toString() + ".");
+                dac.setMetadata(dacMetadata);
                 this.messageLogger.logPlaylistMessageActivity(traceable, dac,
                         broadcast.getTransmitterGroup());
             }

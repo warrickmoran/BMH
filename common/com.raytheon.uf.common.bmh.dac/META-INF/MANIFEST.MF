@@ -6,6 +6,7 @@ Bundle-Version: 1.0.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Export-Package: com.raytheon.uf.common.bmh.dac,
+ com.raytheon.uf.common.bmh.dac.archive,
  com.raytheon.uf.common.bmh.dac.dacsession,
  com.raytheon.uf.common.bmh.dac.tones
 Require-Bundle: com.raytheon.uf.common.status;bundle-version="1.12.1174",

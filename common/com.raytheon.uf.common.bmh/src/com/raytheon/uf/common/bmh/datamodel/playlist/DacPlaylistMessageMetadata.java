@@ -20,6 +20,7 @@
 package com.raytheon.uf.common.bmh.datamodel.playlist;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -42,7 +43,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 3, 2016  5308       bkowal      Initial creation
+ * Feb 03, 2016  5308      bkowal      Initial creation
+ * Mar 08, 2016  5382      bkowal      Updated to only include information that BMH EDEX
+ *                                     would manage.
  * 
  * </pre>
  * 
@@ -58,6 +61,30 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      */
     private static final String NO_PERIODICTY = "00000000";
 
+    @XmlElement
+    private String name;
+
+    @XmlElement
+    private Calendar start;
+
+    @XmlElement
+    private String messageType;
+
+    @XmlElement
+    private String SAMEtone;
+
+    @XmlElement
+    private boolean alertTone;
+
+    @XmlElement
+    private boolean toneBlackoutEnabled;
+
+    @XmlElement
+    private String toneBlackoutStart;
+
+    @XmlElement
+    private String toneBlackoutEnd;
+
     /** format is DDHHMMSS */
     @XmlElement
     private String periodicity;
@@ -67,6 +94,31 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
 
     @XmlElement
     private String messageText;
+
+    /*
+     * boolean indicating whether or not the confirm flag has been set on the
+     * associated message.
+     */
+    @XmlElement
+    private boolean confirm;
+
+    /*
+     * boolean indicating that this message is a watch. Requirements state that
+     * BMH users must be notified when a watch/warning is not broadcast due to
+     * expiration even though it had been scheduled for broadcast. Set based on
+     * the message type designation.
+     */
+    @XmlElement
+    private boolean watch;
+
+    /*
+     * boolean indicating that this message is a warning. Requirements state
+     * that BMH users must be notified when a watch/warning is not broadcast due
+     * to expiration even though it had been scheduled for broadcast. Set based
+     * on the message type designation.
+     */
+    @XmlElement
+    private boolean warning;
 
     /**
      * {@link #initialRecognitionTime} and {@link #recognized} only exist to
@@ -92,6 +144,49 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
         super(message.getBroadcastId());
     }
 
+    /**
+     * Returns whether this message has a valid SAME tone header.
+     * 
+     * @return Whether or not this message has a valid SAME tone header.
+     */
+    public boolean isSAMETones() {
+        return ((SAMEtone != null) && (!SAMEtone.isEmpty()));
+    }
+
+    protected boolean isOutsideBlackoutPeriod(Calendar time) {
+        if (toneBlackoutEnabled) {
+            int startTime = Integer.parseInt(toneBlackoutStart);
+            int endTime = Integer.parseInt(toneBlackoutEnd);
+
+            boolean periodCrossesDayLine = (endTime <= startTime);
+
+            int currentTime = (time.get(Calendar.HOUR_OF_DAY) * 100)
+                    + time.get(Calendar.MINUTE);
+
+            if (periodCrossesDayLine) {
+                /*
+                 * If the blackout period crosses the day line, then the period
+                 * during which a tone should play is a contiguous time range
+                 * that begins after the blackout end time and ends at the start
+                 * of the blackout period.
+                 */
+                return ((currentTime >= endTime) && (currentTime < startTime));
+            } else {
+                /*
+                 * If the blackout period does not cross the day line, then the
+                 * period is 2 disjoint time ranges: (1) a time range that
+                 * begins after the end of the blackout period and lasts until
+                 * the end of the day and (2) a time range that begins at the
+                 * beginning of the day and lasts until the beginning of the
+                 * blackout period.
+                 */
+                return (((currentTime >= endTime) && (currentTime < 2400)) || ((currentTime >= 0) && (currentTime < startTime)));
+            }
+        }
+
+        return true;
+    }
+
     public boolean isPeriodic() {
         return periodicity != null && !periodicity.isEmpty()
                 && NO_PERIODICTY.equals(periodicity) == false;
@@ -107,6 +202,77 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
                     * TimeUtil.MILLIS_PER_SECOND;
         }
         return -1;
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name
+     *            the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Calendar getStart() {
+        return this.start;
+    }
+
+    public void setStart(Calendar start) {
+        this.start = start;
+    }
+
+    public String getMessageType() {
+        return messageType;
+    }
+
+    public void setMessageType(String messageType) {
+        this.messageType = messageType;
+    }
+
+    public String getSAMEtone() {
+        return SAMEtone;
+    }
+
+    public void setSAMEtone(String sAMEtone) {
+        SAMEtone = sAMEtone;
+    }
+
+    public boolean isAlertTone() {
+        return alertTone;
+    }
+
+    public void setAlertTone(boolean alertTone) {
+        this.alertTone = alertTone;
+    }
+
+    public boolean isToneBlackoutEnabled() {
+        return toneBlackoutEnabled;
+    }
+
+    public void setToneBlackoutEnabled(boolean toneBlackoutEnabled) {
+        this.toneBlackoutEnabled = toneBlackoutEnabled;
+    }
+
+    public String getToneBlackoutStart() {
+        return toneBlackoutStart;
+    }
+
+    public void setToneBlackoutStart(String toneBlackoutStart) {
+        this.toneBlackoutStart = toneBlackoutStart;
+    }
+
+    public String getToneBlackoutEnd() {
+        return toneBlackoutEnd;
+    }
+
+    public void setToneBlackoutEnd(String toneBlackoutEnd) {
+        this.toneBlackoutEnd = toneBlackoutEnd;
     }
 
     public String getPeriodicity() {
@@ -150,6 +316,52 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      */
     public void setMessageText(String messageText) {
         this.messageText = messageText;
+    }
+    
+    /**
+     * @return the confirm
+     */
+    public boolean isConfirm() {
+        return confirm;
+    }
+
+    /**
+     * @param confirm
+     *            the confirm to set
+     */
+    public void setConfirm(boolean confirm) {
+        this.confirm = confirm;
+    }
+    
+
+    /**
+     * @return the watch
+     */
+    public boolean isWatch() {
+        return watch;
+    }
+
+    /**
+     * @param watch
+     *            the watch to set
+     */
+    public void setWatch(boolean watch) {
+        this.watch = watch;
+    }
+    
+    /**
+     * @return the warning
+     */
+    public boolean isWarning() {
+        return warning;
+    }
+
+    /**
+     * @param warning
+     *            the warning to set
+     */
+    public void setWarning(boolean warning) {
+        this.warning = warning;
     }
 
     /**
