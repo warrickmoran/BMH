@@ -31,8 +31,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 1, 2016            rjpeter     Initial creation
- * 
+ * Feb 01, 2016 5308       rjpeter     Initial creation
  * </pre>
  * 
  * @author rjpeter

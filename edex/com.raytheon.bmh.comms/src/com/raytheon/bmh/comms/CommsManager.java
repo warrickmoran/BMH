@@ -61,6 +61,7 @@ import com.raytheon.bmh.dactransmit.DacTransmitArgParser;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitCriticalError;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification.STATE;
@@ -149,6 +150,7 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Jan 04, 2016  5308     rjpeter     Added PlaylistServer.
  * Feb 25, 2016  5382     bkowal      Log every case when a dac transmit process is killed.
  * Feb 25, 2016  5419     rjpeter     Give DacTransmit more time to start if it fails to connect.
+ * Mar 14, 2016  5472     rjpeter     Added forwardPlaylistResponse.
  * </pre>
  * 
  * @author bsteffen
@@ -1082,6 +1084,24 @@ public class CommsManager {
 
     public void forwardPlaylistRequestMessage(SendPlaylistMessage msg) {
         transmitServer.sendToDac(msg);
+    }
+
+    /**
+     * Forwards playlist response message on to the PlaylistServer. Messages
+     * optionally forwarded to the rest of the cluster. If message was received
+     * from another cluster member, fotwardToCluster must be false to prevent an
+     * infinite forwarding scenario.
+     * 
+     * @param msg
+     * @param forwardToCluster
+     */
+    public void forwardPlaylistResponse(SendPlaylistResponse msg,
+            boolean forwardToCluster) {
+        playlistServer.handleResponse(msg);
+
+        if (forwardToCluster) {
+            clusterServer.sendDataToAll(msg);
+        }
     }
 
     public CommsConfig getCurrentConfigState() {

@@ -47,6 +47,7 @@ import com.raytheon.bmh.dactransmit.playlist.PriorityBasedExecutorService;
 import com.raytheon.bmh.dactransmit.playlist.ScanPlaylistDirectoryTask;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
@@ -110,6 +111,7 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  *                                    the comms manager.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage and cache the last received PlaylistNotification.
+ * Mar 14, 2016  5472     rjpeter     Send a SendPlaylistResponse for SendPlaylistMessage.
  * </pre>
  * 
  * @author bsteffen
@@ -307,16 +309,21 @@ public final class CommsManagerCommunicator extends Thread {
         } else if (message instanceof ChangeTimeZone) {
             eventBus.post(message);
         } else if (message instanceof SendPlaylistMessage) {
+            SendPlaylistMessage playlistMessage = (SendPlaylistMessage) message;
             if (liveBroadcast != null) {
-                executorService
-                        .submit(new SendToCommsManagerTask(liveBroadcast));
+                executorService.submit(new SendToCommsManagerTask(
+                        new SendPlaylistResponse(playlistMessage
+                                .getTransmitterGroup(), liveBroadcast)));
             } else if (lastPlaylist != null) {
-                executorService
-                        .submit(new SendToCommsManagerTask(lastPlaylist));
+                executorService.submit(new SendToCommsManagerTask(
+                        new SendPlaylistResponse(playlistMessage
+                                .getTransmitterGroup(), lastPlaylist)));
             } else {
                 NoPlaybackMessageNotification msg = new NoPlaybackMessageNotification();
                 msg.setGroupName(config.getTransmitterGroup());
-                executorService.submit(new SendToCommsManagerTask(msg));
+                executorService.submit(new SendToCommsManagerTask(
+                        new SendPlaylistResponse(playlistMessage
+                                .getTransmitterGroup(), msg)));
             }
         } else {
             logger.error("Unrecognized message from comms manager of type "

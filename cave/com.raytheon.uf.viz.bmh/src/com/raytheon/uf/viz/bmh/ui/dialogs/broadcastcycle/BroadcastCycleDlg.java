@@ -19,6 +19,9 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
+import java.net.Socket;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -63,6 +66,8 @@ import com.raytheon.uf.common.bmh.TimeTextFragment;
 import com.raytheon.uf.common.bmh.broadcast.ExpireBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
@@ -92,9 +97,13 @@ import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
+import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.BMHJmsDestinations;
+import com.raytheon.uf.viz.bmh.BMHServers;
+import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.dialogs.notify.BMHDialogNotificationManager;
 import com.raytheon.uf.viz.bmh.dialogs.notify.IDialogNotification;
@@ -209,6 +218,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 05, 2016  4997      bkowal      Allow toggling between transmitters/groups.
  * Jan 27, 2016  5160      rjpeter     Left align MRD column.
  * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
+ * Mar 14, 2016  5472      rjpeter     Added playlist job.
  * </pre>
  * 
  * @author mpduff
@@ -338,6 +348,8 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      * selection.
      */
     protected Button groupToggleBtn;
+
+    private final Map<String, PlaylistJob> playlistJobs = new HashMap<>();
 
     /**
      * Constructor.
@@ -824,6 +836,23 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 if (selectedTransmitterGrp != null) {
                     dataStruct = playlistData
                             .getPlaylistData(selectedTransmitterGrp);
+                    if ((dataStruct == null) || dataStruct.isPartialPlaylist()) {
+                        synchronized (playlistJobs) {
+                            PlaylistJob job = playlistJobs
+                                    .get(selectedTransmitterGrp);
+
+                            if ((job != null) && job.isTimedOut()) {
+                                job.cancel();
+                                job = null;
+                            }
+
+                            if (job == null) {
+                                job = new PlaylistJob(selectedTransmitterGrp);
+                                playlistJobs.put(selectedTransmitterGrp, job);
+                                job.schedule();
+                            }
+                        }
+                    }
                 }
 
                 tableData = playlistData
@@ -1514,6 +1543,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             if (liveBroadcastFont != null) {
                 liveBroadcastFont.dispose();
             }
+
+            synchronized (playlistJobs) {
+                for (PlaylistJob job : playlistJobs.values()) {
+                    job.cancel();
+                }
+            }
         }
     }
 
@@ -1551,223 +1586,227 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
         for (NotificationMessage message : messages) {
             try {
-                Object o = message.getMessagePayload();
-                if (o instanceof PlaylistNotification) {
-                    final PlaylistNotification notification = (PlaylistNotification) o;
-                    playlistData.handlePlaylistSwitchNotification(notification);
-                    if (notification.getTransmitterGroup().equals(
-                            selectedTransmitterGrp)) {
-                        tableData = playlistData
-                                .getUpdatedTableData(notification
-                                        .getTransmitterGroup());
-                        cycleDurationTime = timeFormatter.format(new Date(
-                                notification.getPlaybackCycleTime()));
-                        updateTable(tableData);
-                        this.selectedSuite = notification.getSuiteName();
-
-                        final String currentSuiteCategory = this
-                                .getCategoryForCurrentSuite();
-                        VizApp.runAsync(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                if (messageDetailBtn.isDisposed()) {
-                                    return;
-                                }
-
-                                messageDetailBtn.setEnabled(true);
-                                if (programObj == null) {
-                                    setProgramLabelTextFontAndColor("Unknown");
-                                } else {
-                                    setProgramLabelTextFontAndColor(programObj
-                                            .getName());
-                                }
-                                suiteValueLbl.setText(selectedSuite);
-                                /*
-                                 * Update the suite category.
-                                 */
-                                suiteCatValueLbl.setText(currentSuiteCategory);
-                                cycleDurValueLbl.setText(cycleDurationTime);
-
-                                if ((periodicMsgDlg != null)
-                                        && !periodicMsgDlg.isDisposed()) {
-                                    periodicMsgDlg.populateTableData();
-                                }
-
-                                if ((changeSuiteDlg != null)
-                                        && (changeSuiteDlg.isDisposed() == false)) {
-                                    changeSuiteDlg
-                                            .updateActiveSuite(selectedSuite);
-                                }
-                            }
-                        });
-                    }
-                } else if (o instanceof MessagePlaybackStatusNotification) {
-                    MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) o;
-                    playlistData.handlePlaybackStatusNotification(notification);
-                    if (notification.getTransmitterGroup().equals(
-                            selectedTransmitterGrp)) {
-                        tableData = playlistData
-                                .getUpdatedTableData(notification
-                                        .getTransmitterGroup());
-                        updateTable(tableData);
-                        VizApp.runAsync(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                if (messageDetailBtn.isDisposed()) {
-                                    return;
-                                }
-
-                                messageDetailBtn.setEnabled(true);
-                                if ((periodicMsgDlg != null)
-                                        && !periodicMsgDlg.isDisposed()) {
-                                    periodicMsgDlg.populateTableData();
-                                }
-                            }
-                        });
-                    }
-                } else if (o instanceof ProgramConfigNotification) {
-                    ProgramConfigNotification pgmConfigNotification = (ProgramConfigNotification) o;
-                    /*
-                     * does this apply to the program we have selected?
-                     */
-                    if ((this.programObj == null)
-                            || (this.programObj.getId() != pgmConfigNotification
-                                    .getId())) {
-                        return;
-                    }
-                    /*
-                     * Refresh the selected program object.
-                     */
-                    VizApp.runAsync(new Runnable() {
-                        @Override
-                        public void run() {
-                            retrieveProgram();
-
-                            if ((changeSuiteDlg != null)
-                                    && (changeSuiteDlg.isDisposed() == false)) {
-                                changeSuiteDlg.updateSuites(programObj
-                                        .getSuites());
-                            }
-                        }
-                    });
-                } else if (o instanceof LiveBroadcastSwitchNotification) {
-                    final LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) o;
-                    playlistData
-                            .handleLiveBroadcastSwitchNotification(notification);
-                    if (notification.getTransmitterGroup().getName()
-                            .equals(this.selectedTransmitterGrp) == false) {
-                        return;
-                    }
-
-                    if (notification.getBroadcastState() == STATE.STARTED) {
-                        final TableData liveTableData = this.playlistData
-                                .getNonStandardTableData(notification);
-
-                        VizApp.runAsync(new Runnable() {
-                            @Override
-                            public void run() {
-                                if (isDisposed()) {
-                                    return;
-                                }
-
-                                updateDisplayForNonStandardBroadcast(
-                                        liveTableData, notification);
-                            }
-                        });
-                    } else {
-                        updateTable(tableData);
-                        final String currentSuiteCategory = this
-                                .getCategoryForCurrentSuite();
-                        VizApp.runAsync(new Runnable() {
-
-                            @Override
-                            public void run() {
-                                if (messageDetailBtn.isDisposed()) {
-                                    return;
-                                }
-
-                                messageDetailBtn.setEnabled(true);
-                                setProgramLabelTextFontAndColor(programObj
-                                        .getName());
-                                if (selectedSuite != null) {
-                                    suiteValueLbl.setText(selectedSuite);
-                                } else {
-                                    suiteValueLbl.setText("");
-                                }
-                                suiteCatValueLbl.setText(currentSuiteCategory);
-                                if (cycleDurationTime != null) {
-                                    cycleDurValueLbl.setText(cycleDurationTime);
-                                } else {
-                                    cycleDurValueLbl.setText("");
-                                }
-                            }
-                        });
-                    }
-                } else if (o instanceof TransmitterGroupConfigNotification) {
-                    TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) o;
-                    this.updateDisplayForTransmitterGrpConfigChange(notification);
-                } else if (o instanceof ResetNotification) {
-                    VizApp.runAsync(new Runnable() {
-                        @Override
-                        public void run() {
-                            populateTransmitters(true);
-                            closeChangeSuiteDlg();
-                        }
-                    });
-                } else if (o instanceof DacTransmitShutdownNotification) {
-                    DacTransmitShutdownNotification notification = (DacTransmitShutdownNotification) o;
-                    final String group = notification.getTransmitterGroup();
-
-                    playlistData.purgeData(group);
-                    if (group.equals(this.selectedTransmitterGrp)) {
-                        VizApp.runAsync(new Runnable() {
-                            @Override
-                            public void run() {
-                                initialTablePopulation();
-                            }
-                        });
-                    }
-                } else if (o instanceof MaintenanceMessagePlayback) {
-                    final MaintenanceMessagePlayback notification = (MaintenanceMessagePlayback) o;
-
-                    this.playlistData
-                            .handleMaintenanceNotification(notification);
-
-                    if (notification.getTransmitterGroup().equals(
-                            this.selectedTransmitterGrp) == false) {
-                        return;
-                    }
-
-                    final TableData liveTableData = this.playlistData
-                            .getNonStandardTableData(notification);
-
-                    VizApp.runAsync(new Runnable() {
-                        @Override
-                        public void run() {
-                            if (isDisposed()) {
-                                return;
-                            }
-
-                            updateDisplayForNonStandardBroadcast(liveTableData,
-                                    notification);
-                        }
-                    });
-                } else if (o instanceof NoPlaybackMessageNotification) {
-                    NoPlaybackMessageNotification notification = (NoPlaybackMessageNotification) o;
-                    String group = notification.getGroupName();
-                    this.playlistData.purgeData(group);
-                    if (group.equals(this.selectedTransmitterGrp)) {
-                        tableData = this.playlistData
-                                .getUpdatedTableData(group);
-                        updateTable(tableData);
-                    }
-                }
+                handleNotificationPayload(message.getMessagePayload());
             } catch (NotificationException e) {
                 statusHandler.error("Error processing update notification", e);
             }
         }
+    }
+
+    private void handleNotificationPayload(Object payload) {
+        if (payload instanceof PlaylistNotification) {
+            final PlaylistNotification notification = (PlaylistNotification) payload;
+            playlistData.handlePlaylistSwitchNotification(notification);
+            if (notification.getTransmitterGroup().equals(
+                    selectedTransmitterGrp)) {
+                tableData = playlistData.getUpdatedTableData(notification
+                        .getTransmitterGroup());
+                cycleDurationTime = timeFormatter.format(new Date(notification
+                        .getPlaybackCycleTime()));
+                updateTable(tableData);
+                this.selectedSuite = notification.getSuiteName();
+
+                final String currentSuiteCategory = this
+                        .getCategoryForCurrentSuite();
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (messageDetailBtn.isDisposed()) {
+                            return;
+                        }
+
+                        messageDetailBtn.setEnabled(true);
+                        if (programObj == null) {
+                            setProgramLabelTextFontAndColor("Unknown");
+                        } else {
+                            setProgramLabelTextFontAndColor(programObj
+                                    .getName());
+                        }
+                        suiteValueLbl.setText(selectedSuite);
+                        /*
+                         * Update the suite category.
+                         */
+                        suiteCatValueLbl.setText(currentSuiteCategory);
+                        cycleDurValueLbl.setText(cycleDurationTime);
+
+                        if ((periodicMsgDlg != null)
+                                && !periodicMsgDlg.isDisposed()) {
+                            periodicMsgDlg.populateTableData();
+                        }
+
+                        if ((changeSuiteDlg != null)
+                                && (changeSuiteDlg.isDisposed() == false)) {
+                            changeSuiteDlg.updateActiveSuite(selectedSuite);
+                        }
+                    }
+                });
+            }
+        } else if (payload instanceof MessagePlaybackStatusNotification) {
+            MessagePlaybackStatusNotification notification = (MessagePlaybackStatusNotification) payload;
+            playlistData.handlePlaybackStatusNotification(notification);
+            if (notification.getTransmitterGroup().equals(
+                    selectedTransmitterGrp)) {
+                tableData = playlistData.getUpdatedTableData(notification
+                        .getTransmitterGroup());
+                updateTable(tableData);
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (messageDetailBtn.isDisposed()) {
+                            return;
+                        }
+
+                        messageDetailBtn.setEnabled(true);
+                        if ((periodicMsgDlg != null)
+                                && !periodicMsgDlg.isDisposed()) {
+                            periodicMsgDlg.populateTableData();
+                        }
+                    }
+                });
+            }
+        } else if (payload instanceof ProgramConfigNotification) {
+            ProgramConfigNotification pgmConfigNotification = (ProgramConfigNotification) payload;
+            /*
+             * does this apply to the program we have selected?
+             */
+            if ((this.programObj == null)
+                    || (this.programObj.getId() != pgmConfigNotification
+                            .getId())) {
+                return;
+            }
+            /*
+             * Refresh the selected program object.
+             */
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    retrieveProgram();
+
+                    if ((changeSuiteDlg != null)
+                            && (changeSuiteDlg.isDisposed() == false)) {
+                        changeSuiteDlg.updateSuites(programObj.getSuites());
+                    }
+                }
+            });
+        } else if (payload instanceof LiveBroadcastSwitchNotification) {
+            final LiveBroadcastSwitchNotification notification = (LiveBroadcastSwitchNotification) payload;
+            playlistData.handleLiveBroadcastSwitchNotification(notification);
+            if (notification.getTransmitterGroup().getName()
+                    .equals(this.selectedTransmitterGrp) == false) {
+                return;
+            }
+
+            if (notification.getBroadcastState() == STATE.STARTED) {
+                final TableData liveTableData = this.playlistData
+                        .getNonStandardTableData(notification);
+
+                VizApp.runAsync(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isDisposed()) {
+                            return;
+                        }
+
+                        updateDisplayForNonStandardBroadcast(liveTableData,
+                                notification);
+                    }
+                });
+            } else {
+                updateTable(tableData);
+                final String currentSuiteCategory = this
+                        .getCategoryForCurrentSuite();
+                VizApp.runAsync(new Runnable() {
+
+                    @Override
+                    public void run() {
+                        if (messageDetailBtn.isDisposed()) {
+                            return;
+                        }
+
+                        messageDetailBtn.setEnabled(true);
+                        setProgramLabelTextFontAndColor(programObj.getName());
+                        if (selectedSuite != null) {
+                            suiteValueLbl.setText(selectedSuite);
+                        } else {
+                            suiteValueLbl.setText("");
+                        }
+                        suiteCatValueLbl.setText(currentSuiteCategory);
+                        if (cycleDurationTime != null) {
+                            cycleDurValueLbl.setText(cycleDurationTime);
+                        } else {
+                            cycleDurValueLbl.setText("");
+                        }
+                    }
+                });
+            }
+        } else if (payload instanceof TransmitterGroupConfigNotification) {
+            TransmitterGroupConfigNotification notification = (TransmitterGroupConfigNotification) payload;
+            this.updateDisplayForTransmitterGrpConfigChange(notification);
+        } else if (payload instanceof ResetNotification) {
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    populateTransmitters(true);
+                    closeChangeSuiteDlg();
+                }
+            });
+        } else if (payload instanceof DacTransmitShutdownNotification) {
+            DacTransmitShutdownNotification notification = (DacTransmitShutdownNotification) payload;
+            final String group = notification.getTransmitterGroup();
+
+            playlistData.purgeData(group);
+            if (group.equals(this.selectedTransmitterGrp)) {
+                VizApp.runAsync(new Runnable() {
+                    @Override
+                    public void run() {
+                        initialTablePopulation();
+                    }
+                });
+            }
+        } else if (payload instanceof MaintenanceMessagePlayback) {
+            final MaintenanceMessagePlayback notification = (MaintenanceMessagePlayback) payload;
+
+            this.playlistData.handleMaintenanceNotification(notification);
+
+            if (notification.getTransmitterGroup().equals(
+                    this.selectedTransmitterGrp) == false) {
+                return;
+            }
+
+            final TableData liveTableData = this.playlistData
+                    .getNonStandardTableData(notification);
+
+            VizApp.runAsync(new Runnable() {
+                @Override
+                public void run() {
+                    if (isDisposed()) {
+                        return;
+                    }
+
+                    updateDisplayForNonStandardBroadcast(liveTableData,
+                            notification);
+                }
+            });
+        } else if (payload instanceof NoPlaybackMessageNotification) {
+            NoPlaybackMessageNotification notification = (NoPlaybackMessageNotification) payload;
+            String group = notification.getGroupName();
+            this.playlistData.purgeData(group);
+            if (group.equals(this.selectedTransmitterGrp)) {
+                tableData = this.playlistData.getUpdatedTableData(group);
+                updateTable(tableData);
+            }
+
+            /*
+             * if there is an error with getting a playlist, it will be captured
+             * in the reason.
+             */
+            if (!StringUtils.isEmpty(notification.getReason())) {
+                statusHandler.error(notification.getReason());
+            }
+        }
+
     }
 
     /**
@@ -2034,6 +2073,132 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     }
                 }
             });
+        }
+    }
+
+    /**
+     * Requests current playlist from CommsManager/DacTransmit.
+     */
+    private class PlaylistJob extends Job {
+        private final String transmitterGroup;
+
+        private final Socket socket;
+
+        private volatile long startTime = 0;
+
+        /**
+         * @param name
+         */
+        public PlaylistJob(String transmitterGroup)
+                throws CommsCommunicationException {
+            super(transmitterGroup + "PlaylistLookup");
+            this.transmitterGroup = transmitterGroup;
+            String commsLoc = BMHServers.getCommsManager();
+            if (commsLoc == null) {
+                throw new CommsCommunicationException(
+                        "Unable to look up playlist for "
+                                + transmitterGroup
+                                + ". No address has been specified for comms manager "
+                                + BMHServers.getCommsManagerKey() + ".");
+            }
+
+            URI commsURI = null;
+            try {
+                commsURI = new URI(commsLoc);
+            } catch (URISyntaxException e) {
+                throw new CommsCommunicationException(
+                        "Unable to look up playlist for "
+                                + transmitterGroup
+                                + ". Invalid address specified for comms manager "
+                                + BMHServers.getCommsManagerKey() + ": "
+                                + commsLoc + ".", e);
+            }
+
+            try {
+                socket = new Socket(commsURI.getHost(), commsURI.getPort());
+            } catch (Exception e) {
+                throw new CommsCommunicationException(
+                        "Unable to look up playlist for " + transmitterGroup
+                                + ". Failed to connect to comms manager at "
+                                + BMHServers.getCommsManagerKey() + ": "
+                                + commsLoc + ".", e);
+            }
+        }
+
+        public boolean isTimedOut() {
+            return ((startTime > 0) && (System.currentTimeMillis() > (startTime + (15 * TimeUtil.MILLIS_PER_SECOND))));
+        }
+
+        @Override
+        protected IStatus run(IProgressMonitor monitor) {
+            startTime = System.currentTimeMillis();
+
+            try {
+                socket.setTcpNoDelay(true);
+                SerializationUtil.transformToThriftUsingStream(
+                        new SendPlaylistMessage(transmitterGroup),
+                        socket.getOutputStream());
+                SendPlaylistResponse response = SerializationUtil
+                        .transformFromThrift(SendPlaylistResponse.class,
+                                socket.getInputStream());
+
+                if (response != null) {
+                    switch (response.getType()) {
+                    case PLAYLIST:
+                        handleNotificationPayload(response
+                                .getPlaylistNotification());
+                        break;
+                    case LIVE_BROADCAST:
+                        handleNotificationPayload(response
+                                .getLiveBroadcastNotification());
+                        break;
+                    case MAINTENANCE:
+                        handleNotificationPayload(response
+                                .getMaintenanceMessage());
+                        break;
+                    case NO_PLAYLIST:
+                        handleNotificationPayload(response
+                                .getNoPlaylistNotification());
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                statusHandler
+                        .error("Unable to look up playlist for "
+                                + transmitterGroup
+                                + ". Failed to send playlist request to comms manager "
+                                + BMHServers.getCommsManagerKey() + ": "
+                                + BMHServers.getCommsManager() + ".", e);
+            } finally {
+                try {
+                    socket.close();
+                } catch (Exception e) {
+                    statusHandler
+                            .error("Error occurred closing connection to comms manager");
+                }
+
+            }
+
+            synchronized (playlistJobs) {
+                if (playlistJobs.get(transmitterGroup) == this) {
+                    playlistJobs.remove(transmitterGroup);
+                }
+            }
+
+            return Status.OK_STATUS;
+        }
+
+        @Override
+        protected void canceling() {
+            super.canceling();
+
+            try {
+                /* Force close the socket to kill the job */
+                socket.close();
+            } catch (Exception e) {
+                statusHandler
+                        .error("Error occurred during playlist job cancel. Failed to close connection to comms manager");
+            }
         }
     }
 }
