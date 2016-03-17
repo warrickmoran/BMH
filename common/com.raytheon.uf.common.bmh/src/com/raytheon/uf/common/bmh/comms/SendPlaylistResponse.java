@@ -69,17 +69,17 @@ public class SendPlaylistResponse {
     public SendPlaylistResponse() {
     }
 
-    public SendPlaylistResponse(String group, PlaylistNotification notification) {
-        this.group = group;
-        this.playlistNotification = notification;
-        this.type = ResponseType.PLAYLIST;
-    }
-
     public SendPlaylistResponse(String group,
+            PlaylistNotification notification,
             LiveBroadcastSwitchNotification broadcast) {
         this.group = group;
+        this.playlistNotification = notification;
         this.liveBroadcastNotification = broadcast;
-        this.type = ResponseType.LIVE_BROADCAST;
+        if (broadcast == null) {
+            this.type = ResponseType.PLAYLIST;
+        } else {
+            this.type = ResponseType.LIVE_BROADCAST;
+        }
     }
 
     public SendPlaylistResponse(String group,

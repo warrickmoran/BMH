@@ -2151,6 +2151,17 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                     case LIVE_BROADCAST:
                         handleNotificationPayload(response
                                 .getLiveBroadcastNotification());
+
+                        /*
+                         * In the case of live broadcast need to populate
+                         * playlist data so it is available when broadcast
+                         * finishes.
+                         */
+                        if (response.getPlaylistNotification() != null) {
+                            playlistData
+                                    .handlePlaylistSwitchNotification(response
+                                            .getPlaylistNotification());
+                        }
                         break;
                     case MAINTENANCE:
                         handleNotificationPayload(response

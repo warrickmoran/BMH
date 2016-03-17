@@ -310,14 +310,11 @@ public final class CommsManagerCommunicator extends Thread {
             eventBus.post(message);
         } else if (message instanceof SendPlaylistMessage) {
             SendPlaylistMessage playlistMessage = (SendPlaylistMessage) message;
-            if (liveBroadcast != null) {
+            if ((lastPlaylist != null) || (liveBroadcast != null)) {
                 executorService.submit(new SendToCommsManagerTask(
                         new SendPlaylistResponse(playlistMessage
-                                .getTransmitterGroup(), liveBroadcast)));
-            } else if (lastPlaylist != null) {
-                executorService.submit(new SendToCommsManagerTask(
-                        new SendPlaylistResponse(playlistMessage
-                                .getTransmitterGroup(), lastPlaylist)));
+                                .getTransmitterGroup(), lastPlaylist,
+                                liveBroadcast)));
             } else {
                 NoPlaybackMessageNotification msg = new NoPlaybackMessageNotification();
                 msg.setGroupName(config.getTransmitterGroup());
