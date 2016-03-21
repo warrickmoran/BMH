@@ -57,6 +57,8 @@ import com.raytheon.uf.common.status.slf4j.UFMarkers;
  * ------------- -------- ----------- --------------------------
  * Mar 11, 2015  4266     bsteffen    Initial creation
  * Jun 22, 2015  4570     bkowal      Updated to use the new slf4j CAVE logging.
+ * Mar 21, 2016  5489     bkowal      Verify that the AlertViz appender was successfully
+ *                                    retrieved from logback configuration.
  * 
  * </pre>
  * 
@@ -71,7 +73,7 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
             .getLogger("CaveLogger");
 
     private final AbstractJmsAppender alertvizAppender = (AbstractJmsAppender) logger
-            .getAppender("AlertvizAppender");
+            .getAppender("AsyncAlertvizAppender");
 
     private static final StatusHandler instance = new StatusHandler(
             StatusHandler.class.getPackage().getName(), CATEGORY, CATEGORY);
@@ -113,8 +115,8 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
 
         Slf4JBridge.logToSLF4J(logger, priority, m, message, throwable);
 
-        if (this.alertvizAppender.isConnected() == false
-                && priority != Priority.VERBOSE) {
+        if ((this.alertvizAppender == null || this.alertvizAppender
+                .isConnected() == false) && priority != Priority.VERBOSE) {
             /*
              * It is unlikely that messages will be logged to AlertViz, display
              * a notification dialog.
