@@ -31,7 +31,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
+import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
  * A modal non-blocking dialog with a label and a scrolling text for messages.
@@ -48,13 +48,14 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 15, 2014 3824       rferrel     Initial creation
+ * Jan 15, 2016 5054       randerso    Change to subclass CaveSWTDialog
  * 
  * </pre>
  * 
  * @author rferrel
  * @version 1.0
  */
-public class MessageTextDlg extends CaveSWTDialogBase {
+public class MessageTextDlg extends CaveSWTDialog {
 
     /** Label may be multiple lines. */
     private final String labelText;
@@ -67,7 +68,8 @@ public class MessageTextDlg extends CaveSWTDialogBase {
 
     public MessageTextDlg(Shell parentShell, String titleText,
             String labelText, String messageText, int swtIcon) {
-        super(parentShell, SWT.PRIMARY_MODAL | SWT.RESIZE, CAVE.DO_NOT_BLOCK);
+        super(parentShell, SWT.PRIMARY_MODAL | SWT.RESIZE, CAVE.DO_NOT_BLOCK
+                | CAVE.PERSPECTIVE_INDEPENDENT);
 
         if (titleText != null) {
             setText(titleText);

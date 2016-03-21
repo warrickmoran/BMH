@@ -22,7 +22,6 @@ package com.raytheon.uf.viz.bmh.standalone;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.FrameworkUtil;
@@ -47,6 +46,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Feb 05, 2015  3743     bsteffen    Initial creation
  * Feb 16, 2015  4168     bsteffen    Set CAVEMode.
  * Mar 11, 2015  4266     bsteffen    Better error/ufstatus handling.
+ * Jan 26, 2016  5054     randerso    Change dialogs to be parented by display
  * 
  * </pre>
  * 
@@ -63,10 +63,10 @@ public class BMHComponent implements IStandaloneComponent {
         BmhConnectivityInitializer connectivity = new BmhConnectivityInitializer();
         connectivity.run();
         if (connectivity.isOnlyBroadcastLive()) {
-            dialog = new StandaloneBroadcastLiveDlg(new Shell(display));
+            dialog = new StandaloneBroadcastLiveDlg(display);
         } else {
             NotificationManagerJob.connect();
-            dialog = new BMHLauncherDlg(new Shell(display));
+            dialog = new BMHLauncherDlg(display);
         }
         UFStatus.setHandlerFactory(new BmhStatusHandlerFactory());
         dialog.open();
@@ -83,7 +83,6 @@ public class BMHComponent implements IStandaloneComponent {
         }
         return IApplication.EXIT_OK;
     }
-
 
     /**
      * Tell Eclipse that the application is up. Otherwise the splash screen

@@ -39,7 +39,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
+import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
  * Suite selection dialog.
@@ -56,6 +56,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * Oct 15, 2014    3716    bkowal      Allow updates of the suite list table.
  * Mar 31, 2015    4340    bkowal      Allow optional filtering of the currently
  *                                     active suite.
+ * Jan 25, 2016    5054    randerso    Change to subclass CaveSWTDialog
  * 
  * </pre>
  * 
@@ -63,7 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialogBase;
  * @version 1.0
  */
 
-public class SuiteListDlg extends CaveSWTDialogBase {
+public class SuiteListDlg extends CaveSWTDialog {
 
     private GenericTable tableComp;
 

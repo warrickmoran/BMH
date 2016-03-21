@@ -25,7 +25,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 
-import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Display;
 
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastGroupsMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastListGroupsCommand;
@@ -55,6 +55,8 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Aug 13, 2015  4424      bkowal      Removed extra quotes around the transmitter group name.
  * Nov 11, 2015  5114      rjpeter     Updated CommsManager to use a single port.
+ * Jan 26, 2016   5054     randerso    Allow dialog to be parented by display
+ * 
  * </pre>
  * 
  * @author bsteffen
@@ -65,8 +67,8 @@ public class StandaloneBroadcastLiveDlg extends BroadcastLiveDlg {
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(StandaloneBroadcastLiveDlg.class);
 
-    public StandaloneBroadcastLiveDlg(Shell parentShell) {
-        super(parentShell);
+    public StandaloneBroadcastLiveDlg(Display display) {
+        super(display);
     }
 
     @Override
