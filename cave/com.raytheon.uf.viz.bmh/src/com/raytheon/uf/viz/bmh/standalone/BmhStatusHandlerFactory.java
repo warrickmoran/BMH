@@ -25,6 +25,8 @@ import org.eclipse.jface.dialogs.ErrorDialog;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.statushandlers.StatusManager;
+
+import ch.qos.logback.classic.AsyncAppender;
 import ch.qos.logback.classic.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -59,6 +61,8 @@ import com.raytheon.uf.common.status.slf4j.UFMarkers;
  * Jun 22, 2015  4570     bkowal      Updated to use the new slf4j CAVE logging.
  * Mar 21, 2016  5489     bkowal      Verify that the AlertViz appender was successfully
  *                                    retrieved from logback configuration.
+ * Mar 23, 2016  5489     bkowal      Be certain the the Loggers/Appenders are available and that
+ *                                    the appender is a certain type.
  * 
  * </pre>
  * 
@@ -69,17 +73,47 @@ public class BmhStatusHandlerFactory extends AbstractHandlerFactory {
 
     private static final String CATEGORY = "WORKSTATION";
 
+    private static final String ASYNC_AV_APPENDER = "AsyncAlertvizAppender";
+
+    private static final String AV_APPENDER = "AlertvizAppender";
+
     private final Logger logger = (Logger) LoggerFactory
             .getLogger("CaveLogger");
 
-    private final AbstractJmsAppender alertvizAppender = (AbstractJmsAppender) logger
-            .getAppender("AsyncAlertvizAppender");
+    private final AbstractJmsAppender alertvizAppender;
 
     private static final StatusHandler instance = new StatusHandler(
             StatusHandler.class.getPackage().getName(), CATEGORY, CATEGORY);
 
     public BmhStatusHandlerFactory() {
         super(CATEGORY);
+        /*
+         * TODO: Ideally, it will be possible to simplify this logic in a later
+         * version of BMH associated with a later version of the common/core
+         * AWIPS II baseline.
+         */
+        if (logger == null) {
+            this.alertvizAppender = null;
+        } else {
+            if (logger.getAppender(ASYNC_AV_APPENDER) != null
+                    && logger.getAppender(ASYNC_AV_APPENDER) instanceof AsyncAppender) {
+                final AsyncAppender asyncAppender = (AsyncAppender) logger
+                        .getAppender(ASYNC_AV_APPENDER);
+                if (asyncAppender.getAppender(AV_APPENDER) != null
+                        && asyncAppender.getAppender(AV_APPENDER) instanceof AbstractJmsAppender) {
+                    this.alertvizAppender = (AbstractJmsAppender) asyncAppender
+                            .getAppender(AV_APPENDER);
+                } else {
+                    this.alertvizAppender = null;
+                }
+            } else if (logger.getAppender(AV_APPENDER) != null
+                    && logger.getAppender(AV_APPENDER) instanceof AbstractJmsAppender) {
+                this.alertvizAppender = (AbstractJmsAppender) logger
+                        .getAppender(AV_APPENDER);
+            } else {
+                this.alertvizAppender = null;
+            }
+        }
     }
 
     @Override
