@@ -128,6 +128,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Feb 15, 2016 5308       bkowal       Playlist file purge will happen independently of message purge.
  * Feb 23, 2016 5382       bkowal       Prevent unlikely NPE.
  * Mar 01, 2016 5382       bkowal       Updated to utilize the {@link PlaylistMessageArchiverTask}.
+ * Mar 24, 2016 5515       bkowal       Do not purge any messages that were recently read within the
+ *                                      current purge cycle.
  * 
  * </pre>
  * 
@@ -339,6 +341,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                             + originalMetadata.getPath().toString() + ".", e);
                 }
             }
+            updatedMetadata.setLastReadTime(System.currentTimeMillis());
             dacMessage.setMetadata(updatedMetadata);
             dacMessage.setTimestamp(message.getTimestamp());
 
@@ -538,6 +541,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 return null;
             }
 
+            messageMetadata.setLastReadTime(System.currentTimeMillis());
             message.setMetadata(messageMetadata);
 
             cachedMessages.put(id, message);
@@ -862,7 +866,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 lastPurgeTime = System.currentTimeMillis();
                 logger.info("Scheduling a cache purge ... {}",
                         this.lastPurgeTime);
-                executorService.submit(new PurgeTask());
+                executorService.submit(new PurgeTask(this.lastPurgeTime));
             }
         }
         this.scheduleArchive();
@@ -932,7 +936,34 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         }
     }
 
+    /**
+     * Determines if a message, provided that it exists, was recently cached
+     * within a specified threshold.
+     * 
+     * @param messageId
+     *            the {@link DacPlaylistMessageId} of the message to check.
+     * @param thresholdTime
+     *            the specified threshold.
+     * @return {@code true}, if the message was recently cached; {@code false},
+     *         othwerwise.
+     */
+    private boolean isRecent(final DacPlaylistMessageId messageId,
+            final long thresholdTime) {
+        DacPlaylistMessage message = cachedMessages.get(messageId);
+        if (message == null || message.getMetadata() == null) {
+            return false;
+        }
+
+        return (message.getMetadata().getLastReadTime() + PURGE_JOB_INTERVAL > thresholdTime);
+    }
+
     private class PurgeTask implements PrioritizableCallable<Object> {
+
+        private final long thresholdTime;
+
+        public PurgeTask(final long thresholdTime) {
+            this.thresholdTime = thresholdTime;
+        }
 
         @Override
         public Object call() {
@@ -946,6 +977,12 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             int audioFilesPurged = 0;
             for (DacPlaylistMessageId messageId : cachedMessages.keySet()) {
                 if (!activeMessageIds.contains(messageId)) {
+                    if (isRecent(messageId, thresholdTime)) {
+                        logger.debug(
+                                "Not purging message: {} because it was recently cached.",
+                                messageId);
+                        continue;
+                    }
                     purgeAudio(messageId);
                     ++audioFilesPurged;
                     purgeMessage(messageId);
