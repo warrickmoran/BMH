@@ -73,6 +73,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Dec 13, 2014  3833      lvenable    Removed unused method.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -215,9 +216,9 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
         int buttonWidth = 70;
 
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd.minimumWidth = buttonWidth;
         Button closeBtn = new Button(buttonComp, SWT.PUSH);
-        closeBtn.setText(" Close ");
+        closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {
             @Override

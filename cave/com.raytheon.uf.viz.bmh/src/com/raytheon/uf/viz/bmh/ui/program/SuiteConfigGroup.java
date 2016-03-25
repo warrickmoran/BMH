@@ -88,6 +88,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014  3833      lvenable     Fixed selection to get items from correct list.
  * Mar 24, 2015  4307      rferrel      Do not create filter controls for new program.
  * Apr 28, 2015  4428      rferrel      Clean up CreateEditSuiteDlg constructors
+ * Mar 25, 2016  5504      bkowal       Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -390,7 +391,8 @@ public class SuiteConfigGroup extends Composite {
      */
     private void createSuiteControls() {
 
-        int numberOfColumns = 0;
+        int outerColumns = 2;
+        int innerColumns = 0;
 
         /*
          * If the suite group type is BROADCAST_PROGRAM then show the following
@@ -403,28 +405,37 @@ public class SuiteConfigGroup extends Composite {
          * Relationship button.
          */
         if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM) {
-            numberOfColumns = 4;
+            innerColumns = 4;
+            outerColumns = 1;
         } else if (suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-            numberOfColumns = 3;
+            innerColumns = 3;
+            outerColumns = 1;
         } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
-            numberOfColumns = 6;
-
-        } else if (suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
-            numberOfColumns = 1;
+            innerColumns = 5;
         }
 
         Composite suiteControlComp = new Composite(suiteGroup, SWT.NONE);
-        GridLayout gl = new GridLayout(numberOfColumns, false);
+        GridLayout gl = new GridLayout(outerColumns, false);
         suiteControlComp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         suiteControlComp.setLayoutData(gd);
 
-        int minButtonWidth = 80;
+        Composite onlyButtonsComposite = null;
+        if (innerColumns != 0) {
+            onlyButtonsComposite = new Composite(suiteControlComp, SWT.NONE);
+            gl = new GridLayout(innerColumns, true);
+            gl.marginWidth = 0;
+            onlyButtonsComposite.setLayout(gl);
+            gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+            onlyButtonsComposite.setLayoutData(gd);
+        }
 
-        if (suiteGroupType != SuiteGroupType.ADD_COPY_EXITING) {
-            gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-            gd.widthHint = minButtonWidth;
-            Button addNewSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+        final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
+        if (onlyButtonsComposite != null
+                && suiteGroupType != SuiteGroupType.ADD_COPY_EXITING) {
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button addNewSuiteBtn = new Button(onlyButtonsComposite, SWT.PUSH);
             addNewSuiteBtn.setText("New...");
             addNewSuiteBtn.setLayoutData(gd);
             addNewSuiteBtn.addSelectionListener(new SelectionAdapter() {
@@ -468,12 +479,13 @@ public class SuiteConfigGroup extends Composite {
             });
         }
 
-        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+        if (onlyButtonsComposite != null
+                && suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
                 || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-            gd = new GridData();
-            gd.minimumWidth = minButtonWidth;
-            Button addExistingBtn = new Button(suiteControlComp, SWT.PUSH);
-            addExistingBtn.setText(" Add Existing... ");
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button addExistingBtn = new Button(onlyButtonsComposite, SWT.PUSH);
+            addExistingBtn.setText("Add Existing...");
             addExistingBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
                 public void widgetSelected(SelectionEvent e) {
@@ -519,11 +531,12 @@ public class SuiteConfigGroup extends Composite {
                     asd.open();
                 }
             });
-        } else if (suiteGroupType == SuiteGroupType.SUITE_MGR) {
-            gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-            gd.widthHint = minButtonWidth;
-            Button copyBtn = new Button(suiteControlComp, SWT.PUSH);
-            copyBtn.setText(" Copy... ");
+        } else if (onlyButtonsComposite != null
+                && suiteGroupType == SuiteGroupType.SUITE_MGR) {
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button copyBtn = new Button(onlyButtonsComposite, SWT.PUSH);
+            copyBtn.setText("Copy...");
             copyBtn.setLayoutData(gd);
             copyBtn.addSelectionListener(new SelectionAdapter() {
                 @Override
@@ -535,9 +548,9 @@ public class SuiteConfigGroup extends Composite {
             });
             suiteControls.add(copyBtn);
 
-            gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-            gd.widthHint = minButtonWidth;
-            Button renameSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button renameSuiteBtn = new Button(onlyButtonsComposite, SWT.PUSH);
             renameSuiteBtn.setText("Rename...");
             renameSuiteBtn.setLayoutData(gd);
             renameSuiteBtn.addSelectionListener(new SelectionAdapter() {
@@ -551,10 +564,11 @@ public class SuiteConfigGroup extends Composite {
             suiteControls.add(renameSuiteBtn);
         }
 
-        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
-                || suiteGroupType == SuiteGroupType.SUITE_MGR) {
-            gd = new GridData(minButtonWidth, SWT.DEFAULT);
-            Button editSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+        if (onlyButtonsComposite != null
+                && (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM || suiteGroupType == SuiteGroupType.SUITE_MGR)) {
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button editSuiteBtn = new Button(onlyButtonsComposite, SWT.PUSH);
             editSuiteBtn.setText("Edit...");
             editSuiteBtn.setLayoutData(gd);
             editSuiteBtn.addSelectionListener(new SelectionAdapter() {
@@ -592,16 +606,16 @@ public class SuiteConfigGroup extends Composite {
             suiteControls.add(editSuiteBtn);
         }
 
-        if (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
-                || suiteGroupType == SuiteGroupType.SUITE_MGR
-                || suiteGroupType == SuiteGroupType.NEW_PROGRAM) {
-            gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
-            gd.widthHint = minButtonWidth;
-            Button deleteSuiteBtn = new Button(suiteControlComp, SWT.PUSH);
+        if (onlyButtonsComposite != null
+                && (suiteGroupType == SuiteGroupType.BROADCAST_PROGRAM
+                        || suiteGroupType == SuiteGroupType.SUITE_MGR || suiteGroupType == SuiteGroupType.NEW_PROGRAM)) {
+            gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+            gd.minimumWidth = buttonMinimumWidth;
+            Button deleteSuiteBtn = new Button(onlyButtonsComposite, SWT.PUSH);
             if (suiteGroupType != SuiteGroupType.BROADCAST_PROGRAM) {
-                deleteSuiteBtn.setText("Delete");
+                deleteSuiteBtn.setText("Delete...");
             } else {
-                deleteSuiteBtn.setText("Remove");
+                deleteSuiteBtn.setText("Remove...");
             }
             deleteSuiteBtn.setLayoutData(gd);
             deleteSuiteBtn.addSelectionListener(new SelectionAdapter() {
@@ -646,9 +660,11 @@ public class SuiteConfigGroup extends Composite {
             });
 
             if (suiteGroupType == SuiteGroupType.ADD_COPY_EXITING) {
-                gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-                relationshipBtn.setLayoutData(gd);
+                gd = new GridData(SWT.CENTER, SWT.CENTER, true, false);
+            } else {
+                gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
             }
+            relationshipBtn.setLayoutData(gd);
 
             suiteControls.add(relationshipBtn);
         }

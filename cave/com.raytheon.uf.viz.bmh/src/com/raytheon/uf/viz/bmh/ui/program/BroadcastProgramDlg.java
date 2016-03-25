@@ -107,6 +107,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     Fix warnings without suppressing them.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
+ * Mar 25, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -235,7 +236,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void createProgramControls() {
         Composite progComp = new Composite(shell, SWT.NONE);
-        GridLayout gl = new GridLayout(5, false);
+        GridLayout gl = new GridLayout(3, false);
         progComp.setLayout(gl);
         progComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
@@ -244,8 +245,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
          */
         Label programLbl = new Label(progComp, SWT.NONE);
         programLbl.setText("Program: ");
-
         GridData gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
+        programLbl.setLayoutData(gd);
+
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
         gd.widthHint = 200;
         programCbo = new Combo(progComp, SWT.VERTICAL | SWT.DROP_DOWN
                 | SWT.BORDER | SWT.READ_ONLY);
@@ -257,13 +260,17 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             }
         });
 
-        int buttonWidth = 90;
+        Composite programButtonComp = new Composite(progComp, SWT.NONE);
+        gl = new GridLayout(3, true);
+        programButtonComp.setLayout(gl);
+        programButtonComp.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT,
+                true, false));
 
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
-        gd.horizontalIndent = 10;
-        newProgramBtn = new Button(progComp, SWT.PUSH);
-        newProgramBtn.setText(" New... ");
+        final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
+        newProgramBtn = new Button(programButtonComp, SWT.PUSH);
+        newProgramBtn.setText("New...");
         newProgramBtn.setLayoutData(gd);
         newProgramBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -283,10 +290,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
-        renameProgramBtn = new Button(progComp, SWT.PUSH);
-        renameProgramBtn.setText(" Rename... ");
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
+        renameProgramBtn = new Button(programButtonComp, SWT.PUSH);
+        renameProgramBtn.setText("Rename...");
         renameProgramBtn.setLayoutData(gd);
         renameProgramBtn.setEnabled(false);
         renameProgramBtn.addSelectionListener(new SelectionAdapter() {
@@ -320,10 +327,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         });
         programControls.add(renameProgramBtn);
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
-        deleteProgramBtn = new Button(progComp, SWT.PUSH);
-        deleteProgramBtn.setText(" Delete ");
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
+        deleteProgramBtn = new Button(programButtonComp, SWT.PUSH);
+        deleteProgramBtn.setText("Delete...");
         deleteProgramBtn.setLayoutData(gd);
         deleteProgramBtn.setEnabled(false);
         deleteProgramBtn.addSelectionListener(new SelectionAdapter() {
@@ -543,12 +550,10 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 70;
-
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd.minimumWidth = getShell().getDisplay().getDPI().x;
         Button closeBtn = new Button(buttonComp, SWT.PUSH);
-        closeBtn.setText(" Close ");
+        closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {
             @Override

@@ -219,6 +219,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 27, 2016  5160      rjpeter     Left align MRD column.
  * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
  * Mar 14, 2016  5472      rjpeter     Added playlist job.
+ * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -967,14 +968,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void createBottomButtons(Composite comp) {
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        GridLayout gl = new GridLayout(3, false);
-        gl.marginBottom = 0;
+        GridLayout gl = new GridLayout(3, true);
         Composite btnComp = new Composite(comp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        int btnWidth = 135;
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         messageDetailBtn = new Button(btnComp, SWT.PUSH);
         messageDetailBtn.setText("Message Details...");
         messageDetailBtn.setLayoutData(gd);
@@ -985,7 +984,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button periodicBtn = new Button(btnComp, SWT.PUSH);
         periodicBtn.setText("Periodic Messages...");
         periodicBtn.setLayoutData(gd);
@@ -996,9 +995,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button expireBtn = new Button(btnComp, SWT.PUSH);
-        expireBtn.setText("Expire/Delete");
+        expireBtn.setText("Expire/Delete...");
         expireBtn.setLayoutData(gd);
         expireBtn.addSelectionListener(new SelectionAdapter() {
             @Override
