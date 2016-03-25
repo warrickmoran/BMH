@@ -81,7 +81,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 23, 2015  5113      bkowal       Display a common status indicating whether or not a {@link Dac}
  *                                      has sync. Allow the user to sync a {@link Dac}.
  * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
- *                                      DACs using the generated configuration.                                     
+ *                                      DACs using the generated configuration.
+ * Mar 25, 2016  5504      bkowal       Remove extra margin around the channels composite for a
+ *                                      consistent look.
  * </pre>
  * 
  * @author lvenable
@@ -256,10 +258,11 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
-        
+
         if (dialogType == DialogType.CREATE) {
             /*
-             * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+             * Allow for easy, convenient: Enter -> Enter -> Enter
+             * configuration.
              */
             this.createSaveBtn.forceFocus();
         }
@@ -361,7 +364,10 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
         // Channels
         Composite channelComposite = new Composite(controlComp, SWT.NONE);
-        channelComposite.setLayout(new GridLayout(4, false));
+        GridLayout gl = new GridLayout(4, false);
+        gl.marginWidth = 0;
+        gl.marginHeight = 0;
+        channelComposite.setLayout(gl);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
         channelComposite.setLayoutData(gd);

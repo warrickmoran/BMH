@@ -45,6 +45,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jul 27, 2014 #3420      lvenable     Refactor to separate the scrolled check boxes to
  *                                      another class.
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
+ * Mar 24, 2016  #5504     bkowal       Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -167,16 +168,14 @@ public class CheckScrollListDlg extends CaveSWTDialog {
      */
     private void createBottomButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(2, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        GridLayout gl = new GridLayout(2, true);
+        buttonComp.setLayout(gl);
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 70;
-
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button okBtn = new Button(buttonComp, SWT.PUSH);
-        okBtn.setText(" OK ");
+        okBtn.setText("OK");
         okBtn.setLayoutData(gd);
         okBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -185,10 +184,9 @@ public class CheckScrollListDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
-        cancelBtn.setText(" Cancel ");
+        cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override
