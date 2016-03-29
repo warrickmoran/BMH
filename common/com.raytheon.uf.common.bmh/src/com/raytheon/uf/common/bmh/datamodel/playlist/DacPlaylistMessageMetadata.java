@@ -46,6 +46,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Feb 03, 2016  5308      bkowal      Initial creation
  * Mar 08, 2016  5382      bkowal      Updated to only include information that BMH EDEX
  *                                     would manage.
+ * Mar 24, 2016  5515      bkowal      Added {@link #lastReadTime}.
  * 
  * </pre>
  * 
@@ -136,6 +137,12 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     private boolean recognized = false;
 
     private transient boolean dynamic;
+
+    /*
+     * Used to keep track of when this message was last read during message
+     * retrieval and cache population.
+     */
+    private transient long lastReadTime;
 
     public DacPlaylistMessageMetadata() {
     }
@@ -317,7 +324,7 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     public void setMessageText(String messageText) {
         this.messageText = messageText;
     }
-    
+
     /**
      * @return the confirm
      */
@@ -332,7 +339,6 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     public void setConfirm(boolean confirm) {
         this.confirm = confirm;
     }
-    
 
     /**
      * @return the watch
@@ -348,7 +354,7 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     public void setWatch(boolean watch) {
         this.watch = watch;
     }
-    
+
     /**
      * @return the warning
      */
@@ -407,5 +413,13 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      */
     public void setDynamic(boolean dynamic) {
         this.dynamic = dynamic;
+    }
+
+    public long getLastReadTime() {
+        return lastReadTime;
+    }
+
+    public void setLastReadTime(long lastReadTime) {
+        this.lastReadTime = lastReadTime;
     }
 }
