@@ -53,6 +53,7 @@ import java.util.Map;
  * Nov 16, 2015 5127       rjpeter     Added MESSAGE_ARCHIVE_FAILED.
  * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
  * Feb 04, 2016 5308       rjpeter     Removed MESSAGE_VALIDATION_DUPLICATE.
+ * Mar 30, 2016 5419       bkowal      Added {@link #COMMS_BALANCE_DISABLED}.
  * </pre>
  * 
  * @author bkowal
@@ -225,6 +226,10 @@ public enum BMH_CATEGORY {
      * with the DACs has failed.
      */
     DAC_SYNC_VERIFY_FAIL(36, "BMH"),
+    /*
+     * indicates that clustering has been disabled in Comms Manager.
+     */
+    COMMS_BALANCE_DISABLED(37, "COMMS_MANAGER"),
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.
