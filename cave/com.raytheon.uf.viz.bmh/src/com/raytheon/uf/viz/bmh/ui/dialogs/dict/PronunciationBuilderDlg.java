@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 16, 2015    4283    bkowal      Use {@link SSMLPhonemeParser}.
  * Mar 17, 2015    4281    rferrel     Add delete/insert of a builder composite.
  * May 20, 2015    4490    bkowal      Added {@link #language}.
+ * Mar 30, 2016    5504    bkowal      Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -253,9 +254,9 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
 
         createBottomButtons(shell);
 
-        gd = new GridData(85, SWT.DEFAULT);
-        gd.horizontalAlignment = SWT.CENTER;
         Button playAllBtn = new Button(soundGrp, SWT.PUSH);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = playAllBtn.getDisplay().getDPI().x;
         playAllBtn.setText("Play All");
         playAllBtn.setLayoutData(gd);
         playAllBtn.addSelectionListener(new SelectionAdapter() {
@@ -267,14 +268,16 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
     }
 
     private void createBottomButtons(Composite comp) {
-        GridLayout gl = new GridLayout(2, false);
+        GridLayout gl = new GridLayout(2, true);
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         Composite btnComp = new Composite(comp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        gd = new GridData(75, SWT.DEFAULT);
         Button okBtn = new Button(btnComp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        final int minButtonWidth = okBtn.getDisplay().getDPI().x;
+        gd.minimumWidth = minButtonWidth;
         okBtn.setText("OK");
         okBtn.setLayoutData(gd);
         okBtn.addSelectionListener(new SelectionAdapter() {
@@ -285,8 +288,9 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(75, SWT.DEFAULT);
         Button cancelBtn = new Button(btnComp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minButtonWidth;
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
@@ -303,8 +307,7 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      * @return the new BuilderComposite
      */
     private BuilderComposite addBuilder() {
-        GridData gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 490;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         GridLayout gl = new GridLayout(2, false);
         Composite c = new Composite(builderComp, SWT.NONE);
         c.setLayout(gl);
@@ -346,8 +349,8 @@ public class PronunciationBuilderDlg extends CaveSWTDialog {
      */
     private Button createButton(Composite parent, String text, String help,
             BuilderComposite bc) {
-        GridData gd = new GridData(35, SWT.DEFAULT);
         Button btn = new Button(parent, SWT.DEFAULT);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         btn.setText(text);
         btn.setLayoutData(gd);
         btn.setToolTipText(help);
