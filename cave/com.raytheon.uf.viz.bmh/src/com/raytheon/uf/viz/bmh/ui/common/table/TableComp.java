@@ -57,6 +57,8 @@ import org.eclipse.swt.widgets.TableItem;
  * Aug 26, 2014   3490      lvenable    Added method to get table item count.
  * Jan 02, 2014   3833      lvenable    Added methods to get the table items
  *                                      and column counts.
+ * Mar 29, 2016   5504      bkowal      Allow {@link #desiredNumRows} to be specified
+ *                                      as an alternative to {@link #tableHeight}.
  * 
  * </pre>
  * 
@@ -94,8 +96,14 @@ public abstract class TableComp extends Composite {
     /** Table width hint. */
     private int tableWidth = -9999;
 
+    /*
+     * This field will eventually be replaced by the desiredNumRows field.
+     */
     /** Table height hint. */
     private int tableHeight = -9999;
+
+    /** Specify the desired number of rows that should be displayed. */
+    private int desiredNumRows = -1;
 
     /** Callback. */
     protected ITableActionCB callbackAction;
@@ -177,6 +185,30 @@ public abstract class TableComp extends Composite {
     }
 
     /**
+     * 
+     * 
+     * @param parent
+     *            Parent composite
+     * @param tableStyle
+     *            table style settings
+     * @param desiredNumRows
+     *            the minimum number of rows to display at once. If table
+     *            headers are enabled, the header counts as a displayed row.
+     */
+    public TableComp(Composite parent, int tableStyle, int desiredNumRows) {
+        super(parent, SWT.NONE);
+        this.tableStyle = tableStyle;
+        /*
+         * TODO: refactor constructors as resolution-dependent fields are
+         * eliminated.
+         */
+        this.displayLines = true;
+        this.displayHeader = true;
+        this.desiredNumRows = desiredNumRows;
+        init();
+    }
+
+    /**
      * Initialize method.
      */
     private void init() {
@@ -200,6 +232,8 @@ public abstract class TableComp extends Composite {
     private void createTable() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
 
+        table = new Table(this, this.tableStyle);
+
         if (tableWidth > 0) {
             gd.widthHint = tableWidth;
         }
@@ -208,7 +242,10 @@ public abstract class TableComp extends Composite {
             gd.heightHint = tableHeight;
         }
 
-        table = new Table(this, this.tableStyle);
+        if (desiredNumRows > 0) {
+            gd.heightHint = table.getItemHeight() * desiredNumRows;
+        }
+
         table.setLayoutData(gd);
         table.setHeaderVisible(displayHeader);
         table.setLinesVisible(displayLines);

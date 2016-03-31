@@ -84,6 +84,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * Jan 07, 2014  3931      bkowal      Implemented a {@link Dictionary} import capability.
  * Jan 28, 2015  4045      bkowal      Use the new {@link DictionaryManager} constructor.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -179,9 +180,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
 
         buildTable();
 
-        GridData gd = new GridData(75, SWT.DEFAULT);
-        gd.horizontalAlignment = SWT.CENTER;
         Button closeBtn = new Button(shell, SWT.PUSH);
+        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = closeBtn.getDisplay().getDPI().x;
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {
@@ -198,7 +199,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      * Create the dictionary selection controls
      */
     private void createDictSelectionComp() {
-        GridLayout gl = new GridLayout(4, false);
+        GridLayout gl = new GridLayout(3, false);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Composite comp = new Composite(shell, SWT.NONE);
         comp.setLayout(gl);
@@ -219,8 +220,14 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(120, SWT.DEFAULT);
-        newDictionaryBtn = new Button(comp, SWT.PUSH);
+        gl = new GridLayout(2, true);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        Composite dictionaryButtonComp = new Composite(comp, SWT.NONE);
+        dictionaryButtonComp.setLayout(gl);
+        dictionaryButtonComp.setLayoutData(gd);
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        newDictionaryBtn = new Button(dictionaryButtonComp, SWT.PUSH);
         newDictionaryBtn.setText("New Dictionary...");
         newDictionaryBtn.setLayoutData(gd);
         newDictionaryBtn.addSelectionListener(new SelectionAdapter() {
@@ -230,8 +237,8 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(120, SWT.DEFAULT);
-        deleteDictionaryBtn = new Button(comp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        deleteDictionaryBtn = new Button(dictionaryButtonComp, SWT.PUSH);
         deleteDictionaryBtn.setText("Delete Dictionary");
         deleteDictionaryBtn.setLayoutData(gd);
         deleteDictionaryBtn.setEnabled(false);
@@ -248,22 +255,30 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      */
     private void createWordTable() {
         GridLayout gl = new GridLayout(1, false);
-        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.heightHint = 250;
         dictionaryTableComp = new DictionaryTableComp(shell, SWT.BORDER
                 | SWT.V_SCROLL);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         dictionaryTableComp.setLayout(gl);
         dictionaryTableComp.setLayoutData(gd);
 
-        gl = new GridLayout(4, false);
+        gl = new GridLayout(2, false);
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         Composite comp = new Composite(shell, SWT.NONE);
         comp.setLayout(gl);
         comp.setLayoutData(gd);
 
-        int btnWidth = 95;
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        newWordBtn = new Button(comp, SWT.PUSH);
+        gl = new GridLayout(3, true);
+        gl.marginWidth = 0;
+        gl.marginHeight = 0;
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        Composite nonExportComposite = new Composite(comp, SWT.NONE);
+        nonExportComposite.setLayout(gl);
+        nonExportComposite.setLayoutData(gd);
+
+        newWordBtn = new Button(nonExportComposite, SWT.PUSH);
+        final int btnWidth = newWordBtn.getDisplay().getDPI().x;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = btnWidth;
         newWordBtn.setText("New Word...");
         newWordBtn.setLayoutData(gd);
         newWordBtn.setEnabled(false);
@@ -274,8 +289,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        editWordBtn = new Button(comp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = btnWidth;
+        editWordBtn = new Button(nonExportComposite, SWT.PUSH);
         editWordBtn.setText("Edit Word...");
         editWordBtn.setLayoutData(gd);
         editWordBtn.setEnabled(false);
@@ -286,8 +302,9 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
-        deleteWordBtn = new Button(comp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = btnWidth;
+        deleteWordBtn = new Button(nonExportComposite, SWT.PUSH);
         deleteWordBtn.setText("Delete Word");
         deleteWordBtn.setLayoutData(gd);
         deleteWordBtn.setEnabled(false);
@@ -298,7 +315,7 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(150, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         exportDictionaryBtn = new Button(comp, SWT.PUSH);
         exportDictionaryBtn.setText("Export Dictionary...");
         exportDictionaryBtn.setLayoutData(gd);
@@ -747,8 +764,14 @@ public class DictionaryManagerDlg extends AbstractBMHDialog {
      * Dictionary table composite class.
      */
     private class DictionaryTableComp extends TableComp {
+
+        /*
+         * Minimum number of rows to display.
+         */
+        private static final int NUM_ROWS = 9;
+
         public DictionaryTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle);
+            super(parent, tableStyle, NUM_ROWS);
 
         }
 

@@ -22,6 +22,7 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.dict;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -64,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 19, 2014    4282    rferrel     No longer force phonemeTxt to lower case.
  * May 20, 2015    4490    bkowal      Specify {@link Language} when synthesizing text.
  * Jun 11, 2015    4552    bkowal      Specify the {@link Language} when playing a phoneme.
+ * Mar 25, 2016    5504    bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -155,14 +157,21 @@ public class NewEditWordDlg extends CaveSWTDialog {
         c.setLayout(gl);
         c.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
         wordTxt = new Text(c, SWT.BORDER);
+        GC gc = new GC(wordTxt);
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        int textWidth = gc.getFontMetrics().getAverageCharWidth() * 40;
+        gc.dispose();
+        gd.widthHint = textWidth;
         wordTxt.setLayoutData(gd);
+        wordTxt.setTextLimit(Word.WORD_LENGTH);
 
-        gd = new GridData(125, SWT.DEFAULT);
+        Button playBtn = new Button(c, SWT.PUSH);
+        final int buttonMinimumWidth = playBtn.getDisplay().getDPI().x;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         gd.horizontalAlignment = SWT.CENTER;
         gd.verticalAlignment = SWT.CENTER;
-        Button playBtn = new Button(c, SWT.PUSH);
         playBtn.setText("Pronounce Word");
         playBtn.setLayoutData(gd);
         playBtn.addSelectionListener(new SelectionAdapter() {
@@ -187,8 +196,9 @@ public class NewEditWordDlg extends CaveSWTDialog {
         neoLbl.setText("Substitution: ");
         neoLbl.setLayoutData(gd);
 
-        gd = new GridData(125, SWT.DEFAULT);
-        gd.horizontalAlignment = SWT.CENTER;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
+        gd.horizontalAlignment = GridData.FILL;
         Button phonemeBtn = new Button(neoComp, SWT.PUSH);
         phonemeBtn.setText("Play Substitution");
         phonemeBtn.setLayoutData(gd);
@@ -203,8 +213,8 @@ public class NewEditWordDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(125, SWT.DEFAULT);
-        gd.horizontalAlignment = SWT.CENTER;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         Button clearPhonemeBtn = new Button(neoComp, SWT.PUSH);
         clearPhonemeBtn.setText("Clear Substitution");
         clearPhonemeBtn.setLayoutData(gd);
@@ -216,12 +226,16 @@ public class NewEditWordDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.heightHint = 75;
-        gd.widthHint = 375;
-        gd.verticalSpan = 3;
         phonemeTxt = new Text(wordComp, SWT.WRAP | SWT.MULTI | SWT.V_SCROLL
                 | SWT.BORDER);
+        gc = new GC(phonemeTxt);
+        textWidth = gc.getFontMetrics().getAverageCharWidth() * 50;
+        int textHeight = phonemeTxt.getLineHeight() * 5;
+        gc.dispose();
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.heightHint = textHeight;
+        gd.widthHint = textWidth;
+        gd.verticalSpan = 3;
         phonemeTxt.setEditable(false);
         phonemeTxt.setLayoutData(gd);
 
@@ -232,7 +246,8 @@ public class NewEditWordDlg extends CaveSWTDialog {
         phonemeBtnComp.setLayout(gl);
         phonemeBtnComp.setLayoutData(gd);
 
-        gd = new GridData(175, SWT.DEFAULT);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         Button createPhonemeBtn = new Button(phonemeBtnComp, SWT.PUSH);
         createPhonemeBtn.setText("Create/Edit Substitution...");
         createPhonemeBtn.setLayoutData(gd);
@@ -245,13 +260,14 @@ public class NewEditWordDlg extends CaveSWTDialog {
 
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
 
-        gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        gl = new GridLayout(2, false);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gl = new GridLayout(2, true);
         Composite btnComp = new Composite(shell, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        gd = new GridData(95, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         Button saveWordBtn = new Button(btnComp, SWT.PUSH);
         saveWordBtn.setText("Save Word");
         saveWordBtn.setLayoutData(gd);
@@ -264,7 +280,8 @@ public class NewEditWordDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(95, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         Button cancelBtn = new Button(btnComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
