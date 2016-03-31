@@ -26,6 +26,7 @@ import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -65,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
  * Dec 08, 2015 5159       bkowal      Keep track of a {@link Dictionary} when it is
  *                                     removed from a voice.
+ * Mar 30, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -206,15 +208,18 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
         GridLayout gl = new GridLayout(1, false);
         /* Create the framing component */
         Group voicesGroup = new Group(composite, SWT.BORDER);
-        voicesGroup.setText(" Voices ");
+        voicesGroup.setText("Voices");
         voicesGroup.setLayout(gl);
         voicesGroup.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.widthHint = 125;
         /* Create the list. */
         voiceList = new List(voicesGroup, SWT.V_SCROLL | SWT.H_SCROLL
                 | SWT.SINGLE | SWT.BORDER);
+        GC gc = new GC(voiceList);
+        int textWidth = gc.getFontMetrics().getAverageCharWidth() * 20;
+        gc.dispose();
+        gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd.widthHint = textWidth;
         voiceList.setLayoutData(gd);
         voiceList.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -223,9 +228,9 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
             }
         });
 
-        gd = new GridData(SWT.CENTER, SWT.FILL, true, false);
-        gd.widthHint = 100;
         addVoiceButton = new Button(voicesGroup, SWT.PUSH);
+        gd = new GridData(SWT.CENTER, SWT.FILL, true, false);
+        gd.minimumWidth = addVoiceButton.getDisplay().getDPI().x;
         addVoiceButton.setText("Add Voice ...");
         addVoiceButton.setLayoutData(gd);
         addVoiceButton.addSelectionListener(new SelectionAdapter() {
@@ -250,7 +255,7 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         /* Create the framing component */
         Group attributesGroup = new Group(composite, SWT.BORDER);
-        attributesGroup.setText(" Attributes ");
+        attributesGroup.setText("Attributes");
         attributesGroup.setLayout(gl);
         attributesGroup.setLayoutData(gd);
 
@@ -262,35 +267,28 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
 
         /* Voice Name */
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label nameLabel = new Label(attributesComp, SWT.RIGHT);
-        nameLabel.setText("Name: ");
+        nameLabel.setText("Name:");
         nameLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.widthHint = 225;
-        gd.verticalIndent = 5;
         voiceNameLabel = new Label(attributesComp, SWT.NONE);
         voiceNameLabel.setLayoutData(gd);
 
         /* Voice Language */
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label languageLabel = new Label(attributesComp, SWT.RIGHT);
-        languageLabel.setText("Language: ");
+        languageLabel.setText("Language:");
         languageLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         voiceLanguageLabel = new Label(attributesComp, SWT.NONE);
         voiceLanguageLabel.setLayoutData(gd);
 
         /* Voice Gender */
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label genderLabel = new Label(attributesComp, SWT.RIGHT);
-        genderLabel.setText("Gender: ");
+        genderLabel.setText("Gender:");
         genderLabel.setLayoutData(gd);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         voiceGenderLabel = new Label(attributesComp, SWT.NONE);
         voiceGenderLabel.setLayoutData(gd);
 
@@ -303,12 +301,10 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
          * Save Button - will only be enabled if the dictionary has been
          * changed.
          */
-        gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        gd.horizontalSpan = 3;
-        gd.widthHint = 75;
-        gd.verticalIndent = 8;
-
         saveBtn = new Button(attributesGroup, SWT.PUSH);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 3;
+        gd.minimumWidth = saveBtn.getDisplay().getDPI().x;
         saveBtn.setText("Save");
         saveBtn.setEnabled(false);
         saveBtn.setLayoutData(gd);
@@ -327,15 +323,16 @@ public class VoiceConfigDialog extends AbstractBMHDialog implements
      *            The component that the Close button should be created within.
      */
     private void createCloseButton(Composite mainComposite) {
-        GridLayout gl = new GridLayout(2, false);
-        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
+        GridLayout gl = new GridLayout(1, false);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
         Composite btnComp = new Composite(mainComposite, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        gd = new GridData(75, SWT.DEFAULT);
         Button closeBtn = new Button(btnComp, SWT.PUSH);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = closeBtn.getDisplay().getDPI().x;
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {

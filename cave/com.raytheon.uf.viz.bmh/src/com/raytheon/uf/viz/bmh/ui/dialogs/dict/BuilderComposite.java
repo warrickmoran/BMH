@@ -59,6 +59,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.phonemes.PhonemesEditorDlg;
  * Mar 17, 2015    4281    rferrel     Additional setSayAs and setBreak methods.
  * May 20, 2015    4490    bkowal      Added {@link #language}.
  * Jun 11, 2015    4552    bkowal      Specify the {@link Language} when playing a phoneme.
+ * Mar 30, 2016    5504    bkowal      Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -198,7 +199,7 @@ public class BuilderComposite extends Composite {
         this.setLayout(gl);
         this.setLayoutData(gd);
 
-        gd = new GridData(100, SWT.DEFAULT);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
         gd.horizontalAlignment = SWT.LEFT;
         typeCombo = new Combo(this, SWT.SINGLE | SWT.READ_ONLY);
         typeCombo.setLayoutData(gd);
@@ -212,8 +213,9 @@ public class BuilderComposite extends Composite {
             }
         });
 
-        gd = new GridData(75, SWT.DEFAULT);
         playBtn = new Button(this, SWT.PUSH);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = playBtn.getDisplay().getDPI().x;
         playBtn.setText("Play");
         playBtn.setLayoutData(gd);
         playBtn.addSelectionListener(new SelectionAdapter() {
@@ -283,7 +285,6 @@ public class BuilderComposite extends Composite {
         typeMap.put(BuilderType.SayAs.getType(), sayAsComp);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 125;
         interpretCombo = new Combo(sayAsComp, SWT.SINGLE);
         interpretCombo.setLayoutData(gd);
         interpretCombo.setItems(INTERPRET_VALUES);
@@ -302,8 +303,9 @@ public class BuilderComposite extends Composite {
         phonemeComp.setLayoutData(gd);
         typeMap.put(BuilderType.Phoneme.getType(), phonemeComp);
 
-        gd = new GridData(130, SWT.DEFAULT);
         Button buildBtn = new Button(phonemeComp, SWT.PUSH);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buildBtn.getDisplay().getDPI().x;
         buildBtn.setText("Build Phoneme...");
         buildBtn.setLayoutData(gd);
         buildBtn.addSelectionListener(new SelectionAdapter() {
@@ -348,7 +350,6 @@ public class BuilderComposite extends Composite {
         typeMap.put(BuilderType.Break.getType(), breakComp);
 
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 125;
         breakCombo = new Combo(breakComp, SWT.SINGLE);
         breakCombo.setLayoutData(gd);
         breakCombo.setItems(BREAK_VALUES);

@@ -23,6 +23,7 @@ import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -45,7 +46,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 3, 2015  4424       bkowal      Initial creation
+ * Aug 03, 2015  4424       bkowal      Initial creation
+ * Mar 30, 2016  5504       bkowal      Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -97,6 +99,7 @@ public class DictionaryAssignmentComp {
     private void initialize() {
         GridLayout gl = new GridLayout(3, false);
         gl.marginHeight = 0;
+        gl.marginWidth = 0;
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
 
@@ -105,24 +108,23 @@ public class DictionaryAssignmentComp {
         composite.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.verticalIndent = 5;
         Label dictionaryLabel = new Label(composite, SWT.RIGHT);
         dictionaryLabel.setText("Dictionary: ");
         dictionaryLabel.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.verticalIndent = 5;
-        gd.widthHint = 200;
         this.selectedDictionaryLabel = new Label(composite, SWT.BORDER);
+        GC gc = new GC(this.selectedDictionaryLabel);
+        int textWidth = gc.getFontMetrics().getAverageCharWidth() * 34;
+        gc.dispose();
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        gd.minimumWidth = textWidth;
         this.selectedDictionaryLabel.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.verticalIndent = 5;
-        gd.widthHint = 75;
         this.addClearBtn = new Button(composite, SWT.PUSH);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
+        gd.minimumWidth = this.addClearBtn.getDisplay().getDPI().x;
         this.addClearBtn.setLayoutData(gd);
         this.addClearBtn.addSelectionListener(new SelectionAdapter() {
-
             @Override
             public void widgetSelected(SelectionEvent e) {
                 handleAddClearAction();
