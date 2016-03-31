@@ -130,6 +130,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 01, 2016 5382       bkowal       Updated to utilize the {@link PlaylistMessageArchiverTask}.
  * Mar 24, 2016 5515       bkowal       Do not purge any messages that were recently read within the
  *                                      current purge cycle.
+ * Mar 30, 2016 5419       bkowal       Regenerate any message files that were not completely
+ *                                      generated the first time.
  * 
  * </pre>
  * 
@@ -555,24 +557,36 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         Path messageFilePath = Paths.get(id.getBroadcastId() + ".xml");
         Path messagePath = messageDirectory.resolve(messageFilePath);
         DacPlaylistMessage message = null;
-        if (Files.exists(messagePath)) {
-            message = JAXB.unmarshal(messagePath.toFile(),
-                    DacPlaylistMessage.class);
-        } else {
+        boolean fileExists = Files.exists(messagePath);
+        if (fileExists) {
+            try {
+                message = JAXB.unmarshal(messagePath.toFile(),
+                        DacPlaylistMessage.class);
+            } catch (Exception e) {
+                logger.warn(
+                        "Failed to read message file: "
+                                + messagePath.toString()
+                                + ". Creating a new playlist message file", e);
+            }
+        }
+        if (message == null) {
             /*
-             * Can the message be restored from the archive?
+             * Can the message be restored from the archive? Only check the
+             * archive if the file was not found at all in messages.
              */
             boolean restored = false;
-            try {
-                if (this.playlistMessageArchiver != null) {
-                    restored = this.playlistMessageArchiver
-                            .restorePlaylistMessageIfArchived(messageDirectory,
-                                    messageFilePath);
+            if (!fileExists) {
+                try {
+                    if (this.playlistMessageArchiver != null) {
+                        restored = this.playlistMessageArchiver
+                                .restorePlaylistMessageIfArchived(
+                                        messageDirectory, messageFilePath);
+                    }
+                } catch (Exception e) {
+                    logger.error("Failed to restore archived message file: "
+                            + messageFilePath.toString()
+                            + ". Using a new playlist message file.", e);
                 }
-            } catch (Exception e) {
-                logger.error("Failed to restore archived message file: "
-                        + messageFilePath.toString()
-                        + ". Using a new playlist message file.", e);
             }
             if (restored) {
                 message = JAXB.unmarshal(messagePath.toFile(),
