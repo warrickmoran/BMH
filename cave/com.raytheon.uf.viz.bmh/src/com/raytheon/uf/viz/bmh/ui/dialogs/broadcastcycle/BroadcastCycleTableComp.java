@@ -51,7 +51,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Oct 26, 2014   3750     mpduff      Added override for getSelectedIndex()
  * Oct 28, 2014   3758     bkowal      Ensure that the selected row cannot extend beyond
  *                                     the bounds of the table.
- * 
+ * Apr 04, 2016   5504     bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author mpduff
@@ -63,8 +63,8 @@ public class BroadcastCycleTableComp extends TableComp {
     private int selectedTableIndex;
 
     public BroadcastCycleTableComp(Composite parent, int tableStyle,
-            boolean displayLines, boolean displayHeader) {
-        super(parent, tableStyle, displayLines, displayHeader);
+            boolean displayLines, boolean displayHeader, int desiredNumRows) {
+        super(parent, tableStyle, displayLines, displayHeader, desiredNumRows);
         init();
     }
 

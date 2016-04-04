@@ -77,7 +77,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 13, 2014  #3698     rferrel      Added checks to allow only 1 GENERAL type suite in a program.
  * Jan 05, 2014  #3930     rferrel      Check for duplicate Suite names.
  * Jan 06, 2014  #3698     rferrel      More checks on allowing 1 GENERAL type suite in a program.
- * 
+ * Apr 04, 2016  #5504     bkowal       Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -231,7 +231,7 @@ public class AddSuitesDlg extends CaveSWTDialog {
 
         suiteConfigGroup = new SuiteConfigGroup(shell,
                 "  Select Suite to Add: ", SuiteGroupType.ADD_COPY_EXITING,
-                null, 550, 150);
+                null, 8);
         suiteConfigGroup.setMultipleSelection(true);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
 

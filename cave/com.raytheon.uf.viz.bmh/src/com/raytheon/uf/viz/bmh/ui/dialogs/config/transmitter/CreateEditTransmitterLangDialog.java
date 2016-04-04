@@ -25,9 +25,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -50,13 +52,13 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguagePK;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.voice.DictionaryAssignmentComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.voice.IDictionarySelectionListener;
 import com.raytheon.uf.viz.bmh.ui.program.ProgramDataManager;
@@ -95,6 +97,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 04, 2015 4424       bkowal      Use {@link DictionaryAssignmentComp}.
  * Dec 03, 2015 5159       bkowal      Keep track of {@link Dictionary} removals to ensure that messages
  *                                     are updated when a substitution rule no longer applies.
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -166,7 +169,7 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog implements
     /*
      * Static Message Type Components
      */
-    private MsgTypeTable staticMsgTable;
+    private GenericTable staticMsgTable;
 
     private Button addMsgTypeButton;
 
@@ -401,12 +404,17 @@ public class CreateEditTransmitterLangDialog extends CaveSWTDialog implements
         /*
          * Static Message Types table.
          */
-        staticMsgTable = new MsgTypeTable(staticMsgTypesGroup, 350, 100);
+        staticMsgTable = new GenericTable(staticMsgTypesGroup, 6);
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>(2);
-        TableColumnData tcd = new TableColumnData("Message Type", 100);
+        GC gc = new GC(staticMsgTable);
+        TableColumnData tcd = new TableColumnData("Message Type",
+                gc.textExtent(StringUtils.repeat("W",
+                        MessageType.AFOS_ID_LENGTH)).x);
         columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title", 200);
+        tcd = new TableColumnData("Message Title", gc.getFontMetrics()
+                .getAverageCharWidth() * 40);
         columnNames.add(tcd);
+        gc.dispose();
         TableData selectedMsgTypeTableData = new TableData(columnNames);
         staticMsgTable.populateTable(selectedMsgTypeTableData);
         staticMsgTable.setCallbackAction(new ITableActionCB() {

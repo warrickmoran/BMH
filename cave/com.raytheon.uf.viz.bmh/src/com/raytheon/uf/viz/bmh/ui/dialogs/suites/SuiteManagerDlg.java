@@ -74,6 +74,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Dec 13, 2014  3833      lvenable    Removed unused method.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
+ * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -145,7 +146,7 @@ public class SuiteManagerDlg extends AbstractBMHDialog {
      */
     private void createSuiteTableGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, " Available Suites: ",
-                SuiteGroupType.SUITE_MGR, null, 550, 150);
+                SuiteGroupType.SUITE_MGR, null, 8);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
 
             @Override

@@ -91,6 +91,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * May 20, 2015   4490      bkowal      Filter out input messages associated with demo message types.
  * Jun 12, 2015   4482      rjpeter     Fixed NPE.
  * Jul 14, 2015   4162      rferrel     The filterAction combines text and time filtering.
+ * Apr 04, 2016   5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -206,7 +207,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
 
-        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 675, 250);
+        inputMsgTable = new GenericTable(inputTableGroup, tableStyle, 12);
 
         inputMsgTable.setCallbackAction(new ITableActionCB() {
             @Override

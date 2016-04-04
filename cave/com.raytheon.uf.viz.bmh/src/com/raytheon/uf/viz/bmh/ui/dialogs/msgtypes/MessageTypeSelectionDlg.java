@@ -33,6 +33,7 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -51,7 +52,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * ------------ ---------- ----------- --------------------------
  * Aug 18, 2014    3411    mpduff      Initial creation
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
- * 
+ * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -62,7 +63,7 @@ public class MessageTypeSelectionDlg extends CaveSWTDialog {
 
     private final List<MessageType> messageTypeList;
 
-    private MsgTypeTable tableComp;
+    private GenericTable tableComp;
 
     private TableData messageTypeTableData;
 
@@ -92,7 +93,7 @@ public class MessageTypeSelectionDlg extends CaveSWTDialog {
     @Override
     protected void initializeComponents(Shell shell) {
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
-        tableComp = new MsgTypeTable(shell, tableStyle, 600, 200);
+        tableComp = new GenericTable(shell, tableStyle, 10);
 
         populateMessageTypeTable(false);
     }

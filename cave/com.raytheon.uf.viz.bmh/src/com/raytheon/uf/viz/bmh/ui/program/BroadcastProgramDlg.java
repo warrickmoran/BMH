@@ -54,6 +54,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -63,7 +64,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.InputTextDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteActionAdapter;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameComparator;
@@ -108,6 +108,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * Mar 25, 2016 5504       bkowal      Fix GUI sizing issues.
+ * Apr 04, 2016 5504      bkowal       Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -138,7 +139,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
     private SuiteConfigGroup suiteConfigGroup;
 
     /** Message type table. */
-    private MsgTypeTable msgTypeTable;
+    private GenericTable msgTypeTable;
 
     /** Message Type group prefix text. */
     private final String messgaeTypeGrpPrefix = " Message Types in Suite: ";
@@ -380,7 +381,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
      */
     private void createSuiteGroup() {
         suiteConfigGroup = new SuiteConfigGroup(shell, suiteGroupTextPrefix,
-                SuiteGroupType.BROADCAST_PROGRAM, selectedProgram);
+                SuiteGroupType.BROADCAST_PROGRAM, selectedProgram, 9);
         suiteConfigGroup
                 .setFillStyleOnTable(SWT.FILL, SWT.DEFAULT, true, false);
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
@@ -525,7 +526,7 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
         messageTypeGroup.setLayoutData(gd);
         messageTypeGroup.setText(messgaeTypeGrpPrefix);
 
-        msgTypeTable = new MsgTypeTable(messageTypeGroup, 400, 150);
+        msgTypeTable = new GenericTable(messageTypeGroup, 8);
     }
 
     /**

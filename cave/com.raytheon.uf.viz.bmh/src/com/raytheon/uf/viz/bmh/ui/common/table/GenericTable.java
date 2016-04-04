@@ -37,6 +37,7 @@ import org.eclipse.swt.widgets.Composite;
  * Sep 17, 2014 3631/3611  lvenable    Initial creation while working DR3611.  This code
  *                                     will be checked in under 3611.
  * Oct 09, 2014 3646       rferrel     Constructors without size arguments.
+ * Apr 04, 2016 5504       bkowal      Updated for compatibility with {@link TableComp}.
  * 
  * </pre>
  * 
@@ -54,38 +55,9 @@ public class GenericTable extends TableComp {
      * 
      * @param parentComp
      *            Parent composite.
-     * @param width
-     *            Table width.
-     * @param height
-     *            Table height.
      */
-    public GenericTable(Composite parentComp, int width, int height) {
-        this(parentComp, DEFAULT_STYLE, width, height);
-    }
-
-    /**
-     * Constructor.
-     * 
-     * @param parentComp
-     */
-    public GenericTable(Composite parentComp) {
-        this(parentComp, DEFAULT_STYLE);
-    }
-
-    /**
-     * 
-     * @param parentComp
-     *            Parent composite.
-     * @param tableStyle
-     *            Table style.
-     * @param width
-     *            Table width.
-     * @param height
-     *            Table height.
-     */
-    public GenericTable(Composite parentComp, int tableStyle, int width,
-            int height) {
-        super(parentComp, tableStyle, width, height);
+    public GenericTable(Composite parentComp, int desiredNumRows) {
+        this(parentComp, DEFAULT_STYLE, desiredNumRows);
     }
 
     /**
@@ -94,8 +66,13 @@ public class GenericTable extends TableComp {
      * @param parentComp
      * @param tableStyle
      */
-    public GenericTable(Composite parentComp, int tableStyle) {
-        super(parentComp, tableStyle);
+    public GenericTable(Composite parentComp, int tableStyle, int desiredNumRows) {
+        super(parentComp, tableStyle, desiredNumRows);
+    }
+
+    public GenericTable(Composite parentComp, int tableStyle,
+            int desiredNumRows, int estimatedCharacterCount) {
+        super(parentComp, tableStyle, desiredNumRows, estimatedCharacterCount);
     }
 
     @Override

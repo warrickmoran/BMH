@@ -69,6 +69,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 13, 2014 3803       bkowal      Implemented.
  * Nov 18, 2014 3807       bkowal      Use BMHJmsDestinations.
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -196,7 +197,7 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
         ldadConfigGroup.setLayoutData(gd);
 
         ldadConfigTable = new GenericTable(ldadConfigGroup, SWT.BORDER
-                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 650, 150);
+                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 9);
         ldadConfigTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
@@ -221,15 +222,17 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
     private void createNewEditButtons() {
         Composite ldadConfigBtnsComposite = new Composite(this.ldadConfigGroup,
                 SWT.NONE);
-        GridLayout gl = new GridLayout(3, false);
+        GridLayout gl = new GridLayout(3, true);
         ldadConfigBtnsComposite.setLayout(gl);
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         ldadConfigBtnsComposite.setLayoutData(gd);
 
+        final int buttonWidth = ldadConfigBtnsComposite.getDisplay().getDPI().x;
+
         newButton = new Button(ldadConfigBtnsComposite, SWT.PUSH);
         newButton.setText("New...");
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = 80;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        gd.minimumWidth = buttonWidth;
         newButton.setLayoutData(gd);
         newButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -240,8 +243,8 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
 
         editButton = new Button(ldadConfigBtnsComposite, SWT.PUSH);
         editButton.setText("Edit...");
-        gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
-        gd.widthHint = 80;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        gd.minimumWidth = buttonWidth;
         editButton.setLayoutData(gd);
         editButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -253,8 +256,8 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
 
         deleteButton = new Button(ldadConfigBtnsComposite, SWT.PUSH);
         deleteButton.setText("Delete...");
-        gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = 80;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        gd.minimumWidth = buttonWidth;
         deleteButton.setLayoutData(gd);
         deleteButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -275,7 +278,7 @@ public class LdadConfigDlg extends AbstractBMHDialog implements
         Button closeButton = new Button(comp, SWT.PUSH);
         closeButton.setText("Close");
         gd = new GridData();
-        gd.widthHint = 80;
+        gd.widthHint = closeButton.getDisplay().getDPI().x;
         closeButton.setLayoutData(gd);
         closeButton.addSelectionListener(new SelectionAdapter() {
             @Override

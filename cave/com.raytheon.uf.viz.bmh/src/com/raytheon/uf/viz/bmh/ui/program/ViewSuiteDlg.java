@@ -44,7 +44,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -66,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 09, 2014  #3646     rferrel     Converted programTable to GenericTable.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
+ * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -87,7 +87,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
     private GenericTable programTable;
 
     /** Message Type table. */
-    private MsgTypeTable msgTypeTable;
+    private GenericTable msgTypeTable;
 
     /**
      * Constructor.
@@ -203,7 +203,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Message Types:");
         nameLbl.setLayoutData(gd);
 
-        msgTypeTable = new MsgTypeTable(controlComp, 500, 100);
+        msgTypeTable = new GenericTable(controlComp, 5);
     }
 
     /**

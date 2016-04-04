@@ -89,7 +89,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 24, 2015  4307      rferrel      Do not create filter controls for new program.
  * Apr 28, 2015  4428      rferrel      Clean up CreateEditSuiteDlg constructors
  * Mar 25, 2016  5504      bkowal       Fix GUI sizing issues.
- * 
+ * Apr 04, 2016  5504      bkowal       Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -135,14 +135,10 @@ public class SuiteConfigGroup extends Composite {
     /** Suite group type. */
     private SuiteGroupType suiteGroupType = SuiteGroupType.SUITE_MGR;
 
+    private final int desiredNumRows;
+
     /** Suite category type. */
     private SuiteType suiteCatType = null;
-
-    /** Table width. */
-    private int tableWidth = 0;
-
-    /** Table height. */
-    private int tableHeight = 0;
 
     /** The selected program associated with the suites. Can be a null value. */
     private Program selectedProgram = null;
@@ -167,24 +163,6 @@ public class SuiteConfigGroup extends Composite {
      *            Type that the suite group is used for.
      * @param selectedProgram
      *            Program associated with the suites. Can be null.
-     */
-    public SuiteConfigGroup(Composite parentComp, String suiteGroupText,
-            SuiteGroupType suiteGroupType, Program selectedProgram) {
-        this(parentComp, suiteGroupText, suiteGroupType, selectedProgram, 400,
-                150);
-    }
-
-    /**
-     * Constructor.
-     * 
-     * @param parentComp
-     *            Parent composite.
-     * @param suiteGroupText
-     *            Text to display in the group.
-     * @param suiteGroupType
-     *            Type that the suite group is used for.
-     * @param selectedProgram
-     *            Program associated with the suites. Can be null.
      * @param tableWidth
      *            Table width.
      * @param tableHeight
@@ -192,13 +170,12 @@ public class SuiteConfigGroup extends Composite {
      */
     public SuiteConfigGroup(Composite parentComp, String suiteGroupText,
             SuiteGroupType suiteGroupType, Program selectedProgram,
-            int tableWidth, int tableHeight) {
+            int desiredNumRows) {
         super(parentComp, SWT.NONE);
 
         this.parentComp = parentComp;
         this.suiteGroupType = suiteGroupType;
-        this.tableWidth = tableWidth;
-        this.tableHeight = tableHeight;
+        this.desiredNumRows = desiredNumRows;
         this.selectedProgram = selectedProgram;
         if (selectedProgram == null) {
             this.existingSuites = new ArrayList<>();
@@ -365,8 +342,7 @@ public class SuiteConfigGroup extends Composite {
      */
     private void createTable() {
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI;
-        suiteTable = new SuiteTable(suiteGroup, tableStyle, tableWidth,
-                tableHeight);
+        suiteTable = new SuiteTable(suiteGroup, tableStyle, desiredNumRows);
         suiteTable.setMultipleSelection(false);
         suiteTable.setCallbackAction(new ITableActionCB() {
             @Override

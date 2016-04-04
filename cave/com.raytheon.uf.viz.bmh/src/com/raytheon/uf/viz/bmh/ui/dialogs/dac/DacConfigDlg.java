@@ -88,7 +88,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 23, 2015  5113      bkowal       Update table rows to indicate whether or not a {@link Dac}
  *                                      has sync with the associated DAC.
  * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
- *                                      DACs using the generated configuration. 
+ *                                      DACs using the generated configuration.
+ * Apr 04, 2016  5504      bkowal       Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -218,7 +219,7 @@ public class DacConfigDlg extends AbstractBMHDialog implements ITableActionCB,
         dacGrp.setLayoutData(gd);
         dacGrp.setText(" Available DACs: ");
 
-        dacTable = new GenericTable(dacGrp, SWT.SINGLE, 700, 175);
+        dacTable = new GenericTable(dacGrp, SWT.SINGLE, 9);
 
         /*
          * Action buttons.

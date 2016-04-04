@@ -39,6 +39,7 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -63,7 +64,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      to use the SWT #getData and #setData.
  * Nov 13, 2014  #3803     bkowal       Added optional filtering capability.
  * Mar 12, 2015  #4213     bkowal       Slight refactoring to allow for extending.
- * 
+ * Apr 04, 2016  #5504     bkowal       Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -76,7 +77,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
             .getHandler(getClass());
 
     /** Message type table listing all available message types. */
-    private MsgTypeTable msgTypeTable;
+    private GenericTable msgTypeTable;
 
     /** Message Type table data. */
     private TableData msgTypeTableData = null;
@@ -152,8 +153,8 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         int tableSelection = this.allowMultipleSelection ? SWT.MULTI
                 : SWT.SINGLE;
 
-        msgTypeTable = new MsgTypeTable(shell, SWT.BORDER | SWT.V_SCROLL
-                | SWT.H_SCROLL | tableSelection, 450, 300);
+        msgTypeTable = new GenericTable(shell, SWT.BORDER | SWT.V_SCROLL
+                | SWT.H_SCROLL | tableSelection, 15);
 
         msgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -169,12 +170,12 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
     protected void createOkCancelButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 80;
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        int buttonWidth = buttonComp.getDisplay().getDPI().x;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         okBtn = new Button(buttonComp, SWT.PUSH);
         okBtn.setText("OK");
         okBtn.setEnabled(false);
@@ -186,8 +187,8 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
@@ -249,7 +250,7 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
         msgTypeTableData = new TableData(columnNames);
         populateMsgTypeTableData();
         msgTypeTable.populateTable(msgTypeTableData);
-        
+
         okBtn.setEnabled(msgTypeTable.getItemCount() > 0);
         if (msgTypeTable.getItemCount() > 0) {
             this.msgTypeTable.select(0);
@@ -264,11 +265,11 @@ public class SelectMessageTypeDlg extends CaveSWTDialog {
             if (this.filteredMessageTypes.contains(afosid)) {
                 continue;
             }
-            
+
             this.msgTypeTableData.addDataRow(trd);
         }
         this.msgTypeTable.populateTable(this.msgTypeTableData);
-        
+
         okBtn.setEnabled(msgTypeTable.getItemCount() > 0);
         if (msgTypeTable.getItemCount() > 0) {
             this.msgTypeTable.select(0);

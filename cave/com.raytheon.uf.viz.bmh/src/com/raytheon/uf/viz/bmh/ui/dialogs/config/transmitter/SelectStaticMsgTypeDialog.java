@@ -63,6 +63,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Mar 11, 2015 4213       bkowal     Initial creation
+ * Apr 04, 2016 5504       bkowal     Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -137,7 +138,6 @@ public class SelectStaticMsgTypeDialog extends SelectMessageTypeDlg {
                 false));
 
         GridData gd = new GridData(SWT.RIGHT, SWT.CENTER, true, false);
-        gd.widthHint = 115;
         filterChk = new Button(controlComp, SWT.CHECK);
         filterChk.setText("Show All Types");
         filterChk.setLayoutData(gd);
@@ -148,10 +148,9 @@ public class SelectStaticMsgTypeDialog extends SelectMessageTypeDlg {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
-        gd.widthHint = 80;
-        gd.horizontalIndent = 8;
         Button newButton = new Button(controlComp, SWT.PUSH);
+        gd = new GridData(SWT.LEFT, SWT.CENTER, true, false);
+        gd.minimumWidth = newButton.getDisplay().getDPI().x;
         newButton.setText("New ...");
         newButton.setLayoutData(gd);
         newButton.addSelectionListener(new SelectionAdapter() {

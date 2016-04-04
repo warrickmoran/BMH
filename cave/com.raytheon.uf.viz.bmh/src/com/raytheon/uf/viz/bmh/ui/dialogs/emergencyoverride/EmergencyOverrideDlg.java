@@ -113,6 +113,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 18, 2015  4490      bkowal      {@link RecordedByUtils} relocated to common.
  * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
+ * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -251,11 +252,10 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         messageTypeGroup.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         messageTypeGroup.setLayoutData(gd);
-        messageTypeGroup.setText(" Emergency Message Types: ");
+        messageTypeGroup.setText("Emergency Message Types:");
 
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
-        emerMsgTypeTable = new GenericTable(messageTypeGroup, tableStyle, 400,
-                175);
+        emerMsgTypeTable = new GenericTable(messageTypeGroup, tableStyle, 9);
 
         emerMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -281,16 +281,17 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 | SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.horizontalIndent = 5;
         controlComp.setLayout(gl);
         controlComp.setLayoutData(gd);
 
         Point imageWidthHeight = new Point(220, 35);
 
+        final int minimumWidth = controlComp.getDisplay().getDPI().x;
         /*
          * Area Selection button
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         areaSelectionBtn = new Button(controlComp, SWT.PUSH);
         areaSelectionBtn.setLayoutData(gd);
 
@@ -314,7 +315,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Alert
          */
         gd = new GridData();
-        gd.verticalIndent = 5;
         alertChk = new Button(controlComp, SWT.CHECK);
         alertChk.setText("Alert");
         alertChk.setLayoutData(gd);
@@ -323,7 +323,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Auto Schedule
          */
         gd = new GridData();
-        gd.verticalIndent = 5;
         autoScheduleChk = new Button(controlComp, SWT.CHECK);
         autoScheduleChk.setText("Auto Schedule");
         autoScheduleChk.setLayoutData(gd);
@@ -335,14 +334,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         autoSchedComp.setLayoutData(gd);
 
         gd = new GridData();
-        gd.horizontalIndent = 15;
         durationLbl = new Label(autoSchedComp, SWT.CENTER);
         durationLbl.setText("Duration\n(HHMM)");
         durationLbl.setLayoutData(gd);
 
-        gd = new GridData(30, SWT.DEFAULT);
-        gd.horizontalIndent = 10;
         durHourSpnr = new Spinner(autoSchedComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         durHourSpnr.setLayoutData(gd);
         durHourSpnr.setTextLimit(2);
         durHourSpnr.setMinimum(0);
@@ -359,8 +356,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             }
         });
 
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         durMinuteSpnr = new Spinner(autoSchedComp, SWT.BORDER);
-        durMinuteSpnr.setLayoutData(new GridData(30, SWT.DEFAULT));
+        durMinuteSpnr.setLayoutData(gd);
         durMinuteSpnr.setTextLimit(2);
         durMinuteSpnr.setMinimum(0);
         durMinuteSpnr.setMaximum(59);
@@ -369,6 +367,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Transmit button
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         transmitBtn = new Button(controlComp, SWT.PUSH);
         transmitBtn.setLayoutData(gd);
 

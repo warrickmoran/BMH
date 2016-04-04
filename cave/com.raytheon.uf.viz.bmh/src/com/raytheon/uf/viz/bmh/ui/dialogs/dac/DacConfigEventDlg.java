@@ -28,6 +28,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -63,6 +64,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
  * Nov 12, 2015 5113       bkowal      Updated to display the recommended action.
  * Dec 01, 2015 5113       bkowal      Allow for Enter -> ... -> Enter creation for new
  *                                     DACs using the generated configuration.
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -123,7 +125,7 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
         eventGrp.setLayout(gl);
         eventGrp.setLayoutData(gd);
 
-        eventTable = new GenericTable(eventGrp, SWT.SINGLE, 400, 125);
+        eventTable = new GenericTable(eventGrp, SWT.SINGLE, 10);
 
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gd.verticalIndent = 5;
@@ -133,9 +135,11 @@ public class DacConfigEventDlg extends AbstractBMHDialog {
 
         actionText = new StyledText(eventGrp, SWT.BORDER | SWT.MULTI
                 | SWT.V_SCROLL);
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.widthHint = 400;
-        gd.heightHint = 80;
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
+        GC gc = new GC(actionText);
+        gd.minimumWidth = gc.getFontMetrics().getAverageCharWidth() * 65;
+        gc.dispose();
+        gd.heightHint = actionText.getLineHeight() * 5;
         actionText.setLayoutData(gd);
         actionText.setWordWrap(true);
 

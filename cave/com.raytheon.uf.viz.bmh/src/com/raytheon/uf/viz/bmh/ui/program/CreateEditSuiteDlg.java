@@ -54,6 +54,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -67,7 +68,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameValidator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -118,6 +118,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 28, 2015   4428     rferrel     Track changes to trigger message summary types and apply at save/create.
  * Jan 27, 2016   5160     rjpeter     Don't allow DMO messages to be added to a Suite.
  * Mar 25, 2016   5504     bkowal      Fix GUI sizing issues.
+ * Apr 04, 2016   5504     bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -165,10 +166,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private Button removeMsgTypesBtn;
 
     /** Table of selected message types. */
-    private MsgTypeTable selectedMsgTypeTable;
+    private GenericTable selectedMsgTypeTable;
 
     /** Table of available message types. */
-    private MsgTypeTable availableMsgTypeTable;
+    private GenericTable availableMsgTypeTable;
 
     /** Suite name text field. */
     private Text suiteNameTF;
@@ -406,7 +407,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         msgReplaceGrp.setLayoutData(gd);
         msgReplaceGrp.setText(" Selected Message Types: ");
 
-        selectedMsgTypeTable = new MsgTypeTable(msgReplaceGrp, 550, 150);
+        selectedMsgTypeTable = new GenericTable(msgReplaceGrp, 8);
 
         selectedMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -529,7 +530,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         List<String> columnNames = new ArrayList<String>();
         columnNames.add("Message Type");
         columnNames.add("Message Title");
-        availableMsgTypeTable = new MsgTypeTable(availMsgGrp, 550, 150);
+        availableMsgTypeTable = new GenericTable(availMsgGrp, 8);
 
         availableMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override

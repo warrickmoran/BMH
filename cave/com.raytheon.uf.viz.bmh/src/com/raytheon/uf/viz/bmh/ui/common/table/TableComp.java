@@ -59,6 +59,7 @@ import org.eclipse.swt.widgets.TableItem;
  *                                      and column counts.
  * Mar 29, 2016   5504      bkowal      Allow {@link #desiredNumRows} to be specified
  *                                      as an alternative to {@link #tableHeight}.
+ * Apr 04, 2016   5504      bkowal      Eliminated all use of fixed height/widths.
  * 
  * </pre>
  * 
@@ -67,6 +68,11 @@ import org.eclipse.swt.widgets.TableItem;
  */
 
 public abstract class TableComp extends Composite {
+
+    /*
+     * Constant indicating that no estimated character count has been specified.
+     */
+    private static final int NO_CHAR_COUNT = 0;
 
     /**
      * Buffer for table width
@@ -93,17 +99,14 @@ public abstract class TableComp extends Composite {
     /** Column widths. */
     private int[] columnWidths;
 
-    /** Table width hint. */
-    private int tableWidth = -9999;
-
-    /*
-     * This field will eventually be replaced by the desiredNumRows field.
-     */
-    /** Table height hint. */
-    private int tableHeight = -9999;
-
     /** Specify the desired number of rows that should be displayed. */
-    private int desiredNumRows = -1;
+    private final int desiredNumRows;
+
+    /**
+     * The estimated number of characters that will occupy a table row.
+     * (Optional)
+     */
+    private int estimatedCharacterCount = NO_CHAR_COUNT;
 
     /** Callback. */
     protected ITableActionCB callbackAction;
@@ -115,77 +118,16 @@ public abstract class TableComp extends Composite {
      *            Parent composite
      * @param tableStyle
      *            table style settings
-     * @param displayLines
-     *            true to display table lines
-     * @param displayHeader
-     *            true to display table column headers
+     * @param desiredNumRows
+     *            the minimum number of rows to display at once. If table
+     *            headers are enabled, the header counts as a displayed row.
      */
-    public TableComp(Composite parent, int tableStyle, boolean displayLines,
-            boolean displayHeader) {
-        super(parent, SWT.NONE);
-        this.tableStyle = tableStyle;
-        this.displayLines = displayLines;
-        this.displayHeader = displayHeader;
-        init();
+    public TableComp(Composite parent, int tableStyle, int desiredNumRows) {
+        this(parent, tableStyle, desiredNumRows, NO_CHAR_COUNT);
     }
 
     /**
      * Constructor.
-     * 
-     * @param parent
-     *            Parent composite
-     * @param tableStyle
-     *            table style settings
-     * @param displayLines
-     *            true to display table lines
-     * @param displayHeader
-     *            true to display table column headers
-     * @param width
-     *            Table width hint.
-     * @param height
-     *            Table height hint.
-     */
-    public TableComp(Composite parent, int tableStyle, boolean displayLines,
-            boolean displayHeader, int width, int height) {
-        super(parent, SWT.NONE);
-        this.tableStyle = tableStyle;
-        this.displayLines = displayLines;
-        this.displayHeader = displayHeader;
-        this.tableWidth = width;
-        this.tableHeight = height;
-        init();
-    }
-
-    /**
-     * Constructor.
-     * 
-     * @param parent
-     *            Parent composite.
-     * @param tableStyle
-     *            Table style.
-     * @param width
-     *            Table width hint.
-     * @param height
-     *            Table height hint.
-     */
-    public TableComp(Composite parent, int tableStyle, int width, int height) {
-        this(parent, tableStyle, true, true, width, height);
-    }
-
-    /**
-     * Constructor to display table lines and headers.
-     * 
-     * @param parent
-     *            Parent composite
-     * @param tableStyle
-     *            table style settings
-     */
-    public TableComp(Composite parent, int tableStyle) {
-        this(parent, tableStyle, true, true);
-    }
-
-    /**
-     * 
      * 
      * @param parent
      *            Parent composite
@@ -194,17 +136,64 @@ public abstract class TableComp extends Composite {
      * @param desiredNumRows
      *            the minimum number of rows to display at once. If table
      *            headers are enabled, the header counts as a displayed row.
+     * @param estimatedCharacterCount
+     *            the estimated number of characters that will span a single row
+     *            in the table.
      */
-    public TableComp(Composite parent, int tableStyle, int desiredNumRows) {
+    public TableComp(Composite parent, int tableStyle, int desiredNumRows,
+            int estimatedCharacterCount) {
+        this(parent, tableStyle, true, true, desiredNumRows,
+                estimatedCharacterCount);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parent
+     *            Parent composite
+     * @param tableStyle
+     *            table style settings
+     * @param displayLines
+     *            true to display table lines
+     * @param displayHeader
+     *            true to display table column headers
+     * @param desiredNumRows
+     *            the minimum number of rows to display at once. If table
+     *            headers are enabled, the header counts as a displayed row.
+     */
+    public TableComp(Composite parent, int tableStyle, boolean displayLines,
+            boolean displayHeader, int desiredNumRows) {
+        this(parent, tableStyle, displayLines, displayHeader, desiredNumRows,
+                NO_CHAR_COUNT);
+    }
+
+    /**
+     * Constructor.
+     * 
+     * @param parent
+     *            Parent composite
+     * @param tableStyle
+     *            table style settings
+     * @param displayLines
+     *            true to display table lines
+     * @param displayHeader
+     *            true to display table column headers
+     * @param desiredNumRows
+     *            the minimum number of rows to display at once. If table
+     *            headers are enabled, the header counts as a displayed row.
+     * @param estimatedCharacterCount
+     *            the estimated number of characters that will span a single row
+     *            in the table.
+     */
+    public TableComp(Composite parent, int tableStyle, boolean displayLines,
+            boolean displayHeader, int desiredNumRows,
+            int estimatedCharacterCount) {
         super(parent, SWT.NONE);
         this.tableStyle = tableStyle;
-        /*
-         * TODO: refactor constructors as resolution-dependent fields are
-         * eliminated.
-         */
-        this.displayLines = true;
-        this.displayHeader = true;
+        this.displayLines = displayLines;
+        this.displayHeader = displayHeader;
         this.desiredNumRows = desiredNumRows;
+        this.estimatedCharacterCount = estimatedCharacterCount;
         init();
     }
 
@@ -233,17 +222,12 @@ public abstract class TableComp extends Composite {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
 
         table = new Table(this, this.tableStyle);
-
-        if (tableWidth > 0) {
-            gd.widthHint = tableWidth;
-        }
-
-        if (tableHeight > 0) {
-            gd.heightHint = tableHeight;
-        }
-
-        if (desiredNumRows > 0) {
-            gd.heightHint = table.getItemHeight() * desiredNumRows;
+        gd.heightHint = table.getItemHeight() * desiredNumRows;
+        if (estimatedCharacterCount > NO_CHAR_COUNT) {
+            GC gc = new GC(table);
+            gd.widthHint = gc.getFontMetrics().getAverageCharWidth()
+                    * this.estimatedCharacterCount;
+            gc.dispose();
         }
 
         table.setLayoutData(gd);
@@ -455,7 +439,6 @@ public abstract class TableComp extends Composite {
             if (tcd.isPack()) {
                 columnWidths[i] = -1;
             } else {
-
                 columnWidths[i] = Math.max(gc.stringExtent(tcd.getText()).x
                         + PIXEL_BUFFER, tcd.getMinimumWidth());
             }
