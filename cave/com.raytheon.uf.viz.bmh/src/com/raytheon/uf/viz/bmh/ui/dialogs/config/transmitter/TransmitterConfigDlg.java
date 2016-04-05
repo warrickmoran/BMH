@@ -49,6 +49,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
  * Nov 11, 2014  3413      rferrel     Use DlgInfo to get title.
  * Mar 12, 2015  4249      rferrel     Load/dispose disableImage used by TransmitterComp.
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
+ * Apr 05, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -89,14 +90,12 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
         disableImage = id.createImage();
         createTree();
         createBottomButtons();
-        shell.setMinimumSize(650, 350);
     }
 
     private void createTree() {
         GridLayout gl = new GridLayout();
-        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.heightHint = 400;
         tComp = new TransmitterComp(shell, disableImage);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         tComp.setLayout(gl);
         tComp.setLayoutData(gd);
     }
@@ -108,8 +107,9 @@ public class TransmitterConfigDlg extends AbstractBMHDialog {
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        gd = new GridData(75, SWT.DEFAULT);
         Button closeBtn = new Button(btnComp, SWT.PUSH);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = closeBtn.getDisplay().getDPI().x;
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {

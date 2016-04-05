@@ -27,18 +27,12 @@ import java.util.Map;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.viz.ui.dialogs.AwipsCalendar;
 
 /**
  * Composite holding spinner fields for date/time and periodicity
@@ -71,8 +65,8 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Jan 02, 2014   3833     lvenable    Removed the calendar icon since it was never used.  Can be put
  *                                     back in later if needed.
  * Mar 05, 2015   4214     rferrel     Method getCalDateTimeValues adds 0 value Calendar.SECOND to result
- *                                      map when there is no spinner for seconds.
- * 
+ *                                     map when there is no spinner for seconds.
+ * Apr 05, 2016   5504     bkowal      Fix GUI sizing issues. Remove unused/not fully implemented feature.
  * </pre>
  * 
  * @author mpduff
@@ -105,11 +99,6 @@ public class DateTimeFields extends Composite {
     private final boolean setToday;
 
     /**
-     * Show the Calendar icon
-     */
-    private final boolean showCalendarIcon;
-
-    /**
      * {@link Calendar} object backing this dialog
      */
     private Calendar calendar = TimeUtil.newGmtCalendar();
@@ -128,18 +117,15 @@ public class DateTimeFields extends Composite {
      *            Map of field types and assigned values.
      * @param setToday
      *            set current time flag
-     * @param showCalendarIcon
-     *            show calendar icon flag
      * @param displayAsPeriodicity
      *            display as periodicity flag
      */
     public DateTimeFields(Composite parent,
             Map<DateFieldType, Integer> fieldValuesMap, boolean setToday,
-            boolean showCalendarIcon, boolean displayAsPeriodicity) {
+            boolean displayAsPeriodicity) {
         super(parent, SWT.NONE);
         this.fieldValuesMap = fieldValuesMap;
         this.setToday = setToday;
-        this.showCalendarIcon = showCalendarIcon;
 
         /*
          * If there is a month and/or year field present int the fieldValuesMap
@@ -169,11 +155,7 @@ public class DateTimeFields extends Composite {
         this.setLayout(gl);
         this.setLayoutData(gd);
 
-        if (showCalendarIcon) {
-            gl = new GridLayout(fieldValuesMap.size() + 1, false);
-        } else {
-            gl = new GridLayout(fieldValuesMap.size(), false);
-        }
+        gl = new GridLayout(fieldValuesMap.size(), false);
         gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
         Composite fieldComp = new Composite(this, SWT.NONE);
         fieldComp.setLayout(gl);
@@ -185,20 +167,6 @@ public class DateTimeFields extends Composite {
             setToCurrentTime();
         } else {
             setToSpecifiedTime();
-        }
-
-        if (showCalendarIcon) {
-            Button calBtn = new Button(fieldComp, SWT.PUSH);
-            calBtn.setText("Calendar...");
-            calBtn.setLayoutData(new GridData(55, SWT.DEFAULT));
-            calBtn.addSelectionListener(new SelectionAdapter() {
-                @Override
-                public void widgetSelected(SelectionEvent e) {
-                    // TODO - implement this correctly when run inside cave
-                    new AwipsCalendar(getShell());
-
-                }
-            });
         }
     }
 
@@ -212,10 +180,10 @@ public class DateTimeFields extends Composite {
         for (DateFieldType type : fieldValuesMap.keySet()) {
             Spinner spnr = new Spinner(c, SWT.BORDER);
             if (type == DateFieldType.YEAR) {
-                spnr.setLayoutData(new GridData(33, SWT.DEFAULT));
+                spnr.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT));
                 spnr.setTextLimit(4);
             } else {
-                spnr.setLayoutData(new GridData(17, SWT.DEFAULT));
+                spnr.setLayoutData(new GridData(SWT.DEFAULT, SWT.DEFAULT));
                 spnr.setTextLimit(2);
             }
             spnr.setData(type);
@@ -535,38 +503,5 @@ public class DateTimeFields extends Composite {
         returnCal.set(Calendar.MILLISECOND, 0);
 
         return returnCal;
-    }
-
-    public static void main(String[] args) {
-        Display display = new Display();
-        Shell shell = new Shell(display);
-        shell.setLayout(new GridLayout());
-
-        Map<DateFieldType, Integer> tmpFieldMap = new LinkedHashMap<DateFieldType, Integer>();
-        // tmpFieldMap.put(DateFieldType.YEAR, 1969);
-        // tmpFieldMap.put(DateFieldType.MONTH, 2);
-        // tmpFieldMap.put(DateFieldType.DAY, 3);
-        // tmpFieldMap.put(DateFieldType.HOUR, 4);
-        // tmpFieldMap.put(DateFieldType.MINUTE, 5);
-        // tmpFieldMap.put(DateFieldType.SECOND, 6);
-
-        tmpFieldMap.put(DateFieldType.YEAR, null);
-        tmpFieldMap.put(DateFieldType.MONTH, null);
-        tmpFieldMap.put(DateFieldType.DAY, null);
-        tmpFieldMap.put(DateFieldType.HOUR, null);
-        tmpFieldMap.put(DateFieldType.MINUTE, null);
-        tmpFieldMap.put(DateFieldType.SECOND, null);
-
-        DateTimeFields dtf = new DateTimeFields(shell, tmpFieldMap, false,
-                false, false);
-        System.out.println(dtf.getFormattedValue());
-        shell.pack();
-        shell.open();
-        while (!shell.isDisposed()) {
-            if (!display.readAndDispatch()) {
-                display.sleep();
-            }
-        }
-        display.dispose();
     }
 }
