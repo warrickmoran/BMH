@@ -37,6 +37,8 @@ import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.time.util.ITimer;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
@@ -62,6 +64,8 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  * Nov 16, 2015  5127     rjpeter     Added purging of archive files.
  * Mar 01, 2016  5382     bkowal      Updated to only purge archived message files. Improved
  *                                    error handling if a random, unexpected file is encountered.
+ * Apr 06, 2016  5552     bkowal      Implemented better exception handling and added progress
+ *                                    logging.
  * </pre>
  * 
  * @author bsteffen
@@ -71,7 +75,7 @@ public class MessagePurger {
 
     private static final String DATE_GLOB = "[0-9][0-9][0-1][0-9][0-3][0-9]";
 
-    private final Logger logger = LoggerFactory.getLogger(MessagePurger.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final int purgeDays;
 
@@ -111,15 +115,76 @@ public class MessagePurger {
         if (purgeDays < 0) {
             return;
         }
+
+        ITimer timer = TimeUtil.getTimer();
+        timer.start();
+
         Calendar purgeTime = Calendar.getInstance();
         purgeTime.add(Calendar.DAY_OF_YEAR, -purgeDays);
-        purgeDatabase(purgeTime);
-        purgeAudioFiles(purgeTime);
-        purgeMessageFiles(purgeTime);
-        purgeOldAudioContents(purgeTime);
-        for (FileManager fileManager : fileManagers) {
-            fileManager.purge(2, purgeDays);
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging the BMH database and associated audio files ...");
+            purgeDatabase(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging the BMH database and associated audio files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+
+        } catch (Exception e) {
+            logger.error("Failed to purge the BMH database.", e);
         }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging orphaned audio files ...");
+            purgeAudioFiles(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging orphaned audio files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge audio files.", e);
+        }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging old message files ...");
+            purgeMessageFiles(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging old message files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge message files.", e);
+        }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging old audio contents ...");
+            purgeOldAudioContents(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging old audio contents in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge old audio contents.", e);
+        }
+
+        for (FileManager fileManager : fileManagers) {
+            try {
+                logger.info("Executing purge for File Manager: "
+                        + fileManager.toString() + " ...");
+                fileManager.purge(2, purgeDays);
+            } catch (Exception e) {
+                logger.error("Purge has failed for File Manager: "
+                        + fileManager.toString() + ".", e);
+            }
+        }
+
+        timer.stop();
+        logger.info("Purge has finished in {}.",
+                TimeUtil.prettyDuration(timer.getElapsedTime()));
     }
 
     protected void purgeDatabase(Calendar purgeTime) {
@@ -143,6 +208,9 @@ public class MessagePurger {
                         continue;
                     }
                     for (BroadcastFragment fragment : contents.getFragments()) {
+                        if (fragment.getOutputName() == null) {
+                            continue;
+                        }
                         audioFilesToDelete.add(Paths.get(fragment
                                 .getOutputName()));
                     }

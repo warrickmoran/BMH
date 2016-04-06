@@ -62,6 +62,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Jul 29, 2015 4690       rjpeter     Updated to use Date/Hour directory structure.
  * Nov 16, 2015 5127       rjpeter     Renamed to FileManager, made applicable for archiving.
  * Mar 01, 2016 5382       bkowal      Cleanup.
+ * Apr 06, 2016 5552       bkowal      Added {@link #toString()}.
  * </pre>
  * 
  * @author bkowal
@@ -405,5 +406,15 @@ public class FileManager {
         } catch (IOException e) {
             logger.error("Unable to purge directory: " + dir, e);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("FileManager [processType=");
+        sb.append(this.processType).append(", dataPath=")
+                .append(this.dataPath.toString());
+        sb.append("]");
+
+        return sb.toString();
     }
 }
