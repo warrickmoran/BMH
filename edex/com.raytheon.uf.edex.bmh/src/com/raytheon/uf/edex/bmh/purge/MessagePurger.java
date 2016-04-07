@@ -32,10 +32,13 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.dac.archive.PlaylistMessageArchiver;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.time.util.ITimer;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
@@ -59,6 +62,10 @@ import com.raytheon.uf.edex.bmh.dao.InputMessageDao;
  *                                    Broadcast Message.
  * Jul 29, 2015  4690     rjpeter     Added purging of reject files.
  * Nov 16, 2015  5127     rjpeter     Added purging of archive files.
+ * Mar 01, 2016  5382     bkowal      Updated to only purge archived message files. Improved
+ *                                    error handling if a random, unexpected file is encountered.
+ * Apr 06, 2016  5552     bkowal      Implemented better exception handling and added progress
+ *                                    logging.
  * </pre>
  * 
  * @author bsteffen
@@ -68,7 +75,7 @@ public class MessagePurger {
 
     private static final String DATE_GLOB = "[0-9][0-9][0-1][0-9][0-3][0-9]";
 
-    private final Logger logger = LoggerFactory.getLogger(MessagePurger.class);
+    private final Logger logger = LoggerFactory.getLogger(getClass());
 
     private final int purgeDays;
 
@@ -108,15 +115,76 @@ public class MessagePurger {
         if (purgeDays < 0) {
             return;
         }
+
+        ITimer timer = TimeUtil.getTimer();
+        timer.start();
+
         Calendar purgeTime = Calendar.getInstance();
         purgeTime.add(Calendar.DAY_OF_YEAR, -purgeDays);
-        purgeDatabase(purgeTime);
-        purgeAudioFiles(purgeTime);
-        purgeMessageFiles(purgeTime);
-        purgeOldAudioContents(purgeTime);
-        for (FileManager fileManager : fileManagers) {
-            fileManager.purge(2, purgeDays);
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging the BMH database and associated audio files ...");
+            purgeDatabase(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging the BMH database and associated audio files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+
+        } catch (Exception e) {
+            logger.error("Failed to purge the BMH database.", e);
         }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging orphaned audio files ...");
+            purgeAudioFiles(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging orphaned audio files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge audio files.", e);
+        }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging old message files ...");
+            purgeMessageFiles(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging old message files in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge message files.", e);
+        }
+
+        try {
+            ITimer segmentTimer = TimeUtil.getTimer();
+            segmentTimer.start();
+            logger.info("Purging old audio contents ...");
+            purgeOldAudioContents(purgeTime);
+            segmentTimer.stop();
+            logger.info("Finished purging old audio contents in {}.",
+                    TimeUtil.prettyDuration(segmentTimer.getElapsedTime()));
+        } catch (Exception e) {
+            logger.error("Failed to purge old audio contents.", e);
+        }
+
+        for (FileManager fileManager : fileManagers) {
+            try {
+                logger.info("Executing purge for File Manager: "
+                        + fileManager.toString() + " ...");
+                fileManager.purge(2, purgeDays);
+            } catch (Exception e) {
+                logger.error("Purge has failed for File Manager: "
+                        + fileManager.toString() + ".", e);
+            }
+        }
+
+        timer.stop();
+        logger.info("Purge has finished in {}.",
+                TimeUtil.prettyDuration(timer.getElapsedTime()));
     }
 
     protected void purgeDatabase(Calendar purgeTime) {
@@ -140,6 +208,9 @@ public class MessagePurger {
                         continue;
                     }
                     for (BroadcastFragment fragment : contents.getFragments()) {
+                        if (fragment.getOutputName() == null) {
+                            continue;
+                        }
                         audioFilesToDelete.add(Paths.get(fragment
                                 .getOutputName()));
                     }
@@ -147,7 +218,8 @@ public class MessagePurger {
                 Path messagePath = playlistPath
                         .resolve(
                                 broadcastMessage.getTransmitterGroup()
-                                        .getName()).resolve("messages")
+                                        .getName())
+                        .resolve(PlaylistMessageArchiver.ARCHIVE_DIR)
                         .resolve(broadcastMessage.getId() + ".xml");
                 messageFilesToDelete.add(messagePath);
             }
@@ -155,7 +227,7 @@ public class MessagePurger {
         inputMessageDao.deleteAll(inputMessages);
         for (Path path : audioFilesToDelete) {
             try {
-                Files.delete(path);
+                Files.deleteIfExists(path);
             } catch (IOException e) {
                 logger.error("Failed to delete {}", path, e);
             }
@@ -231,7 +303,8 @@ public class MessagePurger {
             try (DirectoryStream<Path> stream = Files
                     .newDirectoryStream(playlistPath)) {
                 for (Path playlistDir : stream) {
-                    Path messageDir = playlistDir.resolve("messages");
+                    Path messageDir = playlistDir
+                            .resolve(PlaylistMessageArchiver.ARCHIVE_DIR);
                     if (Files.exists(messageDir)) {
                         purgeMessageFilesForTransmitter(messageDir, purgeTime);
                     }
@@ -251,9 +324,27 @@ public class MessagePurger {
                 if (Files.getLastModifiedTime(messageFile).toMillis() < purgeTime
                         .getTimeInMillis()) {
                     String fileName = messageFile.getFileName().toString();
-                    long id = Long.parseLong(fileName.substring(0,
-                            fileName.indexOf('_')));
-                    BroadcastMsg parent = broadcastMessageDao.getByID(id);
+                    /*
+                     * split at the '.' in the '.xml' extension to get the
+                     * broadcast id.
+                     */
+                    final int periodIndex = fileName.indexOf(".");
+                    if (periodIndex == -1) {
+                        logger.error("Failed to extract the broadcast id from file name: "
+                                + fileName + ". Skipping file.");
+                        continue;
+                    }
+                    BroadcastMsg parent = null;
+                    try {
+                        long id = Long.parseLong(fileName.substring(0,
+                                periodIndex));
+                        parent = broadcastMessageDao.getByID(id);
+                    } catch (NumberFormatException e) {
+                        logger.error(
+                                "Failed to extract the broadcast id from file name: "
+                                        + fileName + ". Skipping file.", e);
+                        continue;
+                    }
                     if (parent == null) {
                         logger.info("Deleting orphaned message file: {}",
                                 messageFile);
@@ -273,7 +364,7 @@ public class MessagePurger {
             try {
                 Files.delete(messageDir);
             } catch (IOException e) {
-                logger.error("Failed to delete empty directroy: ", messageDir,
+                logger.error("Failed to delete empty directory: ", messageDir,
                         e);
             }
         }
@@ -319,55 +410,5 @@ public class MessagePurger {
                 }
             }
         }
-    }
-
-    protected int purgeRejectFilesRecursive(Path dir, Calendar purgeTime,
-            boolean deleteDir) {
-        int filesDeleted = 0;
-
-        if (Files.isDirectory(dir)) {
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir)) {
-                boolean empty = true;
-
-                for (Path entry : stream) {
-                    if (Files.isDirectory(entry)) {
-                        filesDeleted += purgeRejectFilesRecursive(entry,
-                                purgeTime, true);
-
-                        if (Files.exists(entry)) {
-                            empty = false;
-                        }
-                    } else {
-                        if (Files.getLastModifiedTime(entry).toMillis() < purgeTime
-                                .getTimeInMillis()) {
-                            try {
-                                Files.delete(entry);
-                                filesDeleted++;
-                            } catch (IOException e) {
-                                logger.error("Failed to purge reject file: "
-                                        + entry.toString(), e);
-                                empty = false;
-                            }
-                        } else {
-                            empty = false;
-                        }
-                    }
-                }
-
-                if (empty && deleteDir) {
-                    try {
-                        Files.delete(dir);
-                    } catch (IOException e) {
-                        logger.error(
-                                "Failed to delete empty reject directory: "
-                                        + dir.toString(), e);
-                    }
-                }
-            } catch (IOException e) {
-                logger.error("Failed to purge reject files.", e);
-            }
-        }
-
-        return filesDeleted;
     }
 }

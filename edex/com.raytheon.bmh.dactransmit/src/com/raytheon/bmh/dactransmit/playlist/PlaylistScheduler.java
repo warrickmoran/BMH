@@ -161,6 +161,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      by new incoming future playlists.
  * Feb 23, 2016  5382      bkowal       Pre-order the playlists based on name. Load remaining
  *                                      playlists as a high priority background task.
+ * Mar 01, 2016  5382      bkowal       Enable the purge and archive jobs after all initial
+ *                                      playlist processing has concluded. Check for null message data.
  * </pre>
  * 
  * @author dgilling
@@ -314,7 +316,10 @@ public final class PlaylistScheduler implements
         this.interrupts = new ConcurrentSkipListSet<>(
                 new DacPlaylistStartTimeComparator());
         this.playlistMessgeLock = new Object();
-        if (playlists.isEmpty() == false) {
+        if (playlists.isEmpty()) {
+            // no pre-existing playlists.
+            this.cache.enableCleanup();
+        } else {
             /*
              * Read the very first playlist during startup. Based on the
              * pre-ordering of the playlists by priority and trigger, the
@@ -1089,7 +1094,8 @@ public final class PlaylistScheduler implements
                 } else {
                     DacPlaylistMessage messageData = cache
                             .getMessage(messageId);
-                    if (messageData.isValid()
+                    if (messageData != null
+                            && messageData.isValid()
                             && (!messageData.isPeriodic()
                                     || (messageData.getPlayCount() == 0) || forceSchedulePeriodic)) {
                         newUnperiodicMessages.add(messageId);
@@ -1131,11 +1137,21 @@ public final class PlaylistScheduler implements
             }
             if (!past.contains(id)) {
                 DacPlaylistMessage messageData = cache.getMessage(id);
-                if (messageData.isPeriodic()
+                if (messageData != null && messageData.isPeriodic()
                         && (messageData.getPlayCount() > 0)
                         && !forceSchedulePeriodic) {
-                    long nextPlayTime = messageData.getLastTransmitTime()
-                            .getTimeInMillis()
+                    long lastTransmitMillis = System.currentTimeMillis();
+                    if (messageData.getLastTransmitTime() != null) {
+                        lastTransmitMillis = messageData.getLastTransmitTime()
+                                .getTimeInMillis();
+                    }
+                    /*
+                     * Playback interval is based on periodicity which must be
+                     * non-null to reach this point. So, there is no need to
+                     * verify that it has been set as has been done with the
+                     * last transmit time.
+                     */
+                    long nextPlayTime = lastTransmitMillis
                             + messageData.getPlaybackInterval();
                     while (periodicMessages.containsKey(nextPlayTime)) {
                         nextPlayTime += 1;
@@ -1155,6 +1171,9 @@ public final class PlaylistScheduler implements
         for (DacPlaylistMessageId messageId : past) {
             predictedMessages.add(messageId);
             DacPlaylistMessage messageData = cache.getMessage(messageId);
+            if (messageData == null) {
+                continue;
+            }
             predictions.add(new MessagePlaybackPrediction(messageData));
 
             long playbackTime;
@@ -1184,7 +1203,7 @@ public final class PlaylistScheduler implements
                 DacPlaylistMessageId periodicId = periodicMessages
                         .remove(periodicMessages.firstKey());
                 DacPlaylistMessage messageData = cache.getMessage(periodicId);
-                if (messageData.isValid(nextMessageTime)) {
+                if (messageData != null && messageData.isValid(nextMessageTime)) {
                     logger.debug("Scheduling periodic message [" + periodicId
                             + "].");
                     try {
@@ -1211,7 +1230,9 @@ public final class PlaylistScheduler implements
              * ignore start/expire times for interrupt playlists, we just want
              * to play the message.
              */
-            if (playlist.isInterrupt() || messageData.isValid(nextMessageTime)) {
+            if (messageData != null
+                    && (playlist.isInterrupt() || messageData
+                            .isValid(nextMessageTime))) {
                 try {
                     MessagePlaybackPrediction prediction = new MessagePlaybackPrediction(
                             nextMessageTime, messageData);
@@ -1255,8 +1276,10 @@ public final class PlaylistScheduler implements
                     .entrySet()) {
                 DacPlaylistMessage messageData = cache.getMessage(entry
                         .getValue());
-                periodicPredictions.add(new MessagePlaybackPrediction(entry
-                        .getKey(), messageData));
+                if (messageData != null) {
+                    periodicPredictions.add(new MessagePlaybackPrediction(entry
+                            .getKey(), messageData));
+                }
             }
             notification.setPeriodicMessages(periodicPredictions);
         }
@@ -1319,7 +1342,8 @@ public final class PlaylistScheduler implements
      *            the specified {@link DacPlaylistMessage}
      */
     private void sendNotBroadcastNotification(DacPlaylistMessage message) {
-        if (message.requiresExpirationNoPlaybackNotification() == false) {
+        if (message == null
+                || message.requiresExpirationNoPlaybackNotification() == false) {
             // no notification is required.
             return;
         }
@@ -1336,6 +1360,8 @@ public final class PlaylistScheduler implements
 
     private void schedulePlaylistLoad(final List<String> playlistsToLoad) {
         if (playlistsToLoad.isEmpty()) {
+            // only one playlist existed.
+            this.cache.enableCleanup();
             return;
         }
         this.executorService.submit(new LoadPlaylistTask(playlistsToLoad));
@@ -1355,13 +1381,19 @@ public final class PlaylistScheduler implements
 
         @Override
         public Object call() throws Exception {
-            for (String playlist : playlistsToLoad) {
-                logger.info("LoadPlaylistTask processing playlist: {} ...",
-                        playlist);
-                processPlaylist(playlist);
+            try {
+                for (String playlist : playlistsToLoad) {
+                    logger.info("LoadPlaylistTask processing playlist: {} ...",
+                            playlist);
+                    processPlaylist(playlist);
+                }
+                logger.info("LoadPlaylistTask has finished loading additional playlists.");
+            } catch (Exception e) {
+                throw e;
+            } finally {
+                cache.enableCleanup();
             }
 
-            logger.info("LoadPlaylistTask has finished loading additional playlists.");
             return null;
         }
 

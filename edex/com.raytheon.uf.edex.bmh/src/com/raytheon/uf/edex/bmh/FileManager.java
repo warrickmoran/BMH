@@ -61,6 +61,8 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  *                                     same name as a previously rejected data file.
  * Jul 29, 2015 4690       rjpeter     Updated to use Date/Hour directory structure.
  * Nov 16, 2015 5127       rjpeter     Renamed to FileManager, made applicable for archiving.
+ * Mar 01, 2016 5382       bkowal      Cleanup.
+ * Apr 06, 2016 5552       bkowal      Added {@link #toString()}.
  * </pre>
  * 
  * @author bkowal
@@ -146,7 +148,7 @@ public class FileManager {
      *            the specified file
      * @param category
      *            identifies why the file needs to be processed
-     * @throws BMHRejectionException
+     * @throws BMHFileProcessException
      */
     public void processFile(final Path filePath, final BMH_CATEGORY category,
             boolean keepOriginal) throws BMHFileProcessException {
@@ -190,9 +192,8 @@ public class FileManager {
                 ++count;
                 if (count > MAX_UNIQUE_INDEX) {
                     /*
-                     * there are already 100 rejected files with the same name.
-                     * do not attempt to copy another to the rejection
-                     * destination.
+                     * there are already 100 files with the same name. do not
+                     * attempt to copy another to the destination.
                      */
                     statusHandler
                             .warn(category,
@@ -326,7 +327,6 @@ public class FileManager {
      * @return
      */
     protected void compressDir(Path dir) {
-        File baseDirectory = dataPath.toFile();
         String zipName = dir.toString() + ".zip";
 
         File zipFile = new File(zipName);
@@ -406,5 +406,15 @@ public class FileManager {
         } catch (IOException e) {
             logger.error("Unable to purge directory: " + dir, e);
         }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder("FileManager [processType=");
+        sb.append(this.processType).append(", dataPath=")
+                .append(this.dataPath.toString());
+        sb.append("]");
+
+        return sb.toString();
     }
 }

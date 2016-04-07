@@ -78,6 +78,8 @@ import com.raytheon.uf.edex.bmh.comms.DacConfig;
  * Oct 28, 2015  5029     rjpeter     Allow multiple dac transmits to be requested.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
  * Dec 15, 2015  5114     rjpeter     Updated SocketListener to use a ThreadPool.
+ * Mar 30, 2016  5419     bkowal      Increased {@link #REQUEST_TIMEOUT_INTERVAL} to 30 seconds.
+ *                                    Notify AlertViz users when load balancing is halted.
  * </pre>
  * 
  * @author bsteffen
@@ -90,13 +92,19 @@ public class ClusterServer extends AbstractServer {
      * dac this is how long(in ms) to try to connect before it is considered a
      * failed connection and the dac is returned to the cluster.
      */
-    private static final int REQUEST_TIMEOUT_INTERVAL = 10 * 1000;
+    private static final long REQUEST_TIMEOUT_INTERVAL = 30 * TimeUtil.MILLIS_PER_MINUTE;
 
     /**
      * When connected to another comms manager. This is the maximum amount of
      * time allowed between messages.
      */
-    private static final int CLUSTER_TIMEOUT_INTERVAL = 60 * 1000;
+    private static final long CLUSTER_TIMEOUT_INTERVAL = 60 * TimeUtil.MILLIS_PER_MINUTE;
+
+    /**
+     * This is the maximum amount of time load balancing can be disabled before
+     * it is forcibly restored.
+     */
+    private static final long BALANCE_DISABLED_INTERVAL = TimeUtil.MILLIS_PER_HOUR;
 
     private final Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -114,11 +122,42 @@ public class ClusterServer extends AbstractServer {
 
     private final ClusterStateMessage state = new ClusterStateMessage();
 
-    private final ConcurrentMap<String, Long> requestTimeout = new ConcurrentHashMap<String, Long>();
+    private final ConcurrentMap<String, Long> requestTimeout = new ConcurrentHashMap<>();
 
     private String localIp;
 
+    /*
+     * Keep track of transmitters that will temporarily be unavailable for load
+     * balancing. Transmitters placed in this list are only meant to be here
+     * temporarily for the duration of a live broadcast.
+     */
     private final List<String> unavailableLoadBalanceCandidates = new ArrayList<>();
+
+    /*
+     * Keep track of the transmitters that have recently failed to start
+     * successfully. If they fail too many times, load balancing will be locked
+     * for the transmitter.
+     */
+    private final ConcurrentMap<String, FailedDacTransmitMetadata> failedLoadBalanceTransmitters = new ConcurrentHashMap<>();
+
+    /*
+     * Keep track of the transmitters that will not be eligible for load
+     * balancing.
+     */
+    private final List<String> lockedLoadBalanceTransmitters = new ArrayList<>();
+
+    /*
+     * Flag to keep track of whether or not a notification has been sent
+     * informing the user that load balancing has been disabled when the
+     * scenario occurs. This flag ensures that the notification will only be
+     * sent once.
+     */
+    private Long loadBalanceDisabledTimeSent;
+
+    /*
+     * Used to send alerts when load balancing has been disabled.
+     */
+    private BalanceDisabledAlarm balanceDisabledAlarm;
 
     private volatile int totalDacTransmits = 0;
 
@@ -161,6 +200,8 @@ public class ClusterServer extends AbstractServer {
             try {
                 if (host.isLocalHost()) {
                     localIp = host.getIpAddress();
+                    this.balanceDisabledAlarm = new BalanceDisabledAlarm(
+                            host.getIpAddress());
                     break;
                 }
             } catch (IOException e) {
@@ -497,13 +538,13 @@ public class ClusterServer extends AbstractServer {
                             int numAllowedToTake = otherTrans.size()
                                     - requiredForBalance;
 
-                            synchronized (this.unavailableLoadBalanceCandidates) {
-                                /*
-                                 * Remove any transmitters that cannot be load
-                                 * balanced.
-                                 */
+                            synchronized (this.lockedLoadBalanceTransmitters) {
                                 otherTrans
-                                        .removeAll(unavailableLoadBalanceCandidates);
+                                        .removeAll(this.lockedLoadBalanceTransmitters);
+                            }
+                            synchronized (this.unavailableLoadBalanceCandidates) {
+                                otherTrans
+                                        .removeAll(this.unavailableLoadBalanceCandidates);
                             }
 
                             if (otherTrans.isEmpty() == false) {
@@ -521,9 +562,37 @@ public class ClusterServer extends AbstractServer {
                                     numAllowedToTake--;
                                 }
                             } else {
-                                logger.info(
-                                        "Unable to load balance with {}, all transmitters are unavailable for balancing",
-                                        otherId);
+                                if (this.loadBalanceDisabledTimeSent != null
+                                        && (System.currentTimeMillis() > this.loadBalanceDisabledTimeSent
+                                                .longValue()
+                                                + BALANCE_DISABLED_INTERVAL)) {
+                                    synchronized (this.lockedLoadBalanceTransmitters) {
+                                        this.lockedLoadBalanceTransmitters
+                                                .clear();
+                                    }
+                                    logger.info(
+                                            "Restoring the load balancing capability. The maximum allowed amount of time has passed: {}.",
+                                            TimeUtil.prettyDuration(BALANCE_DISABLED_INTERVAL));
+                                    /*
+                                     * Reset the load balancing clock.
+                                     */
+                                    this.loadBalanceDisabledTimeSent = null;
+                                } else {
+                                    logger.warn(
+                                            "Unable to load balance with {}, all transmitters are unavailable for balancing",
+                                            otherId);
+                                    if (this.balanceDisabledAlarm != null) {
+                                        synchronized (this.lockedLoadBalanceTransmitters) {
+                                            this.balanceDisabledAlarm
+                                                    .alarm(new ArrayList<>(
+                                                            this.lockedLoadBalanceTransmitters),
+                                                            BALANCE_DISABLED_INTERVAL);
+                                        }
+                                    }
+
+                                    this.loadBalanceDisabledTimeSent = System
+                                            .currentTimeMillis();
+                                }
                             }
                         }
                     }
@@ -534,13 +603,28 @@ public class ClusterServer extends AbstractServer {
                 }
             } else if (pendingRequest && (failedRequests.isEmpty() == false)) {
                 for (String transmitter : failedRequests) {
-                    logger.error(
-                            "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
-                            transmitter,
-                            TimeUtil.prettyDuration(REQUEST_TIMEOUT_INTERVAL));
-                    lockLoadBalanceDac(transmitter);
+                    FailedDacTransmitMetadata metadata = this.failedLoadBalanceTransmitters
+                            .get(transmitter);
+                    if (metadata == null) {
+                        metadata = new FailedDacTransmitMetadata(transmitter);
+                        failedLoadBalanceTransmitters
+                                .put(transmitter, metadata);
+                    }
+
                     requestTimeout.remove(transmitter);
-                    state.removeRequestedTransmitter(transmitter);
+
+                    if (metadata.isMaxFailures()) {
+                        logger.error(
+                                "Load balancing for {} has been disabled due to failure to connect to DAC in {}",
+                                transmitter,
+                                TimeUtil.prettyDuration(REQUEST_TIMEOUT_INTERVAL));
+
+                        state.removeRequestedTransmitter(transmitter);
+                        failedLoadBalanceTransmitters.remove(transmitter);
+                        synchronized (lockedLoadBalanceTransmitters) {
+                            lockedLoadBalanceTransmitters.add(transmitter);
+                        }
+                    }
                 }
                 sendStateToAll();
             }
@@ -582,6 +666,9 @@ public class ClusterServer extends AbstractServer {
             }
         }
 
+        /*
+         * Remove references to any transmitters that are no longer enabled.
+         */
         synchronized (this.unavailableLoadBalanceCandidates) {
             Iterator<String> iterator = this.unavailableLoadBalanceCandidates
                     .iterator();
@@ -589,6 +676,22 @@ public class ClusterServer extends AbstractServer {
                 if (activeDacTransmits.contains(iterator.next()) == false) {
                     iterator.remove();
                 }
+            }
+        }
+        synchronized (this.lockedLoadBalanceTransmitters) {
+            Iterator<String> iterator = this.lockedLoadBalanceTransmitters
+                    .iterator();
+            while (iterator.hasNext()) {
+                if (activeDacTransmits.contains(iterator.next()) == false) {
+                    iterator.remove();
+                }
+            }
+        }
+        Iterator<String> iterator = this.failedLoadBalanceTransmitters.keySet()
+                .iterator();
+        while (iterator.hasNext()) {
+            if (activeDacTransmits.contains(iterator.next()) == false) {
+                this.failedLoadBalanceTransmitters.remove(iterator.next());
             }
         }
     }
@@ -608,6 +711,17 @@ public class ClusterServer extends AbstractServer {
                 logger.info("Allowing the load balancing of transmitter: {}.",
                         transmitterGroup);
             }
+        }
+        synchronized (this.lockedLoadBalanceTransmitters) {
+            if (this.lockedLoadBalanceTransmitters.remove(transmitterGroup)) {
+                logger.info("Allowing the load balancing of transmitter: {}.",
+                        transmitterGroup);
+            }
+        }
+        if (this.failedLoadBalanceTransmitters.remove(transmitterGroup) != null) {
+            logger.info(
+                    "Resetting the failed load balance state of transmitter: {}.",
+                    transmitterGroup);
         }
     }
 

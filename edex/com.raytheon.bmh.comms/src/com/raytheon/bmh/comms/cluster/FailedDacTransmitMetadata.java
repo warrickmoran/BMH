@@ -17,13 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.comms;
-
-import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
-import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
+package com.raytheon.bmh.comms.cluster;
 
 /**
- * Requests a DAC Transmit send out the current playlist.
+ * POJO that tracks the number of times a Dac Transmit has failed to start after
+ * being requested for load balancing.
  * 
  * <pre>
  * 
@@ -31,37 +29,32 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Feb 01, 2016 5308       rjpeter     Initial creation
+ * Mar 30, 2016 5419       bkowal      Initial creation
+ * 
  * </pre>
  * 
- * @author rjpeter
+ * @author bkowal
  * @version 1.0
  */
-@DynamicSerialize
-public class SendPlaylistMessage {
 
-    @DynamicSerializeElement
-    private String transmitterGroup;
+public class FailedDacTransmitMetadata {
 
-    public SendPlaylistMessage() {
-    }
+    private static final int MAX_FAILURES = 3;
 
-    public SendPlaylistMessage(String transmitterGroup) {
+    private final String transmitterGroup;
+
+    private int failureCount;
+
+    public FailedDacTransmitMetadata(String transmitterGroup) {
         this.transmitterGroup = transmitterGroup;
     }
 
-    /**
-     * @return the transmitterGroup
-     */
+    public boolean isMaxFailures() {
+        ++this.failureCount;
+        return (this.failureCount == MAX_FAILURES);
+    }
+
     public String getTransmitterGroup() {
         return transmitterGroup;
-    }
-
-    /**
-     * @param transmitterGroup
-     *            the transmitterGroup to set
-     */
-    public void setTransmitterGroup(String transmitterGroup) {
-        this.transmitterGroup = transmitterGroup;
     }
 }
