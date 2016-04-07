@@ -35,13 +35,13 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
@@ -61,6 +61,7 @@ import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcast.BroadcastLiveDlg;
@@ -94,6 +95,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  *                                    {@link TransmitterLanguage}s.
  * Nov 16, 2015  5127     rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Jan 04, 2016  4997     bkowal      Correctly label transmitter groups.
+ * Apr 05, 2016  5504     bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bsteffen
@@ -219,8 +221,10 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         messageText = new StyledText(messagesGroup, SWT.BORDER | SWT.MULTI
                 | SWT.V_SCROLL);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.widthHint = 500;
-        gd.heightHint = 160;
+        GC gc = new GC(messageText);
+        gd.widthHint = gc.getFontMetrics().getAverageCharWidth() * 80;
+        gc.dispose();
+        gd.heightHint = messageText.getLineHeight() * 8;
         messageText.setLayoutData(gd);
         messageText.setWordWrap(true);
         messageText.setAlwaysShowScrollBars(false);
@@ -307,21 +311,19 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     }
 
     protected void createButtons() {
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false, 2, 1);
-        Label sepLbl = new Label(shell, SWT.SEPARATOR | SWT.HORIZONTAL);
-        sepLbl.setLayoutData(gd);
+        DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
 
         Composite buttonComp = new Composite(shell, SWT.NONE);
-        GridLayout gl = new GridLayout(2, false);
+        GridLayout gl = new GridLayout(2, true);
         buttonComp.setLayout(gl);
-        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false, 2, 1);
+        GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false, 2, 1);
         buttonComp.setLayoutData(gd);
 
-        int btnWidth = 112;
+        final int btnWidth = buttonComp.getDisplay().getDPI().x;
         Button submitMsgBtn = new Button(buttonComp, SWT.PUSH);
         submitMsgBtn.setText("Submit Message");
-        gd = new GridData();
-        gd.widthHint = btnWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = btnWidth;
         submitMsgBtn.setLayoutData(gd);
         submitMsgBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -332,11 +334,10 @@ public class DemoMessageDialog extends AbstractBMHDialog {
 
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
-        gd = new GridData();
-        gd.widthHint = btnWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = btnWidth;
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
-
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (okToClose()) {

@@ -38,6 +38,7 @@ import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
@@ -136,6 +137,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 10, 2015 4424       bkowal      Finish Transmitter rename.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * Jan 06, 2015 4997       bkowal      Implemented transmitter promote to group.
+ * Apr 05, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -156,43 +158,34 @@ public class TransmitterComp extends Composite implements INotificationObserver 
     private final String MAINT_TRANSMITTER_MSG = "Cannot edit transmitter in maintenance. Use Transmitter Alignment to enable.";
 
     private enum TreeTableColumn {
-        GROUP_TRANSMITTER("Group/Transmitter", 125, SWT.LEFT), NAME(
-                "Name/Location", 125, SWT.LEFT), MNEMONIC("Mnemonic", 125,
-                SWT.CENTER), SERVICE_AREA("Service Area", 125, SWT.LEFT), DAC_PORT(
-                "DAC/Port", 125, SWT.CENTER), STATUS("Status", 85, SWT.LEFT), MODE(
-                "Mode", 85, SWT.LEFT);
+        GROUP_TRANSMITTER("Group/Transmitter", 20, SWT.LEFT), NAME(
+                "Name/Location", 30, SWT.LEFT), MNEMONIC("Mnemonic", 15,
+                SWT.CENTER), SERVICE_AREA("Service Area", 30, SWT.LEFT), DAC_PORT(
+                "DAC/Port", 15, SWT.CENTER), STATUS("Status", 15, SWT.LEFT), MODE(
+                "Mode", 15, SWT.LEFT);
 
         private String text;
 
-        private int colWidth;
+        private int numCharacters;
 
         private int alignment;
 
-        TreeTableColumn(String text, int colWidth, int alignment) {
+        TreeTableColumn(String text, int averageCharacters, int alignment) {
             this.text = text;
-            this.colWidth = colWidth;
+            this.numCharacters = averageCharacters;
             this.alignment = alignment;
         }
 
-        /**
-         * @return the text
-         */
-        public String getText() {
-            return text;
+        public int getNumCharacters() {
+            return numCharacters;
         }
 
-        /**
-         * @return the colWidth
-         */
-        public int getColWidth() {
-            return colWidth;
-        }
-
-        /**
-         * @return the alignment
-         */
         public int getAlignment() {
             return alignment;
+        }
+
+        public String getText() {
+            return text;
         }
     }
 
@@ -1420,8 +1413,9 @@ public class TransmitterComp extends Composite implements INotificationObserver 
      * Create the tree table
      */
     private void createTree() {
-        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         tree = new Tree(this, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+        GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
+        gd.heightHint = tree.getItemHeight() * 16;
         tree.setHeaderVisible(true);
         tree.setLayoutData(gd);
         tree.setToolTipText("Transmitters/Groups\nRight-click for menu options");
@@ -1440,11 +1434,15 @@ public class TransmitterComp extends Composite implements INotificationObserver 
             }
         });
 
+        GC gc = new GC(tree);
         for (TreeTableColumn column : TreeTableColumn.values()) {
             TreeColumn col = new TreeColumn(tree, column.getAlignment());
             col.setText(column.getText());
-            col.setWidth(column.getColWidth());
+            final int columnWidth = gc.getFontMetrics().getAverageCharWidth()
+                    * column.getNumCharacters();
+            col.setWidth(columnWidth);
         }
+        gc.dispose();
     }
 
     /**

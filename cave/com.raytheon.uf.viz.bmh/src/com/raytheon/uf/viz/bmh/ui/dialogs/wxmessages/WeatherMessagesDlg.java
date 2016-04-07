@@ -184,6 +184,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 25, 2016 5278     bkowal      Only display the tones prompt when an active message
  *                                   is submitted.
  * Jan 27, 2016 5160     rjpeter     Filter out DMO messages.
+ * Apr 05, 2016 5504     bkowal      Updates for compatibility with {@link DateTimeFields}.
  * </pre>
  * 
  * @author lvenable
@@ -687,7 +688,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         creationDTFComp.setLayoutData(gd);
 
         creationDTF = new DateTimeFields(creationDTFComp, dateTimeMap, false,
-                false, false);
+                false);
 
         /*
          * Effective
@@ -709,7 +710,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         effectiveDTFComp.setLayoutData(gd);
 
         effectiveDTF = new DateTimeFields(effectiveDTFComp, dateTimeMap, false,
-                false, false);
+                false);
 
         /*
          * Expiration
@@ -730,7 +731,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         gd.horizontalSpan = 2;
         expirationDTFComp.setLayoutData(gd);
         expirationDTF = new DateTimeFields(expirationDTFComp, dateTimeMap,
-                false, false, false);
+                false, false);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
@@ -825,7 +826,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
                 .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
-                false, true);
+                true);
 
         // Interrupt, Alert, Confirm
         int hIndent = 15;

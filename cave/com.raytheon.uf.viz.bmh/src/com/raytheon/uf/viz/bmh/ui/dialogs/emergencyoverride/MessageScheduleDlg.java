@@ -38,8 +38,6 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
-import com.raytheon.uf.common.status.IUFStatusHandler;
-import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
@@ -59,6 +57,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 08, 2014  #3479     lvenable     Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Oct 26, 2014  #3712     bkowal       Updated to populate dialog based on an InputMessage.
  *                                      Implemented Ok and Cancel.
+ * Apr 05, 2016  #5504     bkowal       Fix GUI sizing issues. Updates for compatibility with 
+ *                                      {@link DateTimeFields}.
  * 
  * </pre>
  * 
@@ -67,9 +67,6 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  */
 
 public class MessageScheduleDlg extends CaveSWTDialog {
-    /** Status handler for reporting errors. */
-    private final IUFStatusHandler statusHandler = UFStatus
-            .getHandler(MessageScheduleDlg.class);
 
     /** Message name. */
     private Text msgNameTF;
@@ -176,74 +173,61 @@ public class MessageScheduleDlg extends CaveSWTDialog {
 
         // Message Name
         GridData gd = new GridData(SWT.FILL, SWT.CENTER, false, true);
-        gd.verticalIndent = 5;
         Label msgNameLbl = new Label(controlComp, SWT.RIGHT);
-        msgNameLbl.setText("Message Name: ");
+        msgNameLbl.setText("Message Name:");
         msgNameLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.widthHint = 175;
-        gd.verticalIndent = 5;
         msgNameTF = new Text(controlComp, SWT.BORDER);
         msgNameTF.setLayoutData(gd);
 
         // Message Type
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label msgTypeDescLbl = new Label(controlComp, SWT.RIGHT);
-        msgTypeDescLbl.setText("Message Type: ");
+        msgTypeDescLbl.setText("Message Type:");
         msgTypeDescLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 5;
         msgTypeLbl = new Label(controlComp, SWT.BORDER);
         msgTypeLbl.setLayoutData(gd);
 
         // Message Title
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label msgTitleDescLbl = new Label(controlComp, SWT.RIGHT);
-        msgTitleDescLbl.setText("Message Title: ");
+        msgTitleDescLbl.setText("Message Title:");
         msgTitleDescLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 5;
         msgTitleLbl = new Label(controlComp, SWT.BORDER);
         msgTitleLbl.setLayoutData(gd);
 
         // Language
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label languageDescLbl = new Label(controlComp, SWT.RIGHT);
-        languageDescLbl.setText("Language: ");
+        languageDescLbl.setText("Language:");
         languageDescLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 5;
         languageLbl = new Label(controlComp, SWT.NONE);
         languageLbl.setLayoutData(gd);
 
         // Designation
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label designationDescLbl = new Label(controlComp, SWT.RIGHT);
-        designationDescLbl.setText("Designation: ");
+        designationDescLbl.setText("Designation:");
         designationDescLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 5;
         designationLbl = new Label(controlComp, SWT.NONE);
         designationLbl.setLayoutData(gd);
 
         // Emergency Override
         gd = new GridData(SWT.FILL, SWT.DEFAULT, false, false);
-        gd.verticalIndent = 5;
         Label eoLbl = new Label(controlComp, SWT.RIGHT);
         eoLbl.setText("Emergency Override: ");
         eoLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 5;
         emergenyOverrideLbl = new Label(controlComp, SWT.NONE);
         emergenyOverrideLbl.setLayoutData(gd);
 
@@ -262,38 +246,32 @@ public class MessageScheduleDlg extends CaveSWTDialog {
          * Creation
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        gd.verticalIndent = 15;
         Label creationLbl = new Label(controlComp, SWT.CENTER);
         creationLbl.setText("Creation Date/Time\n(YYMMDDHHmm): ");
         creationLbl.setLayoutData(gd);
 
-        creationDTF = new DateTimeFields(controlComp, dateTimeMap, false,
-                false, true);
+        creationDTF = new DateTimeFields(controlComp, dateTimeMap, false, true);
 
         /*
          * Effective
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        gd.verticalIndent = 5;
         Label effectiveLbl = new Label(controlComp, SWT.CENTER);
         effectiveLbl.setText("Effective Date/Time\n(YYMMDDHHmm): ");
         effectiveLbl.setLayoutData(gd);
 
-        effectiveDTF = new DateTimeFields(controlComp, dateTimeMap, false,
-                false, true);
+        effectiveDTF = new DateTimeFields(controlComp, dateTimeMap, false, true);
 
         /*
          * Expiration
          */
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        gd.verticalIndent = 5;
         Label expirationLbl = new Label(controlComp, SWT.CENTER);
         expirationLbl.setText("Expiration Date/Time\n(YYMMDDHHmm): ");
         expirationLbl.setLayoutData(gd);
 
         expirationDTF = new DateTimeFields(controlComp, dateTimeMap, false,
-                false, true);
-
+                true);
     }
 
     /**
@@ -311,7 +289,6 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         GridLayout gl = new GridLayout(2, false);
         defaultsGrp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.verticalIndent = 10;
         defaultsGrp.setLayoutData(gd);
         defaultsGrp.setText(" Defaults: ");
 
@@ -324,13 +301,10 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         periodicityMap = generateDayHourMinuteSecondMap();
 
         periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
-                false, true);
+                true);
 
         // Interrupt, Alert, Confirm
-        int hIndent = 15;
         gd = new GridData();
-        gd.horizontalIndent = hIndent;
-        gd.verticalIndent = 10;
         gd.horizontalSpan = 2;
         confirmChk = new Button(defaultsGrp, SWT.CHECK);
         confirmChk.setText("Confirm");
@@ -343,13 +317,13 @@ public class MessageScheduleDlg extends CaveSWTDialog {
     private void createBottomActionButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 75;
+        final int minimumButtonWidth = buttonComp.getDisplay().getDPI().x;
 
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumButtonWidth;
         Button okBtn = new Button(buttonComp, SWT.PUSH);
         okBtn.setText("OK");
 
@@ -361,8 +335,8 @@ public class MessageScheduleDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumButtonWidth;
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText(" Cancel ");
         cancelBtn.setLayoutData(gd);

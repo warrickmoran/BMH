@@ -65,6 +65,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                     prevent pass-by-reference overrides.
  * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
  * Jul 06, 2015 4603       bkowal      Display a message dialog if message text fails validation.
+ * Apr 05, 2016 5504       bkowal      Updates for compatibility with {@link DateTimeFields}.
  * </pre>
  * 
  * @author bkowal
@@ -225,7 +226,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
         gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
         gd.verticalIndent = 5;
         periodicityDTF = new DateTimeFields(attributesComp, periodicityMap,
-                false, false, true);
+                false, true);
         periodicityDTF.setLayoutData(gd);
     }
 
