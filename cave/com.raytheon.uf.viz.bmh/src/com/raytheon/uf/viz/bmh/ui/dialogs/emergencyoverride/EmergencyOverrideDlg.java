@@ -32,7 +32,9 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
@@ -114,6 +116,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
+ * Apr 11, 2016  5504      bkowal      Adjust size of image-based EO buttons.
  * </pre>
  * 
  * @author lvenable
@@ -125,6 +128,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EmergencyOverrideDlg.class);
+
+    private static final String AREA_SELECTION_TEXT = "Area Selection";
 
     /** Table containing the emergency message types. */
     private GenericTable emerMsgTypeTable;
@@ -284,8 +289,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         controlComp.setLayout(gl);
         controlComp.setLayoutData(gd);
 
-        Point imageWidthHeight = new Point(220, 35);
-
         final int minimumWidth = controlComp.getDisplay().getDPI().x;
         /*
          * Area Selection button
@@ -301,8 +304,22 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         fd.setHeight(20);
         bic.setFontData(fd);
 
+        Font tmpFont = new Font(getDisplay(), fd);
+        GC gc = new GC(areaSelectionBtn);
+        gc.setFont(tmpFont);
+        final int imageHeight = gc.getFontMetrics().getHeight();
+        /*
+         * Both buttons should be the same size. So, use the longer text to
+         * determine the button size.
+         */
+        final int imageWidth = gc.textExtent(AREA_SELECTION_TEXT).x;
+        gc.dispose();
+        tmpFont.dispose();
+
+        Point imageWidthHeight = new Point(imageWidth, imageHeight);
+
         Image areaSelectionImg = bic.generateImage(imageWidthHeight.x,
-                imageWidthHeight.y, "Area Selection", new RGB(255, 255, 0));
+                imageWidthHeight.y, AREA_SELECTION_TEXT, new RGB(255, 255, 0));
         areaSelectionBtn.setImage(areaSelectionImg);
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
