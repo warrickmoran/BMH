@@ -220,6 +220,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Feb 04, 2016  5308      rjpeter     Ask comms manager for initial playlist state instead of cached copy on edex.
  * Mar 10, 2016  5465      tgurney     Add missing trim button style
  * Mar 14, 2016  5472      rjpeter     Added playlist job.
+ * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
+ * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author mpduff
@@ -797,12 +799,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void createTable(Composite comp) {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.heightHint = 150;
         GridLayout gl = new GridLayout(1, false);
         gl.horizontalSpacing = 0;
         gl.marginWidth = 0;
         tableComp = new BroadcastCycleTableComp(comp, SWT.BORDER | SWT.V_SCROLL
-                | SWT.SINGLE, true, true);
+                | SWT.SINGLE, true, true, 7);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
         tableComp.setCallbackAction(new ITableActionCB() {
@@ -969,14 +970,12 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     private void createBottomButtons(Composite comp) {
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        GridLayout gl = new GridLayout(3, false);
-        gl.marginBottom = 0;
+        GridLayout gl = new GridLayout(3, true);
         Composite btnComp = new Composite(comp, SWT.NONE);
         btnComp.setLayout(gl);
         btnComp.setLayoutData(gd);
 
-        int btnWidth = 135;
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         messageDetailBtn = new Button(btnComp, SWT.PUSH);
         messageDetailBtn.setText("Message Details...");
         messageDetailBtn.setLayoutData(gd);
@@ -987,7 +986,7 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button periodicBtn = new Button(btnComp, SWT.PUSH);
         periodicBtn.setText("Periodic Messages...");
         periodicBtn.setLayoutData(gd);
@@ -998,9 +997,9 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
             }
         });
 
-        gd = new GridData(btnWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         Button expireBtn = new Button(btnComp, SWT.PUSH);
-        expireBtn.setText("Expire/Delete");
+        expireBtn.setText("Expire/Delete...");
         expireBtn.setLayoutData(gd);
         expireBtn.addSelectionListener(new SelectionAdapter() {
             @Override

@@ -57,6 +57,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeTypeAdap
  * Jan 06, 2015 3931       bkowal      Added XML JAXB Marshaling tags.
  * Mar 31, 2015 4291       bkowal      Set word_seq allocationSize to 1.
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Mar 28, 2016 5504       bkowal      Make {@link #word} length a constant that can be used in other
+ *                                     places.
  * </pre>
  * 
  * @author rjpeter
@@ -74,6 +76,8 @@ public class Word {
 
     public static final String DYNAMIC_NUMERIC_CHAR = "#";
 
+    public static final int WORD_LENGTH = 150;
+
     // use surrogate key instead
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -82,7 +86,7 @@ public class Word {
 
     @DiffTitle(position = 2)
     @DiffString
-    @Column(length = 150)
+    @Column(length = WORD_LENGTH)
     @XmlAttribute(name = "text")
     private String word;
 

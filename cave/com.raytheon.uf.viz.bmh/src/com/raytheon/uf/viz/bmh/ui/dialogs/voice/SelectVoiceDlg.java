@@ -52,8 +52,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Mar 3, 2015  4175       bkowal      Initial creation
- * 
+ * Mar 03, 2015 4175       bkowal      Initial creation
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -134,7 +134,7 @@ public class SelectVoiceDlg extends CaveSWTDialog {
         selectLbl.setText("Select a Voice:");
 
         this.voiceTable = new GenericTable(this.shell, SWT.BORDER
-                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 250, 300);
+                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 6);
         this.voiceTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {

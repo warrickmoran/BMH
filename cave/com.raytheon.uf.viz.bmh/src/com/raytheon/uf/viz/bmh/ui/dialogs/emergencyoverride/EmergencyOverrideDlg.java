@@ -32,7 +32,9 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
@@ -113,6 +115,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 18, 2015  4490      bkowal      {@link RecordedByUtils} relocated to common.
  * Aug 25, 2015  4771      bkowal      {@link LiveBroadcastRecordPlaybackDlg} dialog creation may now fail.
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
+ * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
+ * Apr 11, 2016  5504      bkowal      Adjust size of image-based EO buttons.
  * </pre>
  * 
  * @author lvenable
@@ -124,6 +128,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(EmergencyOverrideDlg.class);
+
+    private static final String AREA_SELECTION_TEXT = "Area Selection";
 
     /** Table containing the emergency message types. */
     private GenericTable emerMsgTypeTable;
@@ -251,11 +257,10 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         messageTypeGroup.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         messageTypeGroup.setLayoutData(gd);
-        messageTypeGroup.setText(" Emergency Message Types: ");
+        messageTypeGroup.setText("Emergency Message Types:");
 
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
-        emerMsgTypeTable = new GenericTable(messageTypeGroup, tableStyle, 400,
-                175);
+        emerMsgTypeTable = new GenericTable(messageTypeGroup, tableStyle, 9);
 
         emerMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -281,16 +286,15 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                 | SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.horizontalIndent = 5;
         controlComp.setLayout(gl);
         controlComp.setLayoutData(gd);
 
-        Point imageWidthHeight = new Point(220, 35);
-
+        final int minimumWidth = controlComp.getDisplay().getDPI().x;
         /*
          * Area Selection button
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         areaSelectionBtn = new Button(controlComp, SWT.PUSH);
         areaSelectionBtn.setLayoutData(gd);
 
@@ -300,8 +304,22 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         fd.setHeight(20);
         bic.setFontData(fd);
 
+        Font tmpFont = new Font(getDisplay(), fd);
+        GC gc = new GC(areaSelectionBtn);
+        gc.setFont(tmpFont);
+        final int imageHeight = gc.getFontMetrics().getHeight();
+        /*
+         * Both buttons should be the same size. So, use the longer text to
+         * determine the button size.
+         */
+        final int imageWidth = gc.textExtent(AREA_SELECTION_TEXT).x;
+        gc.dispose();
+        tmpFont.dispose();
+
+        Point imageWidthHeight = new Point(imageWidth, imageHeight);
+
         Image areaSelectionImg = bic.generateImage(imageWidthHeight.x,
-                imageWidthHeight.y, "Area Selection", new RGB(255, 255, 0));
+                imageWidthHeight.y, AREA_SELECTION_TEXT, new RGB(255, 255, 0));
         areaSelectionBtn.setImage(areaSelectionImg);
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -314,7 +332,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Alert
          */
         gd = new GridData();
-        gd.verticalIndent = 5;
         alertChk = new Button(controlComp, SWT.CHECK);
         alertChk.setText("Alert");
         alertChk.setLayoutData(gd);
@@ -323,7 +340,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Auto Schedule
          */
         gd = new GridData();
-        gd.verticalIndent = 5;
         autoScheduleChk = new Button(controlComp, SWT.CHECK);
         autoScheduleChk.setText("Auto Schedule");
         autoScheduleChk.setLayoutData(gd);
@@ -335,14 +351,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         autoSchedComp.setLayoutData(gd);
 
         gd = new GridData();
-        gd.horizontalIndent = 15;
         durationLbl = new Label(autoSchedComp, SWT.CENTER);
         durationLbl.setText("Duration\n(HHMM)");
         durationLbl.setLayoutData(gd);
 
-        gd = new GridData(30, SWT.DEFAULT);
-        gd.horizontalIndent = 10;
         durHourSpnr = new Spinner(autoSchedComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         durHourSpnr.setLayoutData(gd);
         durHourSpnr.setTextLimit(2);
         durHourSpnr.setMinimum(0);
@@ -359,8 +373,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             }
         });
 
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         durMinuteSpnr = new Spinner(autoSchedComp, SWT.BORDER);
-        durMinuteSpnr.setLayoutData(new GridData(30, SWT.DEFAULT));
+        durMinuteSpnr.setLayoutData(gd);
         durMinuteSpnr.setTextLimit(2);
         durMinuteSpnr.setMinimum(0);
         durMinuteSpnr.setMaximum(59);
@@ -369,6 +384,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          * Transmit button
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         transmitBtn = new Button(controlComp, SWT.PUSH);
         transmitBtn.setLayoutData(gd);
 

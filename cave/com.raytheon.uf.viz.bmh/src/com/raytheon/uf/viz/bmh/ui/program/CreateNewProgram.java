@@ -62,6 +62,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Aug 21, 2014  #3490     lvenable    Added database capability.
  * Oct 08, 2014  #3479     lvenable    Changed MODE_INDEPENDENT to PERSPECTIVE_INDEPENDENT.
  * Nov 14, 2014  #3558     rjpeter     Set text limit on program name.
+ * Apr 04, 2016  #5504     bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -155,7 +156,7 @@ public class CreateNewProgram extends CaveSWTDialog {
     private void createSelectedSuitesGroup() {
 
         suiteConfigGroup = new SuiteConfigGroup(shell, " Selected Suites: ",
-                SuiteGroupType.NEW_PROGRAM, null);
+                SuiteGroupType.NEW_PROGRAM, null, 9);
         suiteConfigGroup.initializeTableColumns();
         suiteConfigGroup.setCallBackAction(new SuiteActionAdapter() {
 

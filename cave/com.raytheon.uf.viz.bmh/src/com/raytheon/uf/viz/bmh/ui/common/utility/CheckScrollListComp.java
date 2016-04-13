@@ -62,6 +62,7 @@ import org.eclipse.swt.widgets.Label;
  * Apr 15, 2015 #4396      rferrel      {@link #reset(boolean)} restores selections to defaults by
  *                                       using {@link #checkListData}.
  * Jan 05, 2016 #4997      bkowal       Added {@link #replaceCheckboxes(CheckListData)}.
+ * Mar 24, 2016 #5504      bkowal       Fix GUI sizing issues.
  * 
  * </pre>
  * 
@@ -243,16 +244,18 @@ public class CheckScrollListComp extends Composite {
         }
 
         Composite buttonComp = new Composite(this, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(2, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        GridLayout gl = new GridLayout(2, true);
+        /*
+         * Still keep a bit of the original appearance of the dialog by not
+         * having the buttons extend end-to-end.
+         */
+        buttonComp.setLayout(gl);
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 90;
-
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
         selectAllBtn = new Button(buttonComp, SWT.PUSH);
-        selectAllBtn.setText(" Select All ");
+        selectAllBtn.setText("Select All");
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         selectAllBtn.setLayoutData(gd);
         selectAllBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -261,10 +264,9 @@ public class CheckScrollListComp extends Composite {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
         unselectAllBtn = new Button(buttonComp, SWT.PUSH);
-        unselectAllBtn.setText(" Unselect All ");
+        unselectAllBtn.setText("Unselect All");
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         unselectAllBtn.setLayoutData(gd);
         unselectAllBtn.addSelectionListener(new SelectionAdapter() {
             @Override

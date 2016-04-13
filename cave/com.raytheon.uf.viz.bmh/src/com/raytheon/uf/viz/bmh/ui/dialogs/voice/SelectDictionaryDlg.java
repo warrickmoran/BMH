@@ -58,7 +58,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 16, 2014 3618       bkowal      Initial creation
  * Aug 04, 2015 4424       bkowal      Ensured {@link #dictionaryLanguage} would
  *                                     not be set to {@code null}.
- * 
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -172,7 +172,7 @@ public class SelectDictionaryDlg extends CaveSWTDialog {
         selectLbl.setText("Select a Dictionary:");
 
         this.dictionaryTable = new GenericTable(this.shell, SWT.BORDER
-                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 250, 300);
+                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 12, 40);
         this.dictionaryTable.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {

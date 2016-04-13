@@ -78,7 +78,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 18, 2015 4213       bkowal      Keep track of the currently selected program.
  * Jun 24, 2015 4490       bkowal      Ensure that the {@link TransmitterLanguage}s remain sorted
  *                                     when added to the table.
- * 
+ * Apr 04, 2016 5504       bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author bkowal
@@ -204,7 +204,7 @@ public class TransmitterLanguageComp {
 
         /* Create the languages table. */
         this.languagesTable = new GenericTable(languagesGroup, SWT.BORDER
-                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 450, 100);
+                | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE, 6);
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>(2);
         TableColumnData tcd = new TableColumnData("Language", 240);
         columnNames.add(tcd);

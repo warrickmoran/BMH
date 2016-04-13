@@ -99,6 +99,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 12, 2015     4482   rjpeter     Added DO_NOT_BLOCK.
  * Dec 10, 2015     5112   bkowal      Exclude words that NeoSpeech pronounces correctly and/or are
  *                                     already in the national dictionary.
+ * Apr 04, 2016     5504   bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -948,7 +949,7 @@ public class LegacyDictionaryConverterDlg extends CaveSWTDialog {
     private class WordTableComp extends TableComp {
 
         public WordTableComp(Composite parent, int tableStyle) {
-            super(parent, tableStyle, true, true);
+            super(parent, tableStyle, true, true, 17);
         }
 
         @Override

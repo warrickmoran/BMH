@@ -45,6 +45,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.Activator;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -85,6 +86,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 20, 2015   4490     bkowal      Display existing {@link MessageType} name in the rename dialog.
  * Jun 05, 2015   4490     rjpeter     Updated constructor.
  * Jan 27, 2016   5160     rjpeter     Prevent editing of DMO messages.
+ * Apr 04, 2016   5504     bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -97,7 +99,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             .getHandler(MessageTypesDlg.class);
 
     /** Table containing the message types that are available. */
-    private MsgTypeTable msgAvailTableComp;
+    private GenericTable msgAvailTableComp;
 
     /** Relationship image. */
     private Image relationshipImg;
@@ -175,11 +177,11 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         msgAvailableGrp.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         msgAvailableGrp.setLayoutData(gd);
-        msgAvailableGrp.setText(" All Message Types: ");
+        msgAvailableGrp.setText("All Message Types:");
 
+        // num rows = 10
         int tableStyle = SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.SINGLE;
-        msgAvailTableComp = new MsgTypeTable(msgAvailableGrp, tableStyle, 600,
-                200);
+        msgAvailTableComp = new GenericTable(msgAvailableGrp, tableStyle, 10);
 
         msgAvailTableComp.setCallbackAction(new ITableActionCB() {
             @Override
@@ -193,17 +195,23 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         /*
          * Create the action buttons for the table.
          */
-        Composite buttonComp = new Composite(msgAvailableGrp, SWT.NONE);
-        gl = new GridLayout(5, false);
+        Composite allButtonComp = new Composite(msgAvailableGrp, SWT.NONE);
+        gl = new GridLayout(2, false);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        buttonComp.setLayout(gl);
-        buttonComp.setLayoutData(gd);
+        allButtonComp.setLayout(gl);
+        allButtonComp.setLayoutData(gd);
 
-        int buttonWidth = 70;
+        Composite centeredButtonsComp = new Composite(allButtonComp, SWT.NONE);
+        gl = new GridLayout(4, true);
+        gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
+        centeredButtonsComp.setLayout(gl);
+        centeredButtonsComp.setLayoutData(gd);
 
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        gd.widthHint = buttonWidth;
-        Button newBtn = new Button(buttonComp, SWT.PUSH);
+        final int buttonWidth = centeredButtonsComp.getDisplay().getDPI().x;
+
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
+        gd.minimumWidth = buttonWidth;
+        Button newBtn = new Button(centeredButtonsComp, SWT.PUSH);
         newBtn.setText("New...");
         newBtn.setLayoutData(gd);
         newBtn.addSelectionListener(new SelectionAdapter() {
@@ -213,9 +221,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
         gd.widthHint = buttonWidth;
-        Button renameBtn = new Button(buttonComp, SWT.PUSH);
+        Button renameBtn = new Button(centeredButtonsComp, SWT.PUSH);
         renameBtn.setText("Rename...");
         renameBtn.setLayoutData(gd);
         renameBtn.addSelectionListener(new SelectionAdapter() {
@@ -226,9 +234,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         });
         msgTypeControls.add(renameBtn);
 
-        gd = new GridData(SWT.CENTER, SWT.CENTER, false, true);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
         gd.widthHint = buttonWidth;
-        Button editBtn = new Button(buttonComp, SWT.PUSH);
+        Button editBtn = new Button(centeredButtonsComp, SWT.PUSH);
         editBtn.setText("Edit...");
         editBtn.setLayoutData(gd);
         editBtn.addSelectionListener(new SelectionAdapter() {
@@ -239,10 +247,10 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         });
         msgTypeControls.add(editBtn);
 
-        gd = new GridData(SWT.LEFT, SWT.CENTER, true, true);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
         gd.widthHint = buttonWidth;
-        Button deleteBtn = new Button(buttonComp, SWT.PUSH);
-        deleteBtn.setText("Delete");
+        Button deleteBtn = new Button(centeredButtonsComp, SWT.PUSH);
+        deleteBtn.setText("Delete...");
         deleteBtn.setLayoutData(gd);
         deleteBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -260,7 +268,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
                 "icons/Relationship.png");
         relationshipImg = id.createImage();
 
-        Button relationshipBtn = new Button(buttonComp, SWT.PUSH);
+        Button relationshipBtn = new Button(allButtonComp, SWT.PUSH);
+        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
+        relationshipBtn.setLayoutData(gd);
         relationshipBtn.setImage(relationshipImg);
         relationshipBtn.setToolTipText("View message type relationships");
         relationshipBtn.addSelectionListener(new SelectionAdapter() {

@@ -54,6 +54,7 @@ import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -67,7 +68,6 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeAfosComparator;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteNameValidator;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -117,6 +117,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 31, 2015   4248     rjpeter     Use ordered view of suite messages.
  * Apr 28, 2015   4428     rferrel     Track changes to trigger message summary types and apply at save/create.
  * Jan 27, 2016   5160     rjpeter     Don't allow DMO messages to be added to a Suite.
+ * Mar 25, 2016   5504     bkowal      Fix GUI sizing issues.
+ * Apr 04, 2016   5504     bkowal      Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -164,10 +166,10 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private Button removeMsgTypesBtn;
 
     /** Table of selected message types. */
-    private MsgTypeTable selectedMsgTypeTable;
+    private GenericTable selectedMsgTypeTable;
 
     /** Table of available message types. */
-    private MsgTypeTable availableMsgTypeTable;
+    private GenericTable availableMsgTypeTable;
 
     /** Suite name text field. */
     private Text suiteNameTF;
@@ -405,7 +407,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         msgReplaceGrp.setLayoutData(gd);
         msgReplaceGrp.setText(" Selected Message Types: ");
 
-        selectedMsgTypeTable = new MsgTypeTable(msgReplaceGrp, 550, 150);
+        selectedMsgTypeTable = new GenericTable(msgReplaceGrp, 8);
 
         selectedMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -478,13 +480,12 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         UpDownImages udi = new UpDownImages(shell);
 
         Composite btnComp = new Composite(shell, SWT.NONE);
-        btnComp.setLayout(new GridLayout(2, false));
+        btnComp.setLayout(new GridLayout(2, true));
         btnComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
-        int buttonWidth = 90;
-        GridData gd;
-
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         addMsgTypesBtn = new Button(btnComp, SWT.PUSH);
         addMsgTypesBtn.setImage(udi.getImage(Arrows.UP_NO_TAIL));
         addMsgTypesBtn.setText("Add");
@@ -498,7 +499,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         removeMsgTypesBtn = new Button(btnComp, SWT.PUSH);
         removeMsgTypesBtn.setImage(udi.getImage(Arrows.DOWN_NO_TAIL));
         removeMsgTypesBtn.setText("Remove");
@@ -528,7 +530,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         List<String> columnNames = new ArrayList<String>();
         columnNames.add("Message Type");
         columnNames.add("Message Title");
-        availableMsgTypeTable = new MsgTypeTable(availMsgGrp, 550, 150);
+        availableMsgTypeTable = new GenericTable(availMsgGrp, 8);
 
         availableMsgTypeTable.setCallbackAction(new ITableActionCB() {
             @Override
@@ -547,14 +549,13 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      */
     private void createBottomButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
-        buttonComp.setLayout(new GridLayout(3, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayout(new GridLayout(2, true));
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 70;
-
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         createSaveBtn = new Button(buttonComp, SWT.PUSH);
         if (dialogType == DialogType.CREATE) {
             createSaveBtn.setText("Create");
@@ -573,8 +574,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
         cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);

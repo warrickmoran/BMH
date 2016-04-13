@@ -59,6 +59,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 13, 2015    3843    bsteffen    Use playlist data to populate table correctly.
  * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
  * Mar 10, 2016    5465    tgurney     Add missing trim button style
+ * Apr 05, 2016    5504    bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -117,11 +118,10 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private void createTable() {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
-        gd.heightHint = 150;
         GridLayout gl = new GridLayout(1, false);
         gl.horizontalSpacing = 0;
         gl.marginWidth = 0;
-        tableComp = new GenericTable(shell, SWT.BORDER | SWT.V_SCROLL);
+        tableComp = new GenericTable(shell, SWT.BORDER | SWT.V_SCROLL, 7);
         tableComp.setLayout(gl);
         tableComp.setLayoutData(gd);
     }
@@ -144,12 +144,15 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     private void createBottomButtons() {
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
         GridLayout gl = new GridLayout(2, false);
-        Composite c = new Composite(shell, SWT.NONE);
-        c.setLayout(gl);
-        c.setLayoutData(gd);
+        Composite buttonComp = new Composite(shell, SWT.NONE);
+        buttonComp.setLayout(gl);
+        buttonComp.setLayoutData(gd);
 
-        gd = new GridData(125, SWT.DEFAULT);
-        detailsBtn = new Button(c, SWT.PUSH);
+        final int minimumButtonWidth = buttonComp.getDisplay().getDPI().x;
+
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
+        gd.minimumWidth = minimumButtonWidth;
+        detailsBtn = new Button(buttonComp, SWT.PUSH);
         detailsBtn.setText("Message Details...");
         detailsBtn.setLayoutData(gd);
         detailsBtn.setEnabled(false);
@@ -160,8 +163,9 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(75, SWT.DEFAULT);
-        Button closeBtn = new Button(c, SWT.PUSH);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
+        gd.minimumWidth = minimumButtonWidth;
+        Button closeBtn = new Button(buttonComp, SWT.PUSH);
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
         closeBtn.addSelectionListener(new SelectionAdapter() {

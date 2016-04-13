@@ -107,6 +107,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Only enable same transmitters in affected area.
  * May 05, 2015   4463     bkowal      Update the new originator field in the {@link MessageType}.
  * Jan 27, 2016   5160     rjpeter     Don't allow creation of DMO message types.
+ * Apr 05, 2016   5504     bkowal      Updates for compatibility with {@link DateTimeFields}.
  * </pre>
  * 
  * @author lvenable
@@ -471,8 +472,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         durMap = BmhUtils.generateDayHourMinuteSecondMap(durDateTimeStr);
 
-        durationDTF = new DateTimeFields(defaultsGroup, durMap, false, false,
-                true);
+        durationDTF = new DateTimeFields(defaultsGroup, durMap, false, true);
 
         gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
         Label periodicityLbl = new Label(defaultsGroup, SWT.RIGHT);
@@ -490,7 +490,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
 
         periodicityDTF = new DateTimeFields(defaultsGroup, periodicityMap,
-                false, false, true);
+                false, true);
 
         /*
          * Check box controls
@@ -614,7 +614,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         boStartMap = BmhUtils.generateHourMinuteMap(boStartDateTimeStr);
 
         blackoutStartDTF = new DateTimeFields(blackoutComp, boStartMap, false,
-                false, false);
+                false);
 
         gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
         gd.horizontalIndent = 45;
@@ -634,7 +634,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         boEndMap = BmhUtils.generateHourMinuteMap(boEndDateTimeStr);
 
         blackoutEndDTF = new DateTimeFields(blackoutComp, boEndMap, false,
-                false, false);
+                false);
 
         enableBlackoutControls(enableBlackoutChk.getSelection());
     }

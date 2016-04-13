@@ -25,9 +25,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -73,6 +76,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015  4490      rjpeter     Updated constructor.
  * Jul 22, 2015  4676      bkowal      Ensure that message types that have already been selected
  *                                     are not added to the available list.
+ * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -96,7 +100,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private Group msgReplaceGrp;
 
     /** Table containing the selected message types to be replaced. */
-    private MsgTypeTable msgReplaceTableComp;
+    private GenericTable msgReplaceTableComp;
 
     /** Prefix text for the replacement group title. */
     private final String msgReplaceGrpTextPrefix = " Message Type ";
@@ -114,7 +118,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private Button saveBtn;
 
     /** Table containing the message types that are available. */
-    private MsgTypeTable msgAvailTableComp;
+    private GenericTable msgAvailTableComp;
 
     private MessageTypeDataManager dataManager;
 
@@ -183,7 +187,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
                 false));
 
         Button selectBtn = new Button(msgTypeComp, SWT.PUSH);
-        selectBtn.setText(" Select... ");
+        selectBtn.setText("Select...");
         selectBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -192,21 +196,26 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         });
 
         Label msgTypeLbl = new Label(msgTypeComp, SWT.NONE);
-        msgTypeLbl.setText("   Message Type:");
+        msgTypeLbl.setText("Message Type:");
 
-        GridData gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
-        gd.widthHint = 115;
         msgTypeSelectedLbl = new Label(msgTypeComp, SWT.NONE);
+        GridData gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        GC gc = new GC(this.msgTypeSelectedLbl);
+        gd.minimumWidth = gc.textExtent(StringUtils.repeat("W",
+                MessageType.AFOS_ID_LENGTH)).x;
+        gc.dispose();
         msgTypeSelectedLbl.setLayoutData(gd);
 
         gd = new GridData();
-        gd.horizontalIndent = 10;
         Label titleLbl = new Label(msgTypeComp, SWT.NONE);
         titleLbl.setText("Title:");
         titleLbl.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
         msgTitleLbl = new Label(msgTypeComp, SWT.NONE);
+        gd = new GridData(SWT.FILL, SWT.CENTER, true, true);
+        gc = new GC(msgTitleLbl);
+        gd.minimumWidth = gc.getFontMetrics().getAverageCharWidth() * 40;
+        gc.dispose();
         msgTitleLbl.setLayoutData(gd);
     }
 
@@ -221,7 +230,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         msgReplaceGrp.setLayoutData(gd);
         msgReplaceGrp.setText(msgReplaceGrpTextPrefix);
 
-        msgReplaceTableComp = new MsgTypeTable(msgReplaceGrp, 550, 100);
+        msgReplaceTableComp = new GenericTable(msgReplaceGrp, 5);
         msgReplaceTableComp.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
@@ -248,13 +257,13 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         UpDownImages udi = new UpDownImages(shell);
 
         Composite btnComp = new Composite(shell, SWT.NONE);
-        btnComp.setLayout(new GridLayout(2, false));
+        btnComp.setLayout(new GridLayout(2, true));
         btnComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
-        int buttonWidth = 80;
-        GridData gd;
+        final int buttonMinimumWidth = btnComp.getDisplay().getDPI().x;
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         addMsgTypesBtn = new Button(btnComp, SWT.PUSH);
         addMsgTypesBtn.setImage(udi.getImage(Arrows.UP));
         addMsgTypesBtn.setText("Add");
@@ -268,7 +277,8 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
             }
         });
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonMinimumWidth;
         removeMsgTypesBtn = new Button(btnComp, SWT.PUSH);
         removeMsgTypesBtn.setImage(udi.getImage(Arrows.DOWN));
         removeMsgTypesBtn.setText("Remove");
@@ -294,7 +304,7 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         availMsgGrp.setLayoutData(gd);
         availMsgGrp.setText(" Available Message Types: ");
 
-        msgAvailTableComp = new MsgTypeTable(availMsgGrp, 550, 100);
+        msgAvailTableComp = new GenericTable(availMsgGrp, 5);
         msgAvailTableComp.setCallbackAction(new ITableActionCB() {
             @Override
             public void tableSelectionChange(int selectionCount) {
@@ -320,15 +330,15 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
     private void createBottomButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(3, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 70;
+        final int buttonMinimumWidth = buttonComp.getDisplay().getDPI().x;
 
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = buttonMinimumWidth;
         saveBtn = new Button(buttonComp, SWT.PUSH);
-        saveBtn.setText(" Save ");
+        saveBtn.setText("Save");
         saveBtn.setLayoutData(gd);
         saveBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -340,10 +350,10 @@ public class MessageTypeAssocDlg extends AbstractBMHDialog {
         });
         saveBtn.setEnabled(false);
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.widthHint = buttonMinimumWidth;
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
-        cancelBtn.setText(" Cancel ");
+        cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override

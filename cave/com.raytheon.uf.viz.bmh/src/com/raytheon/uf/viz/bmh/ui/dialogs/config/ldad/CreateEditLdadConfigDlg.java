@@ -20,6 +20,7 @@
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.ldad;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -40,6 +41,7 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -62,7 +64,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.LdadConfig;
 import com.raytheon.uf.common.bmh.request.MessageTypeValidationResponse;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
+import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.viz.bmh.data.DictionaryManager;
+import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
 import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
@@ -71,7 +75,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter.RateOfSpeechComp;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
-import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MsgTypeTable;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.voice.VoiceDataManager;
 import com.raytheon.viz.core.mode.CAVEMode;
@@ -100,6 +103,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
  * Jun 23, 2015    4572    bkowal      Added the ability to import {@link MessageType}s by
  *                                     afos id.
+ * Apr 04, 2016    5504    bkowal      Fix GUI sizing issues.
  * </pre>
  * 
  * @author mpduff
@@ -126,9 +130,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
     private static final BMHAudioFormat DEFAULT_FORMAT = BMHAudioFormat.WAV;
 
-    // note: the default destination, as it is currently written, is not
-    // cross-platform compatible.
-    private static final String DEFAULT_DESTINATION = "/data/ldad/localapps/bmh/wav";
+    private static final String DEFAULT_DESTINATION = FileUtil.join(
+            File.separator + "data", "ldad", "localapps", "bmh", "wav");
 
     // end ldad defaults
 
@@ -199,7 +202,7 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
     private Button importMsgTypeButton;
 
-    private MsgTypeTable selectedMsgTableComp;
+    private GenericTable selectedMsgTableComp;
 
     private LdadConfig ldadConfig;
 
@@ -228,34 +231,16 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         setText(this.ldadConfig == null ? CREATE_TITLE : EDIT_TITLE);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#constructShellLayout()
-     */
     @Override
     protected Layout constructShellLayout() {
         return new GridLayout(1, false);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#constructShellLayoutData()
-     */
     @Override
     protected Object constructShellLayoutData() {
         return new GridData(SWT.FILL, SWT.FILL, true, true);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#initializeComponents(org
-     * .eclipse.swt.widgets.Shell)
-     */
     @Override
     protected void initializeComponents(Shell shell) {
         GridLayout gl = new GridLayout(2, false);
@@ -397,10 +382,9 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         statusLbl.setText("Status:");
         statusLbl.setLayoutData(gd);
 
-        gd = new GridData(SWT.FILL, SWT.CENTER, true, false);
-        gd.horizontalAlignment = SWT.LEFT;
-        gd.widthHint = 120;
         statusButton = new Button(configComp, SWT.TOGGLE);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
+        gd.minimumWidth = statusButton.getDisplay().getDPI().x;
         statusButton.setText(CONFIG_ENABLED);
         statusButton.setSelection(true);
         statusButton.setLayoutData(gd);
@@ -432,13 +416,13 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         selectedMsgTypeComposite.setLayoutData(gd);
 
-        final int buttonWidth = 80;
+        final int buttonWidth = selectedMsgTypeComposite.getDisplay().getDPI().x;
 
         /* Add Button */
         addMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         addMsgTypeButton.setText("Add...");
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         addMsgTypeButton.setLayoutData(gd);
         addMsgTypeButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -450,8 +434,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         /* Remove Button */
         removeMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         removeMsgTypeButton.setText("Remove...");
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         removeMsgTypeButton.setLayoutData(gd);
         removeMsgTypeButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -463,8 +447,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
 
         importMsgTypeButton = new Button(selectedMsgTypeComposite, SWT.PUSH);
         importMsgTypeButton.setText("Import...");
-        gd = new GridData();
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         importMsgTypeButton.setLayoutData(gd);
         importMsgTypeButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -474,12 +458,17 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         });
 
         /* Table */
-        selectedMsgTableComp = new MsgTypeTable(selectedMsgTypesGroup, 450, 100);
+        selectedMsgTableComp = new GenericTable(selectedMsgTypesGroup, 5);
         List<TableColumnData> columnNames = new ArrayList<TableColumnData>(2);
-        TableColumnData tcd = new TableColumnData("Message Type", 150);
+        GC gc = new GC(selectedMsgTableComp);
+        TableColumnData tcd = new TableColumnData("Message Type",
+                gc.textExtent(StringUtils.repeat("W",
+                        MessageType.AFOS_ID_LENGTH)).x);
         columnNames.add(tcd);
-        tcd = new TableColumnData("Message Title", 250);
+        tcd = new TableColumnData("Message Title", gc.getFontMetrics()
+                .getAverageCharWidth() * 40);
         columnNames.add(tcd);
+        gc.dispose();
         TableData selectedMsgTypeTableData = new TableData(columnNames);
         selectedMsgTableComp.populateTable(selectedMsgTypeTableData);
         selectedMsgTableComp.setCallbackAction(new ITableActionCB() {
@@ -504,7 +493,10 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
         comp.setLayout(gl);
         comp.setLayoutData(gd);
 
-        gd = new GridData(75, SWT.DEFAULT);
+        final int minimumWidth = comp.getDisplay().getDPI().x;
+
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         Button saveUpdateBtn = new Button(comp, SWT.PUSH);
         saveUpdateBtn.setText("Save");
         saveUpdateBtn.setLayoutData(gd);
@@ -515,7 +507,8 @@ public class CreateEditLdadConfigDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(75, SWT.DEFAULT);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumWidth;
         Button closeBtn = new Button(comp, SWT.PUSH);
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);

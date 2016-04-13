@@ -37,6 +37,7 @@ import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -81,7 +82,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 23, 2015  5113      bkowal       Display a common status indicating whether or not a {@link Dac}
  *                                      has sync. Allow the user to sync a {@link Dac}.
  * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
- *                                      DACs using the generated configuration.                                     
+ *                                      DACs using the generated configuration.
+ * Mar 25, 2016  5504      bkowal       Remove extra margin around the channels composite for a
+ *                                      consistent look.
+ * Mar 30, 2016  5504      bkowal       Fix GUI sizing issues.
  * </pre>
  * 
  * @author lvenable
@@ -256,10 +260,11 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
-        
+
         if (dialogType == DialogType.CREATE) {
             /*
-             * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+             * Allow for easy, convenient: Enter -> Enter -> Enter
+             * configuration.
              */
             this.createSaveBtn.forceFocus();
         }
@@ -290,14 +295,16 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         this.dacSyncLabel = new Label(controlComp, SWT.NONE);
         this.dacSyncLabel.setLayoutData(gd);
 
-        int textFieldMinWidth = 200;
-
         // DAC ID
         Label dacNameDescLbl = new Label(controlComp, SWT.NONE);
         dacNameDescLbl.setText("DAC Name:");
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         dacNameTF = new Text(controlComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        GC gc = new GC(dacNameTF);
+        gd.minimumWidth = gc.getFontMetrics().getAverageCharWidth()
+                * Dac.DAC_NAME_LENGTH;
+        gc.dispose();
         dacNameTF.setTextLimit(Dac.DAC_NAME_LENGTH);
         dacNameTF.setLayoutData(gd);
 
@@ -305,9 +312,12 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label dacIPDescLbl = new Label(controlComp, SWT.NONE);
         dacIPDescLbl.setText("DAC IP Address:");
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
         dacIpTF = new Text(controlComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gc = new GC(dacIpTF);
+        final int minimumNetworkFieldWidth = gc.textExtent("000.000.000.000").x;
+        gc.dispose();
+        gd.minimumWidth = minimumNetworkFieldWidth;
         dacIpTF.setTextLimit(Dac.IP_LENGTH);
         dacIpTF.setLayoutData(gd);
 
@@ -315,8 +325,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label netMaskLbl = new Label(controlComp, SWT.NONE);
         netMaskLbl.setText(NET_MASK_LABEL);
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumNetworkFieldWidth;
         dacNetMaskTF = new Text(controlComp, SWT.BORDER);
         dacNetMaskTF.setTextLimit(Dac.IP_LENGTH);
         dacNetMaskTF.setLayoutData(gd);
@@ -325,8 +335,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label gatewayLbl = new Label(controlComp, SWT.NONE);
         gatewayLbl.setText(GATEWAY_LABEL);
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumNetworkFieldWidth;
         dacGatewayTF = new Text(controlComp, SWT.BORDER);
         dacGatewayTF.setTextLimit(Dac.IP_LENGTH);
         dacGatewayTF.setLayoutData(gd);
@@ -335,17 +345,20 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label broadcastBufferLbl = new Label(controlComp, SWT.NONE);
         broadcastBufferLbl.setText(BROADCAST_BUFFER_LABEL);
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, false, false);
-        gd.widthHint = 50;
         dacBroadcastBufferTF = new Text(controlComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gc = new GC(dacBroadcastBufferTF);
+        final int bufferTextWidth = gc.textExtent("9999").x;
+        gc.dispose();
+        gd.minimumWidth = bufferTextWidth;
         dacBroadcastBufferTF.setLayoutData(gd);
 
         // Receive Address
         Label receiveAddressDescLbl = new Label(controlComp, SWT.NONE);
         receiveAddressDescLbl.setText("Receive Address:");
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = minimumNetworkFieldWidth;
         receiveAddressTF = new Text(controlComp, SWT.BORDER);
         receiveAddressTF.setTextLimit(Dac.IP_LENGTH);
         receiveAddressTF.setLayoutData(gd);
@@ -354,34 +367,52 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label receivePortDescLbl = new Label(controlComp, SWT.NONE);
         receivePortDescLbl.setText("Receive Port:");
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = textFieldMinWidth;
+        /*
+         * TODO: add more validation of the receive port on both the data access
+         * layer and the database, itself. Currently, any numeric value is
+         * allowed. Outside the scope of the lx branch.
+         */
         receivePortTF = new Text(controlComp, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
+        gc = new GC(dacNameTF);
+        final int channelPortConfigFieldWidth = gc.textExtent("99999").x;
+        gc.dispose();
+        gd.minimumWidth = channelPortConfigFieldWidth;
         receivePortTF.setLayoutData(gd);
 
         // Channels
         Composite channelComposite = new Composite(controlComp, SWT.NONE);
-        channelComposite.setLayout(new GridLayout(4, false));
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridLayout gl = new GridLayout(4, false);
+        gl.marginWidth = 0;
+        gl.marginHeight = 0;
+        channelComposite.setLayout(gl);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
         channelComposite.setLayoutData(gd);
-
-        final int channelTxtWidth = 75;
-        final int levelTxtWidth = 45;
 
         Label channel1DescLbl = new Label(channelComposite, SWT.NONE);
         channel1DescLbl.setText(String.format(CHANNEL_BASE_PORT, 1));
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = channelTxtWidth;
+        /*
+         * TODO: add more validation of the channel ports on both the data
+         * access layer and the database, itself. Currently, any numeric value
+         * is allowed. The DAC GUI, itself, only allows for five digit ports.
+         * Additionally, it does not make sense to allow / attempt to use a port
+         * below 1000. Outside the scope of the lx branch.
+         */
         channel1TF = new Text(channelComposite, SWT.BORDER);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelPortConfigFieldWidth;
         channel1TF.setLayoutData(gd);
 
         Label channel1LvlLbl = new Label(channelComposite, SWT.NONE);
         channel1LvlLbl.setText(LEVEL_LABEL);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.widthHint = levelTxtWidth;
         channel1LvlTF = new Text(channelComposite, SWT.BORDER);
+        gc = new GC(channel1LvlTF);
+        final int channelLevelConfigFieldWidth = gc.textExtent("999.9").x;
+        gc.dispose();
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelLevelConfigFieldWidth;
         channel1LvlTF.setLayoutData(gd);
 
         dacPortTxtFldList.add(channel1TF);
@@ -390,15 +421,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label channel2DescLbl = new Label(channelComposite, SWT.NONE);
         channel2DescLbl.setText(String.format(CHANNEL_BASE_PORT, 2));
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = channelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelPortConfigFieldWidth;
         channel2TF = new Text(channelComposite, SWT.BORDER);
         channel2TF.setLayoutData(gd);
 
         Label channel2LvlLbl = new Label(channelComposite, SWT.NONE);
         channel2LvlLbl.setText(LEVEL_LABEL);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.widthHint = levelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelLevelConfigFieldWidth;
         channel2LvlTF = new Text(channelComposite, SWT.BORDER);
         channel2LvlTF.setLayoutData(gd);
 
@@ -408,15 +439,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label channel3DescLbl = new Label(channelComposite, SWT.NONE);
         channel3DescLbl.setText(String.format(CHANNEL_BASE_PORT, 3));
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = channelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelPortConfigFieldWidth;
         channel3TF = new Text(channelComposite, SWT.BORDER);
         channel3TF.setLayoutData(gd);
 
         Label channel3LvlLbl = new Label(channelComposite, SWT.NONE);
         channel3LvlLbl.setText(LEVEL_LABEL);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.widthHint = levelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelLevelConfigFieldWidth;
         channel3LvlTF = new Text(channelComposite, SWT.BORDER);
         channel3LvlTF.setLayoutData(gd);
 
@@ -426,15 +457,15 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         Label channel4DescLbl = new Label(channelComposite, SWT.NONE);
         channel4DescLbl.setText(String.format(CHANNEL_BASE_PORT, 4));
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.minimumWidth = channelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelPortConfigFieldWidth;
         channel4TF = new Text(channelComposite, SWT.BORDER);
         channel4TF.setLayoutData(gd);
 
         Label channel4LvlLbl = new Label(channelComposite, SWT.NONE);
         channel4LvlLbl.setText(LEVEL_LABEL);
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.widthHint = levelTxtWidth;
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        gd.minimumWidth = channelLevelConfigFieldWidth;
         channel4LvlTF = new Text(channelComposite, SWT.BORDER);
         channel4LvlTF.setLayoutData(gd);
 
@@ -473,21 +504,20 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     private void createBottomActionButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
+        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
                 false));
 
-        int buttonWidth = 90;
-
-        GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        final int buttonWidth = buttonComp.getDisplay().getDPI().x;
         createSaveBtn = new Button(buttonComp, SWT.PUSH);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
+        createSaveBtn.setLayoutData(gd);
         if (dialogType == DialogType.CREATE) {
             createSaveBtn.setText(CONFIGURE_TEXT);
         } else if (dialogType == DialogType.EDIT) {
             createSaveBtn.setText(SAVE_TEXT);
         }
 
-        createSaveBtn.setLayoutData(gd);
         createSaveBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -504,10 +534,10 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             }
         });
 
-        gd = new GridData(SWT.LEFT, SWT.DEFAULT, true, false);
-        gd.widthHint = buttonWidth;
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.minimumWidth = buttonWidth;
         Button cancelBtn = new Button(buttonComp, SWT.PUSH);
-        cancelBtn.setText(" Cancel ");
+        cancelBtn.setText("Cancel");
         cancelBtn.setLayoutData(gd);
         cancelBtn.addSelectionListener(new SelectionAdapter() {
             @Override

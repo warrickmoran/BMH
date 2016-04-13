@@ -37,8 +37,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableComp;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 20, 2014  #3174     lvenable     Initial creation
- * Aug 12, 2014  #3490      lvenable    Add multiple selection capability.
- * 
+ * Aug 12, 2014  #3490     lvenable     Add multiple selection capability.
+ * Apr 04, 2016  #5504     bkowal       Updated for compatibility with TableComp changes.
  * </pre>
  * 
  * @author lvenable
@@ -54,14 +54,12 @@ public class SuiteTable extends TableComp {
      * 
      * @param parentComp
      *            Parent composite.
-     * @param width
-     *            Table width.
-     * @param height
-     *            Table height.
+     * @param desiredNumRows
+     *            Minimum number of rows to display.
      */
-    public SuiteTable(Composite parentComp, int width, int height) {
+    public SuiteTable(Composite parentComp, int desiredNumRows) {
         this(parentComp, SWT.BORDER | SWT.V_SCROLL | SWT.H_SCROLL | SWT.MULTI,
-                width, height);
+                desiredNumRows);
     }
 
     /**
@@ -71,20 +69,15 @@ public class SuiteTable extends TableComp {
      *            Parent composite.
      * @param tableStyle
      *            Table style.
-     * @param width
-     *            Table width.
-     * @param height
-     *            Table height.
+     * @param desiredNumRows
+     *            Minimum number of rows to display.
      */
-    public SuiteTable(Composite parentComp, int tableStyle, int width,
-            int height) {
-        super(parentComp, tableStyle, width, height);
+    public SuiteTable(Composite parentComp, int tableStyle, int desiredNumRows) {
+        super(parentComp, tableStyle, desiredNumRows);
     }
 
     @Override
     protected void handleTableMouseClick(MouseEvent event) {
-        // TODO Auto-generated method stub
-
     }
 
     @Override
