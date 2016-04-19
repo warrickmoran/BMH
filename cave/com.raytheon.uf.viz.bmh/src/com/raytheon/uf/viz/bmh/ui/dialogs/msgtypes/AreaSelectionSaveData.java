@@ -42,12 +42,13 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.Zone;
  * Oct 14, 2014   #3728    lvenable    Added a set of area codes.
  * Oct 16, 2014    3657    bkowal      Added affectedTransmitters
  * Oct 17, 2014    3655    bkowal      Change affectedTransmitters from {@link String} 
- *                                        to {@link Transmitter}
+ *                                     to {@link Transmitter}
  * Oct 21, 2014   #3728    lvenable    Added set of zonecodes and area codes.
- *  Jan 13, 2014  3876     lvenable    Updated method name and comments to be more correct.
+ *  Jan 13, 2014   3876    lvenable    Updated method name and comments to be more correct.
  * Jan 15, 2015    4010    bkowal      Areas associated with transmitters are no longer
  *                                     included in the area/zone list.
- * Mar 16, 2015  4244      bsteffen    Add constructor which copies from message type.
+ * Mar 16, 2015    4244    bsteffen    Add constructor which copies from message type.
+ * Mar 30, 2016    5536    bkowal      Ignore areas/zones that are not present in the database.
  * 
  * </pre>
  * 
@@ -130,6 +131,9 @@ public class AreaSelectionSaveData {
      *            Area.
      */
     public void addArea(Area a) {
+        if (a == null) {
+            return;
+        }
         if (areas == null) {
             areas = new HashSet<>();
         }
@@ -155,6 +159,9 @@ public class AreaSelectionSaveData {
      *            Zone.
      */
     public void addZone(Zone z) {
+        if (z == null) {
+            return;
+        }
         if (zones == null) {
             zones = new HashSet<>();
         }
