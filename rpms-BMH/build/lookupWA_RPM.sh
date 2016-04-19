@@ -12,6 +12,8 @@ function lookupWA_RPM()
 		return 0	
 	fi
 	if [ "${1}" = "awips2-edex-bmh" ]; then
+                # Remove conflicting version created by the EDEX RPM build.
+                rm -f ${AWIPSII_TOP_DIR}/RPMS/x86_64/awips2-edex-bmh-${AWIPSII_VERSION}-${AWIPSII_RELEASE}.x86_64.rpm
 		export RPM_SPECIFICATION="${2}/Installer.edex-bmh"
 		return 0
 	fi
@@ -28,6 +30,8 @@ function lookupWA_RPM()
 		return 0
 	fi
 	if [ "${1}" = "awips2-edex-request-bmh" ]; then
+                # Remove conflicting version created by the EDEX RPM build.
+                rm -f ${AWIPSII_TOP_DIR}/RPMS/x86_64/awips2-edex-request-bmh-${AWIPSII_VERSION}-${AWIPSII_RELEASE}.x86_64.rpm
 		export RPM_SPECIFICATION="${2}/Installer.edex-request-bmh"
 		return 0
 	fi
@@ -43,6 +47,12 @@ function lookupWA_RPM()
 		export RPM_SPECIFICATION="${2}/Installer.neospeech-english-and-spanish"
 		return 0
 	fi
+        if [ "${1}" = "awips2-common-bmh" ]; then
+                # Remove conflicting version created by the EDEX RPM build.
+                rm -f ${AWIPSII_TOP_DIR}/RPMS/x86_64/awips2-common-bmh-${AWIPSII_VERSION}-${AWIPSII_RELEASE}.x86_64.rpm
+                export RPM_SPECIFICATION="${2}/Installer.common-bmh"
+                return 0
+        fi
 	
 	return 1
 }

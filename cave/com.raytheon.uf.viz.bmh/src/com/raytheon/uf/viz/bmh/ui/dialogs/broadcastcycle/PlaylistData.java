@@ -19,10 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle;
 
-import java.io.IOException;
-import java.net.Socket;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -34,7 +30,6 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.eclipse.swt.widgets.Shell;
 
-import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.data.IPlaylistData;
 import com.raytheon.uf.common.bmh.data.PlaylistDataStructure;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -47,13 +42,9 @@ import com.raytheon.uf.common.bmh.notify.MaintenanceMessagePlayback;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.bmh.notify.PlaylistNotification;
-import com.raytheon.uf.common.serialization.SerializationException;
-import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.BMHServers;
-import com.raytheon.uf.viz.bmh.comms.CommsCommunicationException;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableCellData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
@@ -105,6 +96,7 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  *                                     broadcast.
  * Jan 28, 2016   5300     rjpeter     Fixed PlaylistDataStructure memory leak.
  * Feb 04, 2016   5308     rjpeter     Ask comms manager for playlist data if none in memory.
+ * Mar 14, 2016   5472     rjpeter     Moved comms manager playlist request to BroadcastCycleDlg.
  * </pre>
  * 
  * @author mpduff
@@ -557,50 +549,8 @@ public class PlaylistData {
      * @param transmitterGrpName
      * @param dataStruct
      */
-    public PlaylistDataStructure getPlaylistData(String transmitterGrpName)
-            throws CommsCommunicationException {
-        PlaylistDataStructure rval = playlistDataMap.get(transmitterGrpName);
-
-        if (rval == null) {
-            String commsLoc = BMHServers.getCommsManager();
-            if (commsLoc == null) {
-                throw new CommsCommunicationException(
-                        "No address has been specified for comms manager "
-                                + BMHServers.getCommsManagerKey() + ".");
-            }
-
-            URI commsURI = null;
-            try {
-                commsURI = new URI(commsLoc);
-            } catch (URISyntaxException e) {
-                throw new CommsCommunicationException(
-                        "Invalid address specified for comms manager "
-                                + BMHServers.getCommsManagerKey() + ": "
-                                + commsLoc + ".", e);
-            }
-
-            try (Socket socket = new Socket(commsURI.getHost(),
-                    commsURI.getPort())) {
-                socket.setTcpNoDelay(true);
-                try {
-                    SerializationUtil.transformToThriftUsingStream(
-                            new SendPlaylistMessage(transmitterGrpName),
-                            socket.getOutputStream());
-                } catch (SerializationException | IOException e) {
-                    throw new CommsCommunicationException(
-                            "Failed to send playlist request for "
-                                    + transmitterGrpName + " to comms manager "
-                                    + BMHServers.getCommsManager() + ".", e);
-                }
-            } catch (IOException e) {
-                throw new CommsCommunicationException(
-                        "Failed to connect to comms manager "
-                                + BMHServers.getCommsManagerKey() + ": "
-                                + commsLoc + ".", e);
-            }
-        }
-
-        return rval;
+    public PlaylistDataStructure getPlaylistData(String transmitterGrpName) {
+        return playlistDataMap.get(transmitterGrpName);
     }
 
     /**

@@ -17,7 +17,7 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.playlist;
+package com.raytheon.uf.common.bmh.datamodel.playlist.compatibility;
 
 import java.nio.file.Path;
 import java.util.Calendar;
@@ -35,6 +35,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * 
  * Xml representation of a playlist message that is sent from the playlist
  * manager to the comms manager.
+ * 
+ * NOTE: Do not update. Only exists to allow message file compatibility from one
+ * version to the next.
  * 
  * <pre>
  * 
@@ -71,18 +74,42 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 13, 2015  4429     rferrel     Added traceId to {@link #toString()}.
  * May 26, 2015  4481     bkowal      Added {@link #dynamic}.
  * Feb 04, 2016  5308     bkowal      Refactored into {@link DacPlaylistMessageMetadata}.
- * Mar 08, 2016  5382     bkowal      Updated to only include information that the Dac Transmit
- *                                    would manage.
+ * Mar 08, 2016  5382     bkowal      Based on 16.1.3. Maintained for message file conversion.
  * 
  * </pre>
  * 
  * @author bsteffen
  * @version 1.0
  */
+@Deprecated
 @XmlRootElement(name = "bmhMessage")
 @XmlAccessorType(XmlAccessType.NONE)
-public class DacPlaylistMessage extends DacPlaylistMessageId implements
-        IMessageMetadataAccess {
+public class DacPlaylistMessage16_1_3 extends DacPlaylistMessageId16_1_3
+        implements IMessageMetadataAccess16_1_3 {
+
+    @XmlElement
+    private String name;
+
+    @XmlElement
+    private Calendar start;
+
+    @XmlElement
+    private String messageType;
+
+    @XmlElement
+    private String SAMEtone;
+
+    @XmlElement
+    private boolean alertTone;
+
+    @XmlElement
+    private boolean toneBlackoutEnabled;
+
+    @XmlElement
+    private String toneBlackoutStart;
+
+    @XmlElement
+    private String toneBlackoutEnd;
 
     @XmlElement
     private Calendar lastTransmitTime;
@@ -96,12 +123,37 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
     @XmlElement
     private boolean playedAlertTone;
 
+    /*
+     * boolean indicating whether or not the confirm flag has been set on the
+     * associated message.
+     */
+    @XmlElement
+    private boolean confirm;
+
+    /*
+     * boolean indicating that this message is a watch. Requirements state that
+     * BMH users must be notified when a watch/warning is not broadcast due to
+     * expiration even though it had been scheduled for broadcast. Set based on
+     * the message type designation.
+     */
+    @XmlElement
+    private boolean watch;
+
+    /*
+     * boolean indicating that this message is a warning. Requirements state
+     * that BMH users must be notified when a watch/warning is not broadcast due
+     * to expiration even though it had been scheduled for broadcast. Set based
+     * on the message type designation.
+     */
+    @XmlElement
+    private boolean warning;
+
     /**
      * boolean flag used to mark when a {@link MessageBroadcastNotifcation} is
      * sent for this message to ensure that multiple notifications are never
      * sent. This field is theoretically transient and will only hold its state
      * for as long as this object is in memory. This flag is necessary because
-     * an expired {@link DacPlaylistMessage} will only be eliminated (the
+     * an expired {@link DacPlaylistMessage16_1_3} will only be eliminated (the
      * playlist scheduler will keep iterating over it until then) when a newer
      * version of the containing playlist is read.
      */
@@ -109,14 +161,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
     /**
      * boolean used to ensure that once one delay notification is sent out for a
-     * single {@link DacPlaylistMessage} that may be associated with more than
-     * one delay scenario.
+     * single {@link DacPlaylistMessage16_1_3} that may be associated with more
+     * than one delay scenario.
      */
     private transient boolean initialBLDelayNotificationSent;
 
-    private transient volatile DacPlaylistMessageMetadata metadata;
+    private transient volatile DacPlaylistMessage16_1_3 metadata;
 
-    public DacPlaylistMessage() {
+    public DacPlaylistMessage16_1_3() {
 
     }
 
@@ -128,17 +180,65 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId);
-        builder.append(", messageType=");
-        if (this.metadata != null) {
-            builder.append(this.metadata.getMessageType());
-        }
-        builder.append(", traceId=").append(traceId).append(", expire=");
+        builder.append("DACPlaylistMessage [broadcastId=").append(broadcastId)
+                .append(", messageType=").append(messageType)
+                .append(", traceId=").append(traceId).append(", expire=");
         if (this.expire != null) {
             builder.append(expire.getTime().toString());
         }
         builder.append("]");
         return builder.toString();
+    }
+
+    /**
+     * @return the name
+     */
+    public String getName() {
+        return name;
+    }
+
+    /**
+     * @param name
+     *            the name to set
+     */
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getMessageType() {
+        return messageType;
+    }
+
+    public void setMessageType(String messageType) {
+        this.messageType = messageType;
+    }
+
+    public Calendar getStart() {
+        return this.start;
+    }
+
+    /**
+     * @param start
+     *            the start to set
+     */
+    public void setStart(Calendar start) {
+        this.start = start;
+    }
+
+    public String getSAMEtone() {
+        return SAMEtone;
+    }
+
+    public void setSAMEtone(String sAMEtone) {
+        SAMEtone = sAMEtone;
+    }
+
+    public boolean isAlertTone() {
+        return alertTone;
+    }
+
+    public void setAlertTone(boolean alertTone) {
+        this.alertTone = alertTone;
     }
 
     public Calendar getLastTransmitTime() {
@@ -196,8 +296,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
      *         {@code false}.
      */
     public boolean isValid(long currentTime) {
-        boolean started = currentTime >= this.metadata.getStart()
-                .getTimeInMillis();
+        boolean started = currentTime >= this.start.getTimeInMillis();
         boolean ended = (this.expire != null && currentTime >= expire
                 .getTimeInMillis());
         return started && !ended;
@@ -231,6 +330,30 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
                 .replace(".xml", ".position"));
     }
 
+    public boolean isToneBlackoutEnabled() {
+        return toneBlackoutEnabled;
+    }
+
+    public void setToneBlackoutEnabled(boolean toneBlackoutEnabled) {
+        this.toneBlackoutEnabled = toneBlackoutEnabled;
+    }
+
+    public String getToneBlackoutStart() {
+        return toneBlackoutStart;
+    }
+
+    public void setToneBlackoutStart(String toneBlackoutStart) {
+        this.toneBlackoutStart = toneBlackoutStart;
+    }
+
+    public String getToneBlackoutEnd() {
+        return toneBlackoutEnd;
+    }
+
+    public void setToneBlackoutEnd(String toneBlackoutEnd) {
+        this.toneBlackoutEnd = toneBlackoutEnd;
+    }
+
     /**
      * Determine whether or not to play tones (taking into account any possibly
      * configured tone blackout period) for this message given the specified
@@ -242,12 +365,9 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
      * @return Whether or not tones should be played for this message.
      */
     public boolean shouldPlayTones(Calendar time) {
-        boolean hasTonesToPlay = ((isSAMETones() && !playedSameTone) || (this.metadata
-                .isAlertTone() && !playedAlertTone));
-        final boolean toneBlackoutEnabled = this.metadata
-                .isToneBlackoutEnabled();
-        boolean outsideBlackoutPeriod = (hasTonesToPlay && toneBlackoutEnabled) ? this.metadata
-                .isOutsideBlackoutPeriod(time) : false;
+        boolean hasTonesToPlay = ((isSAMETones() && !playedSameTone) || (alertTone && !playedAlertTone));
+        boolean outsideBlackoutPeriod = (hasTonesToPlay && toneBlackoutEnabled) ? isOutsideBlackoutPeriod(time)
+                : false;
 
         if (!toneBlackoutEnabled && hasTonesToPlay) {
             return true;
@@ -259,6 +379,94 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
         return false;
     }
 
+    private boolean isOutsideBlackoutPeriod(Calendar time) {
+        if (toneBlackoutEnabled) {
+            int startTime = Integer.parseInt(toneBlackoutStart);
+            int endTime = Integer.parseInt(toneBlackoutEnd);
+
+            boolean periodCrossesDayLine = (endTime <= startTime);
+
+            int currentTime = (time.get(Calendar.HOUR_OF_DAY) * 100)
+                    + time.get(Calendar.MINUTE);
+
+            if (periodCrossesDayLine) {
+                /*
+                 * If the blackout period crosses the day line, then the period
+                 * during which a tone should play is a contiguous time range
+                 * that begins after the blackout end time and ends at the start
+                 * of the blackout period.
+                 */
+                return ((currentTime >= endTime) && (currentTime < startTime));
+            } else {
+                /*
+                 * If the blackout period does not cross the day line, then the
+                 * period is 2 disjoint time ranges: (1) a time range that
+                 * begins after the end of the blackout period and lasts until
+                 * the end of the day and (2) a time range that begins at the
+                 * beginning of the day and lasts until the beginning of the
+                 * blackout period.
+                 */
+                return (((currentTime >= endTime) && (currentTime < 2400)) || ((currentTime >= 0) && (currentTime < startTime)));
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Returns whether this message has a valid SAME tone header.
+     * 
+     * @return Whether or not this message has a valid SAME tone header.
+     */
+    public boolean isSAMETones() {
+        return ((SAMEtone != null) && (!SAMEtone.isEmpty()));
+    }
+
+    /**
+     * @return the confirm
+     */
+    public boolean isConfirm() {
+        return confirm;
+    }
+
+    /**
+     * @param confirm
+     *            the confirm to set
+     */
+    public void setConfirm(boolean confirm) {
+        this.confirm = confirm;
+    }
+
+    /**
+     * @return the watch
+     */
+    public boolean isWatch() {
+        return watch;
+    }
+
+    /**
+     * @param watch
+     *            the watch to set
+     */
+    public void setWatch(boolean watch) {
+        this.watch = watch;
+    }
+
+    /**
+     * @return the warning
+     */
+    public boolean isWarning() {
+        return warning;
+    }
+
+    /**
+     * @param warning
+     *            the warning to set
+     */
+    public void setWarning(boolean warning) {
+        this.warning = warning;
+    }
+
     public boolean requiresExpirationNoPlaybackNotification() {
         boolean expired = this.expire != null
                 && TimeUtil.currentTimeMillis() >= this.expire
@@ -266,8 +474,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
         boolean result = expired
                 && (this.messageBroadcastNotificationSent == false)
-                && (this.metadata.isWarning() || this.metadata.isWatch())
-                && (this.playCount == 0);
+                && (this.warning || this.watch) && (this.playCount == 0);
         if (result) {
             /*
              * ensure that a notification is not continuously sent until a new
@@ -300,7 +507,7 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
     /**
      * @return the metadata
      */
-    public DacPlaylistMessageMetadata getMetadata() {
+    public DacPlaylistMessage16_1_3 getMetadata() {
         return metadata;
     }
 
@@ -308,62 +515,43 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
      * @param metadata
      *            the metadata to set
      */
-    public void setMetadata(DacPlaylistMessageMetadata metadata) {
+    public void setMetadata(DacPlaylistMessage16_1_3 metadata) {
         this.metadata = metadata;
     }
 
     @Override
-    public String getName() {
-        return this.metadata.getName();
-    }
-
-    @Override
-    public String getMessageType() {
-        return this.metadata.getMessageType();
-    }
-
-    @Override
-    public String getSAMEtone() {
-        return this.metadata.getSAMEtone();
-    }
-
-    @Override
-    public boolean isAlertTone() {
-        return this.metadata.isAlertTone();
-    }
-
-    @Override
-    public boolean isSAMETones() {
-        return this.metadata.isSAMETones();
-    }
-
-    @Override
     public boolean isPeriodic() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
         return this.metadata.isPeriodic();
     }
 
     @Override
     public long getPlaybackInterval() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
         return this.metadata.getPlaybackInterval();
     }
 
     @Override
     public List<String> getSoundFiles() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
         return this.metadata.getSoundFiles();
     }
 
     @Override
-    public boolean isConfirm() {
-        return this.metadata.isConfirm();
-    }
-
-    @Override
-    public boolean isWarning() {
-        return this.metadata.isWarning();
-    }
-
-    @Override
     public boolean isDynamic() {
+        if (this.metadata == null) {
+            throw new IllegalStateException(
+                    "Associated message metadata has not yet been loaded.");
+        }
         return this.metadata.isDynamic();
     }
 }

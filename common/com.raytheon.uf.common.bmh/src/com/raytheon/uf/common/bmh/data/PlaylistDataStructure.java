@@ -57,6 +57,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  *                                     been loaded to ensure the latest version is stored locally.
  * Feb 04, 2016     5308   bkowal      Ensure that a message will not remain displayed as an interrupt
  *                                     after the initial broadcast.
+ * Mar 14, 2016     5472   rjpeter     Added partialPlaylist.
  * </pre>
  * 
  * @author mpduff
@@ -104,7 +105,15 @@ public class PlaylistDataStructure implements IPlaylistData {
     @DynamicSerializeElement
     private long timeStamp;
 
+    /**
+     * Designates if structure was created from a single message or a full
+     * playlist.
+     */
+    @DynamicSerializeElement
+    private boolean partialPlaylist;
+
     public PlaylistDataStructure() {
+        partialPlaylist = true;
     }
 
     public PlaylistDataStructure(List<MessagePlaybackPrediction> messages,
@@ -160,6 +169,7 @@ public class PlaylistDataStructure implements IPlaylistData {
             }
         }
 
+        partialPlaylist = false;
     }
 
     public PlaylistDataStructure(PlaylistDataStructure that) {
@@ -289,7 +299,7 @@ public class PlaylistDataStructure implements IPlaylistData {
              * eventually be set.
              */
             if (msg.getInputMessage().getInterrupt()
-                    && msg.isPlayedInterrupt() == false) {
+                    && (msg.isPlayedInterrupt() == false)) {
                 continue;
             }
 
@@ -338,5 +348,20 @@ public class PlaylistDataStructure implements IPlaylistData {
      */
     public long getTimeStamp() {
         return timeStamp;
+    }
+
+    /**
+     * @return the partialPlaylist
+     */
+    public boolean isPartialPlaylist() {
+        return partialPlaylist;
+    }
+
+    /**
+     * @param partialPlaylist
+     *            the partialPlaylist to set
+     */
+    public void setPartialPlaylist(boolean partialPlaylist) {
+        this.partialPlaylist = partialPlaylist;
     }
 }

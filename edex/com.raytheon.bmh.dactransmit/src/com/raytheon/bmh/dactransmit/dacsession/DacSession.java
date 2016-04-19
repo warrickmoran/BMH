@@ -115,6 +115,8 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Jul 28, 2015  #4686     bkowal       Moved statistics to common.
  * Oct 26, 2015  #5034     bkowal       Added {@link #checkForActiveLiveBroadcast()}.
  * Nov 04, 2015 5068       rjpeter      Switch audio units from dB to amplitude.
+ * Feb 23, 2016  5382      bkowal       Verify sync with the dac before processing
+ *                                      playlists/loading messages.
  * </pre>
  * 
  * @author dgilling
@@ -171,11 +173,11 @@ public final class DacSession implements IDacStatusUpdateEventHandler,
         this.asyncExecutor = new PriorityBasedExecutorService(ASYNC_THREADS,
                 new NamedThreadFactory("DacSession-AsyncTasks"));
         this.eventBus = new EventBus("DAC-Transmit");
-        this.playlistMgr = new PlaylistScheduler(this);
         this.controlThread = new ControlStatusThread(this,
                 this.config.getDacAddress(), this.config.getControlPort());
-        this.dataThread = new DataTransmitThread(this, playlistMgr, false);
         this.commsManager = new CommsManagerCommunicator(this);
+        this.playlistMgr = new PlaylistScheduler(this);
+        this.dataThread = new DataTransmitThread(this, playlistMgr, false);
         if (Boolean.getBoolean("enableDirectoryObserver")) {
             this.newPlaylistObserver = new PlaylistDirectoryObserver(this);
         } else {

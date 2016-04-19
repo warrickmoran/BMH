@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -162,6 +163,8 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  *                                     in the message header overrides the message type language.
  * Jan 15, 2016 5241       bkowal      Use a {@link WordLengthDescComparator} to sort dictionary
  *                                     rules before they are applied.
+ * Apr 07, 2016 5558       bkowal      The national and voice-specific dictionaries will now be used
+ *                                     during ldad message generation.
  * </pre>
  * 
  * @author bkowal
@@ -432,15 +435,11 @@ public class MessageTransformer implements IContextStateProcessor {
         List<LdadMsg> ldadMessages = new ArrayList<>(ldadConfigurations.size());
 
         /*
-         * Generate the default case. Transformed text/ssml without any
-         * dictionary.
+         * Need to ensure that every possible language / voice combination is
+         * handled by the default case.
          */
-        final List<ITextTransformation> noTransformations = Collections
-                .emptyList();
-        SSMLDocument defaultSSMLDocument = this.applyTransformations(
-                formattedText, SpeechRateFormatter
-                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE),
-                Language.ENGLISH, noTransformations);
+        final Map<TtsVoice, String> defaultLdadSSMLMap = new HashMap<>();
+
         for (LdadConfig ldadConfig : ldadConfigurations) {
             if (ldadConfig.isEnabled() == false) {
                 /**
@@ -452,6 +451,25 @@ public class MessageTransformer implements IContextStateProcessor {
                         + ") for message type: " + messageType.getAfosid()
                         + ".");
                 continue;
+            }
+
+            String defaultSSML = defaultLdadSSMLMap.get(ldadConfig.getVoice());
+            if (defaultSSML == null) {
+                /*
+                 * Generate the default case. Transformed text/ssml based on the
+                 * national and voice dictionaries.
+                 */
+                final List<ITextTransformation> defaultTransformations = this
+                        .mergeDictionaries(ldadConfig.getVoice().getLanguage(),
+                                null, ldadConfig.getVoice().getDictionary());
+                SSMLDocument defaultSSMLDocument = this
+                        .applyTransformations(
+                                formattedText,
+                                SpeechRateFormatter
+                                        .formatSpeechRate(SpeechRateFormatter.DEFAULT_RATE),
+                                Language.ENGLISH, defaultTransformations);
+                defaultSSML = defaultSSMLDocument.toSSML();
+                defaultLdadSSMLMap.put(ldadConfig.getVoice(), defaultSSML);
             }
 
             LdadMsg ldadMsg = new LdadMsg();
@@ -466,7 +484,7 @@ public class MessageTransformer implements IContextStateProcessor {
                  * No dictionary or custom speech rate have been defined, use
                  * the default ssml.
                  */
-                ldadMsg.setSsml(defaultSSMLDocument.toSSML());
+                ldadMsg.setSsml(defaultSSML);
                 ldadMessages.add(ldadMsg);
                 continue;
             }
@@ -477,8 +495,9 @@ public class MessageTransformer implements IContextStateProcessor {
              */
             // Generate the transformation rules.
             List<ITextTransformation> textTransformations = this
-                    .buildDictionaryTransformationList(ldadConfig
-                            .getDictionary());
+                    .mergeDictionaries(ldadConfig.getVoice().getLanguage(),
+                            ldadConfig.getDictionary(), ldadConfig.getVoice()
+                                    .getDictionary());
 
             // Generate the Transformed SSML.
             SSMLDocument ssmlDocument = this.applyTransformations(
@@ -863,15 +882,16 @@ public class MessageTransformer implements IContextStateProcessor {
      * the Transmitter {@link Dictionary} into a single {@link List} of
      * {@link ITextTransformation}s.
      * 
-     * @param transmitterDictionary
-     *            the Transmitter {@link Dictionary}
+     * @param destinationDictionary
+     *            the {@link Dictionary} specific to the intended destination of
+     *            the message.
      * @param voiceDictionary
      *            the Voice {@link Dictionary}
      * @return the merged list of {@link ITextTransformation} rules.
      * @throws SSMLConversionException
      */
     public List<ITextTransformation> mergeDictionaries(Language language,
-            final Dictionary transmitterDictionary,
+            final Dictionary destinationDictionary,
             final Dictionary voiceDictionary) throws SSMLConversionException,
             TransformationException {
         ITimer dictionaryTimer = TimeUtil.getTimer();
@@ -879,7 +899,7 @@ public class MessageTransformer implements IContextStateProcessor {
         final Dictionary nationalDictionary = this.nationalDictionaryLanguageMap
                 .get(language);
         // no dictionaries exist?
-        if (nationalDictionary == null && transmitterDictionary == null
+        if (nationalDictionary == null && destinationDictionary == null
                 && voiceDictionary == null) {
             dictionaryTimer.stop();
             statusHandler.info("Successfully merged the dictionaries in "
@@ -891,7 +911,7 @@ public class MessageTransformer implements IContextStateProcessor {
         Map<String, ITextTransformation> mergedDictionaryMap = new LinkedHashMap<>();
         this.mergeDictionary(nationalDictionary, mergedDictionaryMap);
         this.mergeDictionary(voiceDictionary, mergedDictionaryMap);
-        this.mergeDictionary(transmitterDictionary, mergedDictionaryMap);
+        this.mergeDictionary(destinationDictionary, mergedDictionaryMap);
         if (mergedDictionaryMap.isEmpty()) {
             return Collections.emptyList();
         }
@@ -934,32 +954,6 @@ public class MessageTransformer implements IContextStateProcessor {
             mergedDictionaryMap.put(word.getWord().toLowerCase(),
                     this.buildTransformationRule(word));
         }
-    }
-
-    /**
-     * Creates the text transformation rules based on the specified dictionary.
-     * When no dictionary is specified, an empty list will be returned. Used for
-     * building the Ldad {@link ITextTransformation} {@link List}.
-     * 
-     * @param dictionary
-     *            the specified dictionary
-     * @return a list of text transformation rules; an empty list of rules is
-     *         possible.
-     * @throws SSMLConversionException
-     */
-    private List<ITextTransformation> buildDictionaryTransformationList(
-            final Dictionary dictionary) throws SSMLConversionException,
-            TransformationException {
-        if (dictionary == null) {
-            return Collections.emptyList();
-        }
-        /* Create Transformation rules based on the dictionaries. */
-        List<ITextTransformation> textTransformations = new LinkedList<ITextTransformation>();
-        for (Word word : dictionary.getWords()) {
-            textTransformations.add(this.buildTransformationRule(word));
-        }
-
-        return textTransformations;
     }
 
     /**

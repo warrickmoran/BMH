@@ -39,6 +39,7 @@ import com.raytheon.bmh.dactransmit.ipc.DacTransmitShutdown;
 import com.raytheon.bmh.dactransmit.ipc.DacTransmitStatus;
 import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
+import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
@@ -103,6 +104,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage.
+ * Mar 14, 2016  5472     rjpeter     Handle SendPlaylistResponse.
  * </pre>
  * 
  * @author bsteffen
@@ -239,6 +241,9 @@ public class DacTransmitCommunicator extends Thread {
             SAMEMessageTruncatedNotification notification = (SAMEMessageTruncatedNotification) message;
             notification.setTransmitterGroup(this.groupName);
             sameDurationTruncatedAlarm.notify(notification);
+        } else if (message instanceof SendPlaylistResponse) {
+            manager.forwardPlaylistResponse((SendPlaylistResponse) message,
+                    true);
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());

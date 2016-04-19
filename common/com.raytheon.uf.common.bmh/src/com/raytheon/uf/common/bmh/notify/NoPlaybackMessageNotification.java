@@ -32,7 +32,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jun 1, 2015  4369       rferrel     Initial creation
- * 
+ * Mar 14, 2016 5472       rjpeter     Added reason for NoPlaybackMessageNotificaiton.
  * </pre>
  * 
  * @author rferrel
@@ -43,11 +43,38 @@ public class NoPlaybackMessageNotification {
     @DynamicSerializeElement
     private String groupName;
 
+    @DynamicSerializeElement
+    private String reason;
+
+    public NoPlaybackMessageNotification() {
+
+    }
+
+    public NoPlaybackMessageNotification(String groupName, String reason) {
+        this.groupName = groupName;
+        this.reason = reason;
+    }
+
     public String getGroupName() {
         return groupName;
     }
 
     public void setGroupName(String groupName) {
         this.groupName = groupName;
+    }
+
+    /**
+     * @return the reason
+     */
+    public String getReason() {
+        return reason;
+    }
+
+    /**
+     * @param reason
+     *            the reason to set
+     */
+    public void setReason(String reason) {
+        this.reason = reason;
     }
 }
