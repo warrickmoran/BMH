@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: BMH DAC Transmit
 Bundle-SymbolicName: com.raytheon.bmh.dactransmit
-Bundle-Version: 0.14.0.qualifier
+Bundle-Version: 1.1.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Main-Class: com.raytheon.bmh.dactransmit.DacTransmitMain
