@@ -3,7 +3,7 @@
 #
 Name: awips2-bmh
 Summary: AWIPS II BMH Installation
-Version: 1.0
+Version: 1.1
 Release: %{_component_release}
 Group: AWIPSII
 BuildRoot: %{_build_root}
