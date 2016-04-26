@@ -17,11 +17,19 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.bmh.dactransmit.events;
+package com.raytheon.bmh.comms.broadcast;
+
+import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 
 /**
- * Event to throw when this application encounters an important error that
- * should be transmitted back to the users.
+ * Used to construct a log message that will be transmitted to AlertViz to
+ * inform the user that a specific HIGH PRIORITY message could not be
+ * initialized for broadcast. HIGH PRIORITY messages currently include:
+ * interrupts, watches, and warnings. This alarm differs from the
+ * {@link WtchOrWrnNotBroadcastAlarm} in that this alarm indicates that the
+ * message could not even be loaded for an attempted broadcast whereas the other
+ * indicates that the message had been successfully loaded, but it expired
+ * before it could be broadcast.
  * 
  * <pre>
  * 
@@ -29,30 +37,18 @@ package com.raytheon.bmh.dactransmit.events;
  * 
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
- * Aug 14, 2014  #3286     dgilling     Initial creation
+ * Apr 26, 2016 5561       bkowal      Initial creation
  * 
  * </pre>
  * 
- * @author dgilling
+ * @author bkowal
  * @version 1.0
  */
 
-public final class CriticalErrorEvent {
+public class PriorityBroadcastMsgInitFailedAlarm extends
+        BroadcastMsgInitFailedAlarm {
 
-    private final String errorMessage;
-
-    private final Throwable throwable;
-
-    public CriticalErrorEvent(String errorMessage, Throwable t) {
-        this.errorMessage = errorMessage;
-        this.throwable = t;
-    }
-
-    public String getErrorMessage() {
-        return errorMessage;
-    }
-
-    public Throwable getThrowable() {
-        return throwable;
+    public PriorityBroadcastMsgInitFailedAlarm() {
+        super(BMH_CATEGORY.PRIORITY_MSG_RETRIEVAL_FAILED);
     }
 }

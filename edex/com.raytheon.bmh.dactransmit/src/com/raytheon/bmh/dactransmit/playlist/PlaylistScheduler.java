@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.bmh.dactransmit.dacsession.DacSession;
-import com.raytheon.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.bmh.dactransmit.events.handlers.IPlaylistUpdateNotificationHandler;
 import com.raytheon.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
@@ -59,6 +58,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistStartTimeComparator;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.BroadcastMsgInitFailedNotification;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessageNotBroadcastNotification;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackPrediction;
@@ -163,6 +163,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      playlists as a high priority background task.
  * Mar 01, 2016  5382      bkowal       Enable the purge and archive jobs after all initial
  *                                      playlist processing has concluded. Check for null message data.
+ * Apr 26, 2016  5561      bkowal       Indicate whether or not the associated playlist is an interrupt
+ *                                      playlist when refreshing time-sensitive audio.
  * </pre>
  * 
  * @author dgilling
@@ -442,9 +444,8 @@ public final class PlaylistScheduler implements
                 audioDataBuffer = cache.getAudio(nextMessage);
             } catch (Throwable e) {
                 logger.error(e.getMessage(), e);
-                CriticalErrorEvent event = new CriticalErrorEvent(
-                        e.getMessage(), e);
-                this.eventBus.post(event);
+                this.eventBus.post(new BroadcastMsgInitFailedNotification(
+                        nextMessage, currentPlaylist.isInterrupt()));
                 synchronized (playlistMessgeLock) {
                     /*
                      * It is possible that the DacPlaylistMessageId that we want
@@ -467,7 +468,8 @@ public final class PlaylistScheduler implements
                 if (audioDataBuffer.isDynamic()) {
                     audioData = this.cache.refreshTimeSensitiveAudio(
                             (DynamicTimeAudioFileBuffer) audioDataBuffer,
-                            nextMessage, TimeUtil.newGmtCalendar());
+                            nextMessage, TimeUtil.newGmtCalendar(),
+                            currentPlaylist.isInterrupt());
                 } else {
                     audioData = (AudioFileBuffer) audioDataBuffer;
                 }

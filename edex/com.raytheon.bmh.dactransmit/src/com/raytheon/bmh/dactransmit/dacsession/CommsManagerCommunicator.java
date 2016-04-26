@@ -32,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.google.common.primitives.Ints;
-import com.raytheon.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.bmh.dactransmit.events.ShutdownRequestedEvent;
 import com.raytheon.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.bmh.dactransmit.ipc.ChangeTimeZone;
@@ -49,6 +48,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.BroadcastMsgInitFailedNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
 import com.raytheon.uf.common.bmh.notify.MessageDelayedBroadcastNotification;
@@ -112,6 +112,8 @@ import com.raytheon.uf.common.stats.StatisticsEvent;
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage and cache the last received PlaylistNotification.
  * Mar 14, 2016  5472     rjpeter     Send a SendPlaylistResponse for SendPlaylistMessage.
+ * Apr 26, 2016  5561     bkowal      Eliminate CriticalErrorEvent and handle 
+ *                                    {@link BroadcastMsgInitFailedNotification}.
  * </pre>
  * 
  * @author bsteffen
@@ -380,10 +382,8 @@ public final class CommsManagerCommunicator extends Thread {
     }
 
     @Subscribe
-    public void handleCriticalError(CriticalErrorEvent e) {
-        executorService.submit(new SendToCommsManagerTask(
-                new DacTransmitCriticalError(e.getErrorMessage(), e
-                        .getThrowable())));
+    public void handleCriticalError(DacTransmitCriticalError e) {
+        executorService.submit(new SendToCommsManagerTask(e));
     }
 
     @Subscribe
@@ -401,6 +401,12 @@ public final class CommsManagerCommunicator extends Thread {
     @Subscribe
     public void handleMsgNotBroadcastNotification(
             MessageNotBroadcastNotification notification) {
+        executorService.submit(new SendToCommsManagerTask(notification));
+    }
+
+    @Subscribe
+    public void handleMsgInitFailedNotification(
+            BroadcastMsgInitFailedNotification notification) {
         executorService.submit(new SendToCommsManagerTask(notification));
     }
 

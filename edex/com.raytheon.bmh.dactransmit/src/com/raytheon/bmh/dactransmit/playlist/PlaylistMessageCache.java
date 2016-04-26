@@ -45,7 +45,6 @@ import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.raytheon.bmh.dactransmit.dacsession.DacSession;
 import com.raytheon.bmh.dactransmit.dacsession.DacSessionConfig;
-import com.raytheon.bmh.dactransmit.events.CriticalErrorEvent;
 import com.raytheon.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.bmh.dactransmit.ipc.ChangeTimeZone;
@@ -55,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageMetadata;
 import com.raytheon.uf.common.bmh.datamodel.playlist.compatibility.VerifyConvertVersionUtil16_1_3;
+import com.raytheon.uf.common.bmh.notify.BroadcastMsgInitFailedNotification;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -132,6 +132,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      current purge cycle.
  * Mar 30, 2016 5419       bkowal       Regenerate any message files that were not completely
  *                                      generated the first time.
+ * Apr 26, 2016 5561       bkowal       Publish a {@link BroadcastMsgInitFailedNotification} when
+ *                                      a message cannot be refreshed.                                     
  * 
  * </pre>
  * 
@@ -453,7 +455,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                                     + "Spent {}ms waiting for audio for message with id={}.",
                             time, message.getBroadcastId());
                 }
-                cachedFiles.put(message, buffer);
+                if (buffer != null) {
+                    cachedFiles.put(message, buffer);
+                }
             }
 
             if (buffer != null) {
@@ -467,7 +471,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     public AudioFileBuffer refreshTimeSensitiveAudio(
             DynamicTimeAudioFileBuffer dynamicBuffer,
-            final DacPlaylistMessage message, Calendar transmission) {
+            final DacPlaylistMessage message, Calendar transmission,
+            final boolean interrupt) {
         /*
          * Currently, the data is in GMT format. So, it will be necessary to
          * convert it to the correct timezone.
@@ -480,9 +485,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             DefaultMessageLogger.getInstance().logError(message,
                     BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
                     message, e);
-            CriticalErrorEvent event = new CriticalErrorEvent(
-                    "Failed to update dynamic time audio!", e);
-            this.eventBus.post(event);
+            this.eventBus.post(new BroadcastMsgInitFailedNotification(message,
+                    interrupt));
             return null;
         }
     }
