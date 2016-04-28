@@ -35,6 +35,7 @@
 #    12/04/14        3890          bkowal         Use centralized yajsw.
 #    12/08/14        3651          bkowal         Dynamically set logfile_base based on the
 #                                                 mode.
+#    04/28/16        5603          bkowal         Specify java.io.tmpdir for YAJSW.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"
@@ -55,6 +56,15 @@ path_to_script=`readlink -f $0`
 dir=$(dirname $path_to_script)
 
 export BMH_HOME=$(dirname $dir)
+export BMH_TEMP=${BMH_HOME}/tmp
+if [ ! -d ${BMH_TEMP} ]; then
+   mkdir -p ${BMH_TEMP}
+   if [ $? -ne 0 ]; then
+       echo "Failed to create the BMH temporary directory: ${BMH_TEMP}."
+       exit 1
+   fi
+fi
+
 awips_home=$(dirname $BMH_HOME)
 export EDEX_HOME="${awips_home}/edex"
 
@@ -68,10 +78,10 @@ if [ $? -eq 0 ]; then
   exit 1
 fi
 
-
+YAJSW_JVM_ARGS="-Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -Djava.io.tmpdir=${BMH_TEMP}"
 
 # set Java into the path
 export PATH=${awips_home}/bin:${JAVA_HOME}/bin:${PATH}
 
-$JAVA -Xmx32m -XX:MaxPermSize=12m -XX:ReservedCodeCacheSize=4m -jar \
+$JAVA ${YAJSW_JVM_ARGS} -jar \
 	${YAJSW_HOME}/wrapper.jar -c ${BMH_HOME}/conf/${CONF_FILE}
