@@ -21,16 +21,11 @@ package com.raytheon.uf.viz.bmh.ui.common.utility;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.regex.Pattern;
 
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -39,11 +34,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.Activator;
-import com.raytheon.viz.ui.dialogs.AwipsCalendar;
+import com.raytheon.viz.ui.widgets.DateTimeSpinner;
 
 /**
  * Composite containing filter controls for text and date.
@@ -55,6 +48,7 @@ import com.raytheon.viz.ui.dialogs.AwipsCalendar;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2014  3833      lvenable     Initial creation
+ * May 03, 2016  5602      bkowal       Use {@link DateTimeSpinner}.
  * 
  * </pre>
  * 
@@ -109,23 +103,17 @@ public class FilterComp extends Composite {
     /** Filter action method called when the data needs to be filtered. */
     private IFilterAction filterAction = null;
 
-    /** Text field that displayed the start date. */
-    private Text startDateText;
-
-    /** Text field that displayed the end date. */
-    private Text endDateText;
-
     /** Start date. */
-    private Date startDate = TimeUtil.newGmtCalendar().getTime();
+    private Calendar startDate = TimeUtil.newGmtCalendar();
 
-    /** Change start date button. */
-    private Button changeStartDateBtn;
+    /** Widget used to set the start date to use. **/
+    private DateTimeSpinner startDateSpinner;
 
     /** End date. */
-    private Date endDate = TimeUtil.newGmtCalendar().getTime();
+    private Calendar endDate = TimeUtil.newGmtCalendar();
 
-    /** Change end date button. */
-    private Button changeEndDateBtn;
+    /** Widget used to set the end date to use. **/
+    private DateTimeSpinner endDateSpinner;
 
     /** "to" label used between the start and end date controls. */
     private Label toLbl;
@@ -136,19 +124,11 @@ public class FilterComp extends Composite {
     /** Label displaying the date filter choice. */
     private Label dateFilterChoiceLbl;
 
-    /** Simple date format. */
-    private SimpleDateFormat sdf;
-
     /**
      * Text pattern for filtering. Allows upper/lower case letters, digits,
      * period, underscores, and dashes.
      */
     Pattern textPattern = Pattern.compile("[A-Za-z0-9._-]+");
-
-    /**
-     * The calendar icon
-     */
-    private Image calendarIcon;
 
     /**
      * Using this constructor will set the date time format to be: yyyy MM dd
@@ -184,13 +164,6 @@ public class FilterComp extends Composite {
         super(parentComp, SWT.NONE);
 
         this.filterAction = filterAction;
-
-        if (sdf == null) {
-            this.sdf = new SimpleDateFormat("yyyy MM dd HH:mm:ss");
-        } else {
-            this.sdf = sdf;
-        }
-
         init(displayDateRange);
     }
 
@@ -201,19 +174,6 @@ public class FilterComp extends Composite {
      *            Flag indicating if the date controls should be displayed.
      */
     private void init(boolean displayDateRange) {
-
-        this.addDisposeListener(new DisposeListener() {
-
-            @Override
-            public void widgetDisposed(DisposeEvent e) {
-                if (calendarIcon != null) {
-                    calendarIcon.dispose();
-                }
-            }
-        });
-
-        loadCalendarImage();
-
         GridLayout gl = new GridLayout(1, false);
         this.setLayout(gl);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
@@ -234,7 +194,6 @@ public class FilterComp extends Composite {
         createFilterButton(filterGroup);
 
         updateDateControls();
-        updateTextDateControls();
     }
 
     /**
@@ -292,7 +251,7 @@ public class FilterComp extends Composite {
      */
     private void createDateFilterControls(Group filterGroup) {
         Composite filterControlComp = new Composite(filterGroup, SWT.NONE);
-        filterControlComp.setLayout(new GridLayout(8, false));
+        filterControlComp.setLayout(new GridLayout(6, false));
         filterControlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT,
                 true, false));
 
@@ -334,23 +293,15 @@ public class FilterComp extends Composite {
         /*
          * Text control for before, after, and start date for range.
          */
-        gd = new GridData(180, SWT.DEFAULT);
-        startDateText = new Text(filterControlComp, SWT.BORDER);
-        startDateText.setEditable(false);
-        startDateText.setLayoutData(gd);
-
-        changeStartDateBtn = new Button(filterControlComp, SWT.PUSH);
-        changeStartDateBtn.setImage(calendarIcon);
-        changeStartDateBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Date d = displayCalendarDialog(startDate);
-                if (d != null) {
-                    startDate = d;
-                    setTextControlDate(d, startDateText);
-                }
-            }
-        });
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        /*
+         * Need to keep a reference to the date/time passed to the constructor
+         * because the current implementation only supports returning a String
+         * representation of the currently selected date/time - DR #5602.
+         */
+        startDateSpinner = new DateTimeSpinner(filterControlComp, startDate, 6);
+        startDateSpinner.setLayoutData(gd);
+        startDateSpinner.setEnabled(false);
 
         toLbl = new Label(filterControlComp, SWT.NONE);
         toLbl.setText("  to  ");
@@ -358,23 +309,11 @@ public class FilterComp extends Composite {
         /*
          * Text control for the end date for range.
          */
-        gd = new GridData(180, SWT.DEFAULT);
-        endDateText = new Text(filterControlComp, SWT.BORDER);
-        endDateText.setEditable(false);
-        endDateText.setLayoutData(gd);
-
-        changeEndDateBtn = new Button(filterControlComp, SWT.PUSH);
-        changeEndDateBtn.setImage(calendarIcon);
-        changeEndDateBtn.addSelectionListener(new SelectionAdapter() {
-            @Override
-            public void widgetSelected(SelectionEvent e) {
-                Date d = displayCalendarDialog(endDate);
-                if (d != null) {
-                    endDate = d;
-                    setTextControlDate(d, endDateText);
-                }
-            }
-        });
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        endDateSpinner = new DateTimeSpinner(filterControlComp, endDate, 6);
+        endDateSpinner.setLayoutData(gd);
+        endDateSpinner.setEnabled(false);
+        endDateSpinner.setEnabled(false);
     }
 
     /**
@@ -406,12 +345,15 @@ public class FilterComp extends Composite {
 
                     if (startDate.after(endDate)
                             && getSelectedDateFilterChoice() == DateFilterChoice.RANGE) {
-                        filterData.setStartDate(endDate);
-                        filterData.setEndDate(startDate);
-                    } else {
-                        filterData.setStartDate(startDate);
-                        filterData.setEndDate(endDate);
+                        DialogUtility
+                                .showMessageBox(getShell(), SWT.ICON_ERROR
+                                        | SWT.OK, "Input Message Filter",
+                                        "Invalid date range. Start Date must be before End Date.");
+                        return;
                     }
+
+                    filterData.setStartDate(startDate.getTime());
+                    filterData.setEndDate(endDate.getTime());
 
                     filterAction.filterAction(filterData);
                 }
@@ -433,28 +375,6 @@ public class FilterComp extends Composite {
     }
 
     /**
-     * Load the calendar icon
-     */
-    private void loadCalendarImage() {
-        ImageDescriptor id = AbstractUIPlugin.imageDescriptorFromPlugin(
-                Activator.PLUGIN_ID, "icons/calendar-16.png");
-        calendarIcon = id.createImage();
-
-    }
-
-    /**
-     * Set the date/time in the text control passed in.
-     * 
-     * @param date
-     *            The date/time.
-     * @param textControl
-     *            Text control.
-     */
-    private void setTextControlDate(Date date, Text textControl) {
-        textControl.setText(sdf.format(date));
-    }
-
-    /**
      * Update the date controls depending on the filter choice selected.
      */
     private void updateDateControls() {
@@ -462,75 +382,21 @@ public class FilterComp extends Composite {
 
         if (dfc == DateFilterChoice.ALL) {
             dateFilterChoiceLbl.setText("");
-            startDateText.setEnabled(false);
-            changeStartDateBtn.setEnabled(false);
+            startDateSpinner.setEnabled(false);
             toLbl.setEnabled(false);
-            endDateText.setEnabled(false);
-            changeEndDateBtn.setEnabled(false);
+            endDateSpinner.setEnabled(false);
         } else if (dfc == DateFilterChoice.AFTER
                 || dfc == DateFilterChoice.BEFORE) {
             dateFilterChoiceLbl.setText(dfc.getChoice() + ": ");
-            startDateText.setEnabled(true);
-            changeStartDateBtn.setEnabled(true);
+            startDateSpinner.setEnabled(true);
             toLbl.setEnabled(false);
-            endDateText.setEnabled(false);
-            changeEndDateBtn.setEnabled(false);
+            endDateSpinner.setEnabled(false);
         } else if (dfc == DateFilterChoice.RANGE) {
             dateFilterChoiceLbl.setText(dfc.getChoice() + ": ");
-            startDateText.setEnabled(true);
-            changeStartDateBtn.setEnabled(true);
+            startDateSpinner.setEnabled(true);
             toLbl.setEnabled(true);
-            endDateText.setEnabled(true);
-            changeEndDateBtn.setEnabled(true);
+            endDateSpinner.setEnabled(true);
         }
-    }
-
-    /**
-     * Update the text date controls with the data in the start and end dates.
-     */
-    private void updateTextDateControls() {
-        startDateText.setText(sdf.format(zeroSecondsMilliseconds(startDate)));
-        endDateText.setText(sdf.format(zeroSecondsMilliseconds(endDate)));
-    }
-
-    /**
-     * Display the AWIPS calendar dialog.
-     * 
-     * @param initialDate
-     *            Date to set the calendar to.
-     * @return
-     */
-    private Date displayCalendarDialog(Date initialDate) {
-
-        if (initialDate == null) {
-            initialDate = TimeUtil.newDate();
-        }
-
-        AwipsCalendar ac = new AwipsCalendar(getParent().getShell(),
-                initialDate, 2);
-        Date date = (Date) ac.open();
-
-        if (date != null) {
-            date = zeroSecondsMilliseconds(date);
-        }
-
-        return date;
-    }
-
-    /**
-     * Set the seconds and milliseconds to zero on the date passed in.
-     * 
-     * @param date
-     *            Date.
-     * @return Date with the seconds and milliseconds zeroed out.
-     */
-    private Date zeroSecondsMilliseconds(Date date) {
-        Calendar c = TimeUtil.newCalendar(date);
-        c.set(Calendar.SECOND, 0);
-        c.set(Calendar.MILLISECOND, 0);
-        date = c.getTime();
-
-        return date;
     }
 
     /**
