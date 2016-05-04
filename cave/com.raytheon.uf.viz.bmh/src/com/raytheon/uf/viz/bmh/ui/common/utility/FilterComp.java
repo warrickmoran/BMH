@@ -49,6 +49,7 @@ import com.raytheon.viz.ui.widgets.DateTimeSpinner;
  * ------------ ---------- ----------- --------------------------
  * Dec 13, 2014  3833      lvenable     Initial creation
  * May 03, 2016  5602      bkowal       Use {@link DateTimeSpinner}.
+ * May 04, 2016  5602      bkowal       Utilizing {@link DateTimeSpinner} enhancements.
  * 
  * </pre>
  * 
@@ -103,14 +104,8 @@ public class FilterComp extends Composite {
     /** Filter action method called when the data needs to be filtered. */
     private IFilterAction filterAction = null;
 
-    /** Start date. */
-    private Calendar startDate = TimeUtil.newGmtCalendar();
-
     /** Widget used to set the start date to use. **/
     private DateTimeSpinner startDateSpinner;
-
-    /** End date. */
-    private Calendar endDate = TimeUtil.newGmtCalendar();
 
     /** Widget used to set the end date to use. **/
     private DateTimeSpinner endDateSpinner;
@@ -290,6 +285,8 @@ public class FilterComp extends Composite {
         dateFilterChoiceLbl = new Label(filterControlComp, SWT.RIGHT);
         dateFilterChoiceLbl.setLayoutData(gd);
 
+        final Calendar initialDate = TimeUtil.newGmtCalendar();
+
         /*
          * Text control for before, after, and start date for range.
          */
@@ -299,7 +296,8 @@ public class FilterComp extends Composite {
          * because the current implementation only supports returning a String
          * representation of the currently selected date/time - DR #5602.
          */
-        startDateSpinner = new DateTimeSpinner(filterControlComp, startDate, 6);
+        startDateSpinner = new DateTimeSpinner(filterControlComp, initialDate,
+                6);
         startDateSpinner.setLayoutData(gd);
         startDateSpinner.setEnabled(false);
 
@@ -310,9 +308,8 @@ public class FilterComp extends Composite {
          * Text control for the end date for range.
          */
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
-        endDateSpinner = new DateTimeSpinner(filterControlComp, endDate, 6);
+        endDateSpinner = new DateTimeSpinner(filterControlComp, initialDate, 6);
         endDateSpinner.setLayoutData(gd);
-        endDateSpinner.setEnabled(false);
         endDateSpinner.setEnabled(false);
     }
 
@@ -336,21 +333,15 @@ public class FilterComp extends Composite {
         filterBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (validateChoices()) {
+                Calendar startDate = startDateSpinner.getSelection();
+                Calendar endDate = endDateSpinner.getSelection();
+
+                if (validateChoices(startDate, endDate)) {
                     FilterData filterData = new FilterData(
                             getSelectedTextFilterChoice(),
                             getSelectedDateFilterChoice());
                     filterData.setFilterText(filterText.getText().trim());
                     filterData.setCaseSensitive(caseSensitiveChk.getSelection());
-
-                    if (startDate.after(endDate)
-                            && getSelectedDateFilterChoice() == DateFilterChoice.RANGE) {
-                        DialogUtility
-                                .showMessageBox(getShell(), SWT.ICON_ERROR
-                                        | SWT.OK, "Input Message Filter",
-                                        "Invalid date range. Start Date must be before End Date.");
-                        return;
-                    }
 
                     filterData.setStartDate(startDate.getTime());
                     filterData.setEndDate(endDate.getTime());
@@ -441,8 +432,7 @@ public class FilterComp extends Composite {
         return tfc;
     }
 
-    private boolean validateChoices() {
-
+    private boolean validateChoices(Calendar startDate, Calendar endDate) {
         if (filterText.getText().trim().length() != 0) {
             if (textPattern.matcher(filterText.getText()).matches() == false) {
                 DialogUtility
@@ -463,6 +453,14 @@ public class FilterComp extends Composite {
                                 SWT.ICON_WARNING | SWT.OK,
                                 "Filter Date Error",
                                 "The Range of dates/times are the same.  Please enter in two different dates/times.");
+                return false;
+            }
+
+            if (startDate.after(endDate)) {
+                DialogUtility
+                        .showMessageBox(getShell(), SWT.ICON_ERROR | SWT.OK,
+                                "Input Message Filter",
+                                "Invalid date/time range. Start Date must be before End Date.");
                 return false;
             }
         }
