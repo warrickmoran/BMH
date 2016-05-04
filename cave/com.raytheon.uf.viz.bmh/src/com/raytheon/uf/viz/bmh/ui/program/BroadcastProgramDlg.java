@@ -108,7 +108,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015 4490       rjpeter     Updated constructor.
  * Jan 04, 2016 4997       bkowal      Correctly label transmitter groups.
  * Mar 25, 2016 5504       bkowal      Fix GUI sizing issues.
- * Apr 04, 2016 5504      bkowal       Updated for compatibility with TableComp changes.
+ * Apr 04, 2016 5504       bkowal      Updated for compatibility with TableComp changes.
+ * May 04, 2016 5562       bkowal      Highlight trigger message types in red.
  * </pre>
  * 
  * @author lvenable
@@ -1034,9 +1035,15 @@ public class BroadcastProgramDlg extends AbstractBMHDialog {
                     .getAfosid()));
             trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
                     .getTitle()));
-            trd.addTableCellData(new TableCellData(this.selectedProgram
-                    .isTriggerMsgType(suite, sm.getMsgTypeSummary()) ? "Yes"
-                    : "No"));
+            TableCellData tcd = new TableCellData(
+                    this.selectedProgram.isTriggerMsgType(suite,
+                            sm.getMsgTypeSummary()) ? "Yes" : "No");
+            if (this.selectedProgram.isTriggerMsgType(suite,
+                    sm.getMsgTypeSummary())) {
+                tcd.setBackgroundColor(getDisplay().getSystemColor(
+                        SWT.COLOR_RED));
+            }
+            trd.addTableCellData(tcd);
 
             msgTypeTableData.addDataRow(trd);
         }
