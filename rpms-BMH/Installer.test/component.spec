@@ -3,7 +3,7 @@
 #
 Name: awips2-bmh-test
 Summary: AWIPS II EDEX BMH Test Installation
-Version: 1.1
+Version: 1.2
 Release: %{_component_release}
 Group: AWIPSII
 BuildRoot: %{_build_root}

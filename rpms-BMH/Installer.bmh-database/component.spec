@@ -5,7 +5,7 @@
 #
 Name: %{_component_name}
 Summary: AWIPS II BMH Database
-Version: 1.1
+Version: 1.2
 Release: %{_component_release}
 Group: AWIPSII
 BuildRoot: /tmp

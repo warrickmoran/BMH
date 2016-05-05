@@ -2,7 +2,7 @@
 <feature
       id="com.raytheon.uf.edex.request.bmh.feature"
       label="EDEX Request BMH Feature"
-      version="1.1.0.qualifier"
+      version="1.2.0.qualifier"
       provider-name="RAYTHEON">
 
    <description url="http://www.example.com/description">

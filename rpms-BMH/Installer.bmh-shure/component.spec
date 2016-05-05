@@ -3,7 +3,7 @@
 #
 Name: awips2-bmh-shure
 Summary: AWIPS II BMH Shure Utility Installation
-Version: 1.1
+Version: 1.2
 Release: %{_component_release}
 Group: AWIPSII
 BuildRoot: %{_build_root}
