@@ -36,7 +36,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * ------------ ---------- ----------- --------------------------
  * Nov 5, 2015  5113       bkowal      Initial creation
  * Nov 12, 2015 5113       bkowal      Added "Reboot Only" message text.
- * 
+ * May 09, 2016 5630       rjpeter     Remove DAC Sync.
  * </pre>
  * 
  * @author bkowal
@@ -45,8 +45,9 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 
 @DynamicSerialize
 public class DacConfigEvent {
-
-    public static final String DEFAULT_ACTION = "Verify that the DAC has been powered on and that is has been connected to the network. Verify that the DAC is accessible on the network.";
+    public static final String DEFAULT_ACTION = "Verify that the DAC has been powered on and that is has been connected to the network."
+            + " Verify that the DAC is accessible on the network. If the DAC is accessible then, the DAC needs to be power cycled."
+            + " Remove both power supplies from DAC. Wait 30 seconds, then plug both power supplies back in to the DAC.";
 
     public static final String MSG_VERIFY = "Verifying DAC availability ...";
 
@@ -59,7 +60,7 @@ public class DacConfigEvent {
     public static final String MSG_CONFIGURE_SUCCESS = "DAC configured successfully.";
 
     public static final String MSG_CONFIGURE_FAILURE = "Failed to configure the DAC!";
-    
+
     public static final String MSG_REBOOT_TRIGGER_FAILURE = "Failed to initiate a DAC reboot!";
 
     public static final String MSG_REBOOT = "Rebooting the DAC ...";
@@ -69,6 +70,12 @@ public class DacConfigEvent {
     public static final String MSG_REBOOT_SUCCESS = "DAC successfully restarted.";
 
     public static final String MSG_REBOOT_FAILURE = "DAC failed to restart!";
+
+    public static final String MSG_VERIFY_SETTINGS = "Verifying DAC settings ...";
+
+    public static final String MSG_VERIFY_SETTINGS_SUCCESS = "DAC settings verified.";
+
+    public static final String MSG_VERIFY_SETTINGS_FAILURE = "DAC settings do not match!";
 
     public static final String MSG_FAIL = "Terminating DAC configuration process ...";
 
