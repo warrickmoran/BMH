@@ -24,8 +24,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,9 +36,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -44,6 +43,9 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.util.EntityUtils;
 
 import com.raytheon.uf.common.bmh.dac.DacConfigEvent;
 import com.raytheon.uf.common.bmh.dac.DacSyncFields;
@@ -52,6 +54,7 @@ import com.raytheon.uf.common.bmh.datamodel.dac.DacChannel;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.Pair;
 
 /**
  * Manages configuration of the DACs directly.
@@ -67,7 +70,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                     logic for verifying that a DAC has restarted.
  * Nov 23, 2015 5113       bkowal      Updates to allow for verifying that a DAC and
  *                                     {@link Dac} are in sync.
- * 
+ * May 09, 2016 5630       rjpeter     Made DAC Sync private.
  * </pre>
  * 
  * @author bkowal
@@ -138,13 +141,30 @@ public final class OrionPost {
                 .build();
     }
 
+    private void addEvent(String msg) {
+        addEvent(msg, null);
+    }
+
+    private void addEvent(String msg, String action) {
+        StringBuilder sb = new StringBuilder(100);
+        sb.append(dac.getName()).append(": ").append(msg);
+        if ((action == null) || action.isEmpty()) {
+            statusHandler.info(sb.toString());
+            events.add(new DacConfigEvent(msg));
+        } else {
+            sb.append(" Recommended action: ").append(action);
+            statusHandler.warn(sb.toString());
+            events.add(new DacConfigEvent(msg, action));
+        }
+    }
+
     public boolean configureDAC(final boolean reboot)
             throws DacConfigurationException {
         boolean success = true;
         /*
          * First, verify that we can connect to the DAC.
          */
-        this.events.add(new DacConfigEvent(DacConfigEvent.MSG_VERIFY));
+        addEvent(DacConfigEvent.MSG_VERIFY);
         boolean available = false;
         try {
             available = this.verifyDacAvailability(DEFAULT_TIMEOUT_SECONDS);
@@ -156,13 +176,14 @@ public final class OrionPost {
             /*
              * Not able to connect to the DAC.
              */
-            this.events.add(new DacConfigEvent(
-                    DacConfigEvent.MSG_VERIFY_FAILURE,
-                    DacConfigEvent.DEFAULT_ACTION));
-            this.events.add(new DacConfigEvent(DacConfigEvent.MSG_FAIL));
+            addEvent(DacConfigEvent.MSG_VERIFY_FAILURE,
+                    DacConfigEvent.DEFAULT_ACTION);
+            addEvent(DacConfigEvent.MSG_FAIL);
             return false;
         }
-        this.events.add(new DacConfigEvent(DacConfigEvent.MSG_VERIFY_SUCCESS));
+
+        addEvent(DacConfigEvent.MSG_VERIFY_SUCCESS);
+
         try {
             List<NameValuePair> params = null;
             if (this.dac == null) {
@@ -170,32 +191,61 @@ public final class OrionPost {
             } else {
                 params = this.getUnmanagedOrionConfiguration();
                 this.addBmhManagedConfiguration(params);
-                this.events
-                        .add(new DacConfigEvent(DacConfigEvent.MSG_CONFIGURE));
+                addEvent(DacConfigEvent.MSG_CONFIGURE);
             }
             this.saveConfiguration(reboot, params);
         } catch (Exception e) {
             if (this.dac == null) {
-                this.events.add(new DacConfigEvent(
-                        DacConfigEvent.MSG_REBOOT_TRIGGER_FAILURE,
-                        DacConfigEvent.DEFAULT_ACTION));
+                addEvent(DacConfigEvent.MSG_REBOOT_TRIGGER_FAILURE,
+                        DacConfigEvent.DEFAULT_ACTION);
             } else {
-                this.events.add(new DacConfigEvent(
-                        DacConfigEvent.MSG_CONFIGURE_FAILURE,
-                        DacConfigEvent.DEFAULT_ACTION));
+                addEvent(DacConfigEvent.MSG_CONFIGURE_FAILURE,
+                        DacConfigEvent.DEFAULT_ACTION);
             }
-            this.events.add(new DacConfigEvent(DacConfigEvent.MSG_FAIL));
+            addEvent(DacConfigEvent.MSG_FAIL);
             throw e;
         }
+
+        if (this.dac != null) {
+            addEvent(DacConfigEvent.MSG_VERIFY_SETTINGS);
+            Map<String, Pair<String, String>> notSyncedFields = this
+                    .verifySync();
+            if (notSyncedFields.isEmpty()) {
+                addEvent(DacConfigEvent.MSG_VERIFY_SETTINGS_SUCCESS);
+                addEvent(DacConfigEvent.MSG_CONFIGURE_SUCCESS);
+            } else {
+                success = false;
+                StringBuilder msg = new StringBuilder(160);
+                msg.append("The following fields for DAC [").append(
+                        dac.getName() + "] did not update correctly: ");
+                boolean comma = false;
+
+                for (Map.Entry<String, Pair<String, String>> entry : notSyncedFields
+                        .entrySet()) {
+                    if (comma) {
+                        msg.append(", ");
+                    } else {
+                        comma = true;
+                    }
+
+                    String dacInternalVal = entry.getValue().getFirst();
+                    String bmhNewValue = entry.getValue().getSecond();
+                    msg.append(entry.getKey()).append(" [")
+                            .append(dacInternalVal).append("] should be [")
+                            .append(bmhNewValue).append("]");
+                }
+
+                msg.append(". Recommend power cycling the DAC. Remove both power supplies from DAC. Wait 30 seconds, then plug both power supplies back in to the DAC. After DAC is back online, attempt to save DAC configuration again.");
+                addEvent(DacConfigEvent.MSG_VERIFY_SETTINGS_FAILURE,
+                        msg.toString());
+            }
+        }
+
         /*
          * If the DAC has been rebooted, we will attempt to wait until it
          * becomes accessible again.
          */
-        if (this.dac != null) {
-            this.events.add(new DacConfigEvent(
-                    DacConfigEvent.MSG_CONFIGURE_SUCCESS));
-        }
-        if (reboot) {
+        if (success && reboot) {
             /*
              * Wait a while to ensure that we do not attempt to connect to the
              * DAC before it even fully processes the configuration change and
@@ -220,7 +270,7 @@ public final class OrionPost {
             this.events.add(new DacConfigEvent(DacConfigEvent.MSG_REBOOT));
             available = false;
             int count = 0;
-            while (count < REBOOT_RETRY_COUNT && available == false) {
+            while ((count < REBOOT_RETRY_COUNT) && (available == false)) {
                 ++count;
                 try {
                     available = this
@@ -238,8 +288,7 @@ public final class OrionPost {
                     }
                 }
                 if (available == false) {
-                    this.events.add(new DacConfigEvent(
-                            DacConfigEvent.MSG_REBOOT_WAIT));
+                    addEvent(DacConfigEvent.MSG_REBOOT_WAIT);
                     try {
                         Thread.sleep(REBOOT_SLEEP_TIME);
                     } catch (InterruptedException e) {
@@ -250,21 +299,20 @@ public final class OrionPost {
             }
             success = available;
             if (available) {
-                this.events.add(new DacConfigEvent(
-                        DacConfigEvent.MSG_REBOOT_SUCCESS));
+                addEvent(DacConfigEvent.MSG_REBOOT_SUCCESS);
             } else {
-                this.events.add(new DacConfigEvent(
-                        DacConfigEvent.MSG_REBOOT_FAILURE,
-                        DacConfigEvent.DEFAULT_ACTION));
+                addEvent(DacConfigEvent.MSG_REBOOT_FAILURE,
+                        DacConfigEvent.DEFAULT_ACTION);
             }
         }
-        if (this.dac != null && success) {
-            this.events.add(new DacConfigEvent(DacConfigEvent.MSG_SUCCESS));
+
+        if ((this.dac != null) && success) {
+            addEvent(DacConfigEvent.MSG_SUCCESS);
         }
         return success;
     }
 
-    public boolean verifyDacAvailability(final int secondsTimeout)
+    private boolean verifyDacAvailability(final int secondsTimeout)
             throws DacConfigurationException, DacHttpCloseException {
         final int millisecondsTimeout = secondsTimeout
                 * (int) TimeUtil.MILLIS_PER_SECOND;
@@ -325,21 +373,14 @@ public final class OrionPost {
 
     /**
      * Verifies that the BMH {@link Dac} specified in constructor is in sync
-     * with its associated DAC. Returns a {@link List} of fields that are not in
-     * sync if an inconsistency is discovered. When the completeSync parameter
-     * is set to true, this method will also update the {@link Dac} specified in
-     * the constructor to match the configuration of the associated DAC. The
-     * updated BMH {@link Dac} can then be retrieved using the {@link #getDac()}
-     * method.
+     * with its associated DAC. Returns a {@link Map} of fields that are not in
+     * sync if an inconsistency is discovered. The {@link Pair} consists of the
+     * value from the DAC and the value it should have been.
      * 
-     * @param completeSync
-     *            boolean flag indicating whether or not the specified BMH
-     *            {@link Dac} should also be updated to match the associated
-     *            DAC.
      * @return
      * @throws DacConfigurationException
      */
-    public List<String> verifySync(final boolean completeSync)
+    private Map<String, Pair<String, String>> verifySync()
             throws DacConfigurationException {
         List<NameValuePair> configPairs = this
                 .getOrionConfiguration(OrionPatterns.ORION_MANAGED_PARAM_PATTERNS);
@@ -347,92 +388,77 @@ public final class OrionPost {
             return null;
         }
 
-        final List<String> nonSyncedFields = new ArrayList<>();
+        final Map<String, Pair<String, String>> nonSyncedFields = new HashMap<>();
         final List<DacChannel> configuredChannels = this.dac.getChannels();
 
         for (NameValuePair nvp : configPairs) {
             if (OrionPostParams.PARAM_IP_ADDRESS.equals(nvp.getName())) {
                 if (this.dac.getAddress().equals(nvp.getValue()) == false) {
-                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_IP_ADDRESS);
+                    nonSyncedFields.put(DacSyncFields.FIELD_DAC_IP_ADDRESS,
+                            new Pair<>(nvp.getValue(), dac.getAddress()));
                 }
-                if (completeSync) {
-                    this.dac.setAddress(nvp.getValue());
-                }
-                continue;
-            }
-            if (OrionPostParams.PARAM_NETMASK.equals(nvp.getName())) {
+            } else if (OrionPostParams.PARAM_NETMASK.equals(nvp.getName())) {
                 if (this.dac.getNetMask().equals(nvp.getValue()) == false) {
-                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_NET_MASK);
+                    nonSyncedFields.put(DacSyncFields.FIELD_DAC_NET_MASK,
+                            new Pair<>(nvp.getValue(), dac.getNetMask()));
                 }
-                if (completeSync) {
-                    this.dac.setNetMask(nvp.getValue());
-                }
-                continue;
-            }
-            if (OrionPostParams.PARAM_GATEWAY.equals(nvp.getName())) {
+            } else if (OrionPostParams.PARAM_GATEWAY.equals(nvp.getName())) {
                 if (this.dac.getGateway().equals(nvp.getValue()) == false) {
-                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_GATEWAY);
+                    nonSyncedFields.put(DacSyncFields.FIELD_DAC_GATEWAY,
+                            new Pair<>(nvp.getValue(), dac.getGateway()));
                 }
-                if (completeSync) {
-                    this.dac.setGateway(nvp.getValue());
-                }
-                continue;
-            }
-            if (OrionPostParams.PARAM_JITTER.equals(nvp.getName())) {
+            } else if (OrionPostParams.PARAM_JITTER.equals(nvp.getName())) {
                 int jitterBuffer = Integer.parseInt(nvp.getValue());
                 if (this.dac.getBroadcastBuffer() != jitterBuffer) {
-                    nonSyncedFields.add(DacSyncFields.FIELD_BROADCAST_BUFFER);
+                    nonSyncedFields.put(
+                            DacSyncFields.FIELD_BROADCAST_BUFFER,
+                            new Pair<>(nvp.getValue(), String.valueOf(dac
+                                    .getBroadcastBuffer())));
                 }
-                if (completeSync) {
-                    this.dac.setBroadcastBuffer(jitterBuffer);
-                }
-                continue;
-            }
-            if (OrionPostParams.PARAM_TXIPADDR.equals(nvp.getName())) {
+            } else if (OrionPostParams.PARAM_TXIPADDR.equals(nvp.getName())) {
                 if (this.dac.getReceiveAddress().equals(nvp.getValue()) == false) {
                     nonSyncedFields
-                            .add(DacSyncFields.FIELD_DAC_RECEIVE_ADDRESS);
+                            .put(DacSyncFields.FIELD_DAC_RECEIVE_ADDRESS,
+                                    new Pair<>(nvp.getValue(), dac
+                                            .getReceiveAddress()));
                 }
-                if (completeSync) {
-                    this.dac.setReceiveAddress(nvp.getValue());
-                }
-                continue;
-            }
-            if (OrionPostParams.PARAM_TXPORT.equals(nvp.getName())) {
+            } else if (OrionPostParams.PARAM_TXPORT.equals(nvp.getName())) {
                 int port = Integer.parseInt(nvp.getValue());
                 if (this.dac.getReceivePort() != port) {
-                    nonSyncedFields.add(DacSyncFields.FIELD_DAC_RECEIVE_PORT);
-                }
-                if (completeSync) {
-                    this.dac.setReceivePort(port);
-                }
-                continue;
-            }
-            int indx = OrionPostParams.ALL_PORTS.indexOf(nvp.getName());
-            if (indx == -1) {
-                indx = OrionPostParams.ALL_LEVELS.indexOf(nvp.getName());
-                if (indx == -1) {
-                    continue;
-                }
-
-                double level = Double.parseDouble(nvp.getValue());
-                if (configuredChannels.get(indx).getLevel() != level) {
-                    nonSyncedFields.add(String.format(
-                            DacSyncFields.FIELD_DAC_CHANNEL_LVL_FMT,
-                            Integer.toString(indx + 1)));
-                }
-                if (completeSync) {
-                    this.dac.getChannels().get(indx).setLevel(level);
+                    nonSyncedFields.put(
+                            DacSyncFields.FIELD_DAC_RECEIVE_PORT,
+                            new Pair<>(nvp.getValue(), String.valueOf(dac
+                                    .getReceivePort())));
                 }
             } else {
-                int port = Integer.parseInt(nvp.getValue());
-                if (configuredChannels.get(indx).getPort() != port) {
-                    nonSyncedFields.add(String.format(
-                            DacSyncFields.FIELD_DAC_CHANNEL_FMT,
-                            Integer.toString(indx + 1)));
-                }
-                if (completeSync) {
-                    this.dac.getChannels().get(indx).setPort(port);
+                int indx = OrionPostParams.ALL_PORTS.indexOf(nvp.getName());
+                if (indx == -1) {
+                    indx = OrionPostParams.ALL_LEVELS.indexOf(nvp.getName());
+                    if (indx == -1) {
+                        continue;
+                    }
+
+                    double level = Double.parseDouble(nvp.getValue());
+                    if (configuredChannels.get(indx).getLevel() != level) {
+                        nonSyncedFields
+                                .put(String
+                                        .format(DacSyncFields.FIELD_DAC_CHANNEL_LVL_FMT,
+                                                Integer.toString(indx + 1)),
+                                        new Pair<>(nvp.getValue(), String
+                                                .valueOf(configuredChannels
+                                                        .get(indx).getLevel())));
+                    }
+                } else {
+                    int port = Integer.parseInt(nvp.getValue());
+                    if (configuredChannels.get(indx).getPort() != port) {
+                        nonSyncedFields.put(
+                                String.format(
+                                        DacSyncFields.FIELD_DAC_CHANNEL_FMT,
+                                        Integer.toString(indx + 1)),
+                                new Pair<>(nvp.getValue(), String
+                                        .valueOf(configuredChannels.get(indx)
+                                                .getPort())));
+                    }
                 }
             }
         }
@@ -587,12 +613,5 @@ public final class OrionPost {
      */
     public List<DacConfigEvent> getEvents() {
         return events;
-    }
-
-    /**
-     * @return the dac
-     */
-    public Dac getDac() {
-        return dac;
     }
 }

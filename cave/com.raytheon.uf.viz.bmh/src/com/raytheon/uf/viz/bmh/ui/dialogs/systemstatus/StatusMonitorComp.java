@@ -47,7 +47,6 @@ import org.eclipse.swt.widgets.Shell;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.notify.config.DacConfigNotification;
-import com.raytheon.uf.common.bmh.notify.config.DacNotSyncNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.request.DacResponse;
 import com.raytheon.uf.common.bmh.systemstatus.ISystemStatusListener;
@@ -91,7 +90,7 @@ import com.raytheon.uf.viz.core.notification.jobs.NotificationManagerJob;
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * Dec 01, 2015  5113      bkowal       Report when a BMH Dac and a DAC are no longer in sync.
  * Jan 25, 2016  4997      bkowal       Prevent potential NPE when no DACs are found.
- * 
+ * May 09, 2016  5630      rjpeter      Remove DAC Sync options.
  * </pre>
  * 
  * @author lvenable
@@ -180,17 +179,10 @@ public class StatusMonitorComp extends Composite implements
         this.setLayout(gl);
         this.setLayoutData(gd);
 
-        DacResponse dacResponse = this.getDacsAndSyncStatus();
-        List<Dac> dacList = Collections.emptyList();
-        List<Integer> desyncedDacs = Collections.emptyList();
-        if (dacResponse != null) {
-            dacList = dacResponse.getDacList();
-            desyncedDacs = dacResponse.getDesyncedDacs();
-        }
-
+        List<Dac> dacList = getDacs();
         List<TransmitterGroup> tgList = getTransmitterGroups();
 
-        createDacTransmitterStatusControls(dacList, tgList, desyncedDacs);
+        createDacTransmitterStatusControls(dacList, tgList);
         createProcessStatusControlGroup(tgList);
     }
 
@@ -201,7 +193,7 @@ public class StatusMonitorComp extends Composite implements
      * @param tgList
      */
     private void createDacTransmitterStatusControls(List<Dac> dacList,
-            List<TransmitterGroup> tgList, List<Integer> desyncedDacs) {
+            List<TransmitterGroup> tgList) {
 
         vizStatusMonitor = new VizStatusMonitor();
         vizStatusMonitor.addListener(this);
@@ -231,7 +223,7 @@ public class StatusMonitorComp extends Composite implements
         dacTransmittersComp.setLayoutData(new GridData(SWT.FILL, SWT.FILL,
                 true, true));
 
-        populateDacTransmitterControls(dacList, tgList, desyncedDacs);
+        populateDacTransmitterControls(dacList, tgList);
 
         scrolledComp.setExpandHorizontal(true);
         scrolledComp.setExpandVertical(true);
@@ -285,9 +277,9 @@ public class StatusMonitorComp extends Composite implements
      * @param tgList
      */
     private void populateDacTransmitterControls(List<Dac> dacList,
-            List<TransmitterGroup> tgList, List<Integer> desyncedDacs) {
+            List<TransmitterGroup> tgList) {
         DacTransmitterStatusData dtsd = sdm.createDacTransmitterStatusData(
-                dacList, tgList, desyncedDacs, vizStatusMonitor);
+                dacList, tgList, vizStatusMonitor);
 
         Map<Integer, DacInfo> dacInfoMap = dtsd.getDacInfoMap();
 
@@ -325,7 +317,7 @@ public class StatusMonitorComp extends Composite implements
      * @param tgList
      */
     private void repopulateDacTransmitterStatus(List<Dac> dacList,
-            List<TransmitterGroup> tgList, List<Integer> desyncedDacs) {
+            List<TransmitterGroup> tgList) {
         if (dacTransmittersComp.isDisposed()) {
             return;
         }
@@ -339,7 +331,7 @@ public class StatusMonitorComp extends Composite implements
             ctrl.dispose();
         }
 
-        populateDacTransmitterControls(dacList, tgList, desyncedDacs);
+        populateDacTransmitterControls(dacList, tgList);
 
         dacTransmittersComp.layout();
         scrolledComp.setMinSize(dacTransmittersComp.computeSize(SWT.DEFAULT,
@@ -374,18 +366,19 @@ public class StatusMonitorComp extends Composite implements
      * 
      * @return a {@link DacResponse} containing the required information.
      */
-    private DacResponse getDacsAndSyncStatus() {
+    private List<Dac> getDacs() {
         DacDataManager ddm = new DacDataManager();
-        DacResponse response = null;
+        List<Dac> rval;
 
         try {
-            response = ddm.getDacsAndSyncStatus();
+            rval = ddm.getDacs();
         } catch (Exception e) {
             statusHandler.error(
                     "Error retrieving the list of available DACs: ", e);
+            rval = Collections.emptyList();
         }
 
-        return response;
+        return rval;
     }
 
     /**
@@ -422,8 +415,7 @@ public class StatusMonitorComp extends Composite implements
             try {
                 Object o = message.getMessagePayload();
                 if ((o instanceof TransmitterGroupConfigNotification)
-                        || (o instanceof DacConfigNotification)
-                        || (o instanceof DacNotSyncNotification)) {
+                        || (o instanceof DacConfigNotification)) {
                     retrievalJob.scheduleRetrieval(RetrieveType.DacTransmitter);
                 }
             } catch (NotificationException e) {
@@ -479,17 +471,8 @@ public class StatusMonitorComp extends Composite implements
             }
 
             /* only need dacList if doing a DacTransmitter status */
-            final List<Dac> dacList;
-            final List<Integer> desyncedDacs;
-            DacResponse dacResponse = (!RetrieveType.Process.equals(type) ? getDacsAndSyncStatus()
+            final List<Dac> dacList = (!RetrieveType.Process.equals(type) ? getDacs()
                     : null);
-            if (dacResponse != null) {
-                dacList = dacResponse.getDacList();
-                desyncedDacs = dacResponse.getDesyncedDacs();
-            } else {
-                dacList = Collections.emptyList();
-                desyncedDacs = null;
-            }
             final List<TransmitterGroup> tgList = getTransmitterGroups();
             final RetrieveType runType = type;
 
@@ -497,8 +480,7 @@ public class StatusMonitorComp extends Composite implements
                 @Override
                 public void run() {
                     if (!RetrieveType.Process.equals(runType)) {
-                        repopulateDacTransmitterStatus(dacList, tgList,
-                                desyncedDacs);
+                        repopulateDacTransmitterStatus(dacList, tgList);
                     }
                     if (!RetrieveType.DacTransmitter.equals(runType)) {
                         repopulateProcessStatus(tgList);
