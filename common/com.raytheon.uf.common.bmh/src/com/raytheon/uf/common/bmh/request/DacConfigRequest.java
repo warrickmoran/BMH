@@ -33,7 +33,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2015 5113       bkowal      Initial creation
  * Nov 23, 2015 5113       bkowal      Added {@link #sync}.
- * 
+ * May 09, 2016 5630       rjpeter     Remove DAC Sync.
  * </pre>
  * 
  * @author bkowal
@@ -47,9 +47,6 @@ public class DacConfigRequest extends DacRequest {
 
     @DynamicSerializeElement
     private String configAddress;
-    
-    @DynamicSerializeElement
-    private boolean sync;
 
     public DacConfigRequest() {
     }
@@ -82,19 +79,5 @@ public class DacConfigRequest extends DacRequest {
      */
     public void setConfigAddress(String configAddress) {
         this.configAddress = configAddress;
-    }
-
-    /**
-     * @return the sync
-     */
-    public boolean isSync() {
-        return sync;
-    }
-
-    /**
-     * @param sync the sync to set
-     */
-    public void setSync(boolean sync) {
-        this.sync = sync;
     }
 }

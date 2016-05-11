@@ -89,6 +89,8 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 12, 2015  4248      rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * Jun 23, 2015  4572      bkowal      Added {@link #GET_MESSAGETYPES_FOR_AFOSIDS}.
  * Jan 27, 2016  5160      rjpeter     Added {@link #GET_DEMO_AFOSIDS}.
+ * May 09, 2016  5634      bkowal      Return an empty {@link Set} when there are not any
+ *                                     {@link #sameTransmitters}.
  * </pre>
  * 
  * @author rjpeter
@@ -388,7 +390,10 @@ public class MessageType {
     }
 
     public Set<Transmitter> getSameTransmitters() {
-        // TODO return empty set and fix classes that test for null.
+        // TODO fix classes that test for null.
+        if (sameTransmitters == null) {
+            return new HashSet<>();
+        }
         return sameTransmitters;
     }
 

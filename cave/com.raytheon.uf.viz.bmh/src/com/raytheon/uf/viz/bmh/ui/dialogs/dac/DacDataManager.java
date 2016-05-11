@@ -44,7 +44,7 @@ import com.raytheon.uf.viz.bmh.data.BmhUtils;
  * Nov 09, 2015     5113   bkowal      Added {@link #validateDacUniqueness(Dac)}.
  * Nov 12, 2015     5113   bkowal      Added {@link #configureSaveDac(Dac, boolean, String)}.
  * Nov 23, 2015     5113   bkowal      Added {@link #syncWithDAC(Dac)}.
- * 
+ * May 09, 2016     5630   rjpeter     Remove DAC Sync.
  * </pre>
  * 
  * @author mpduff
@@ -60,15 +60,9 @@ public class DacDataManager {
      * @throws Exception
      */
     public List<Dac> getDacs() throws Exception {
-        DacResponse response = this.getDacsAndSyncStatus();
-        return response.getDacList();
-    }
-
-    public DacResponse getDacsAndSyncStatus() throws Exception {
         DacRequest request = new DacRequest();
         request.setAction(DacRequestAction.GetAllDacs);
-
-        return (DacResponse) BmhUtils.sendRequest(request);
+        return ((DacResponse) BmhUtils.sendRequest(request)).getDacList();
     }
 
     public Integer getDacIdByName(String name) throws Exception {
@@ -139,25 +133,6 @@ public class DacDataManager {
         request.setDac(dac);
         request.setReboot(reboot);
         request.setConfigAddress(configAddress);
-        return (DacConfigResponse) BmhUtils.sendRequest(request);
-    }
-
-    /**
-     * Updates a {@link Dac} so that it will match the associated DAC. Should be
-     * utilized to synchronize a DAC and {@link Dac} when the out-of-sync
-     * notifications are received.
-     * 
-     * @param dac
-     *            the {@link Dac} to sync
-     * @return the synchronized {@link Dac} if successful as well as an updated
-     *         list of de-synced {@link Dac}s.
-     * @throws Exception
-     */
-    public DacConfigResponse syncWithDAC(Dac dac) throws Exception {
-        DacConfigRequest request = new DacConfigRequest();
-        request.setAction(DacRequestAction.SaveDac);
-        request.setDac(dac);
-        request.setSync(true);
         return (DacConfigResponse) BmhUtils.sendRequest(request);
     }
 
