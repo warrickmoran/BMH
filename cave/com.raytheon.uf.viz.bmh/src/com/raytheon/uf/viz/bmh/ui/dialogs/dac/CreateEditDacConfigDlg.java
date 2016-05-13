@@ -81,7 +81,8 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Nov 23, 2015  5113      bkowal       Display a common status indicating whether or not a {@link Dac}
  *                                      has sync. Allow the user to sync a {@link Dac}.
  * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
- *                                      DACs using the generated configuration.                                     
+ *                                      DACs using the generated configuration.
+ * May 09, 2016  5630      rjpeter      Remove DAC Sync options.
  * </pre>
  * 
  * @author lvenable
@@ -111,23 +112,9 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
 
     private final String SAVE_TEXT = "Save";
 
-    private final String SYNC_TEXT = "Sync";
-
-    private static final String SYNC_MESSAGE = "DAC and BMH are in sync.";
-
-    private static final String NO_SYNC_MESSAGE = "DAC and BMH are NOT in sync.";
-
-    private static final String NO_EXIST_MESSAGE = "DAC sync status unknown.";
-
     /** Status handler for reporting errors. */
     private final IUFStatusHandler statusHandler = UFStatus
             .getHandler(CreateEditDacConfigDlg.class);
-
-    /**
-     * Label indicating whether the DAC and {@link Dac} are out of sync or in
-     * sync.
-     */
-    private Label dacSyncLabel;
 
     /** DAC Name text field */
     private Text dacNameTF;
@@ -182,14 +169,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
     /** The new/edited dac */
     private Dac dac;
 
-    /**
-     * boolean flag indicating whether the edited {@link Dac} is in our out of
-     * sync with the associated DAC
-     */
-    private boolean deSync;
-
-    private final DacConfigDlg parent;
-
     /** Data access manager */
     private final DacDataManager dataManager;
 
@@ -223,12 +202,11 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      *            Dialog type.
      */
     public CreateEditDacConfigDlg(Shell parentShell, DialogType dialogType,
-            DacDataManager dataManager, DacConfigDlg parent) {
+            DacDataManager dataManager) {
         super(parentShell, SWT.DIALOG_TRIM | SWT.PRIMARY_MODAL,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         this.dialogType = dialogType;
         this.dataManager = dataManager;
-        this.parent = parent;
     }
 
     @Override
@@ -256,10 +234,11 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         createControls();
         DialogUtility.addSeparator(shell, SWT.HORIZONTAL);
         createBottomActionButtons();
-        
+
         if (dialogType == DialogType.CREATE) {
             /*
-             * Allow for easy, convenient: Enter -> Enter -> Enter configuration.
+             * Allow for easy, convenient: Enter -> Enter -> Enter
+             * configuration.
              */
             this.createSaveBtn.forceFocus();
         }
@@ -284,19 +263,13 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         controlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
                 false));
 
-        // Out of Sync Message.
-        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
-        gd.horizontalSpan = 2;
-        this.dacSyncLabel = new Label(controlComp, SWT.NONE);
-        this.dacSyncLabel.setLayoutData(gd);
-
         int textFieldMinWidth = 200;
 
         // DAC ID
         Label dacNameDescLbl = new Label(controlComp, SWT.NONE);
         dacNameDescLbl.setText("DAC Name:");
 
-        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         dacNameTF = new Text(controlComp, SWT.BORDER);
         dacNameTF.setTextLimit(Dac.DAC_NAME_LENGTH);
         dacNameTF.setLayoutData(gd);
@@ -553,22 +526,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             Text levelTF = dacLevelTxtFldList.get(i);
             levelTF.setText(String.valueOf(channel.getLevel()));
         }
-
-        if (this.deSync) {
-            this.dacSyncLabel.setText(NO_SYNC_MESSAGE);
-            this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
-                    SWT.COLOR_RED));
-            /*
-             * Only allow the user to complete a sync operation with the DAC in
-             * this case.
-             */
-            this.createSaveBtn.setText(SYNC_TEXT);
-            this.rebootAutoConfigureChk.setEnabled(false);
-        } else {
-            this.dacSyncLabel.setText(SYNC_MESSAGE);
-            this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
-                    SWT.COLOR_GREEN));
-        }
     }
 
     private void populateNew() {
@@ -636,10 +593,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
                 break;
             }
         }
-
-        this.dacSyncLabel.setText(NO_EXIST_MESSAGE);
-        this.dacSyncLabel.setBackground(getDisplay().getSystemColor(
-                SWT.COLOR_YELLOW));
     }
 
     private InetAddress getBaseDacInetAddress() {
@@ -678,13 +631,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      * @return true if successful
      */
     private boolean handleSaveAction() {
-        /*
-         * First, determine if this is a sync operation.
-         */
-        if (this.dialogType == DialogType.EDIT && this.deSync) {
-            return this.syncWithDAC();
-        }
-
         boolean isValid = true;
         StringBuilder errMsg = new StringBuilder("Invalid values entered \n\n");
 
@@ -867,8 +813,8 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
             dac.setReceivePort(receivePortInt);
             dac.setChannels(channels);
 
-            if ((this.dialogType == DialogType.CREATE && this.rebootAutoConfigureChk
-                    .getSelection()) || this.dialogType == DialogType.EDIT) {
+            if (((this.dialogType == DialogType.CREATE) && this.rebootAutoConfigureChk
+                    .getSelection()) || (this.dialogType == DialogType.EDIT)) {
                 return configureDac();
             } else {
                 /*
@@ -888,26 +834,6 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         }
 
         return isValid;
-    }
-
-    private boolean syncWithDAC() {
-        try {
-            latestConfigResponse = this.dataManager.syncWithDAC(this.dac);
-        } catch (Exception e) {
-            statusHandler.error("The DAC sync has failed.", e);
-            return false;
-        }
-
-        if (latestConfigResponse == null) {
-            return false;
-        }
-        if (latestConfigResponse.isSuccess()) {
-            dac = latestConfigResponse.getDac();
-            this.parent.updateDacSync(dac.getId());
-            setReturnValue(dac);
-        }
-
-        return latestConfigResponse.isSuccess();
     }
 
     private boolean configureDac() {
@@ -992,8 +918,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
      * @param dac
      *            the dac to set
      */
-    public void setDac(Dac dac, final boolean deSync) {
+    public void setDac(Dac dac) {
         this.dac = dac;
-        this.deSync = deSync;
     }
 }
