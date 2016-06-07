@@ -107,6 +107,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                      Only enable same transmitters in affected area.
  * May 05, 2015   4463     bkowal      Update the new originator field in the {@link MessageType}.
  * Jan 27, 2016   5160     rjpeter     Don't allow creation of DMO message types.
+ * May 09, 2016   5634     bkowal      Allow any Transmitter to be selected as a SAME Transmitter
+ *                                     regardless of area selection.
  * </pre>
  * 
  * @author lvenable
@@ -285,15 +287,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
      * transmitters.
      */
     private void resetSameTransmiters() {
-        Set<Transmitter> affectedTransmitters = areaData
-                .getAffectedTransmitters();
-        Set<String> enabledSet = new HashSet<>(affectedTransmitters.size());
         Set<Transmitter> selectedTransmitter = null;
         Set<String> selectedSet = null;
-
-        for (Transmitter t : affectedTransmitters) {
-            enabledSet.add(t.getMnemonic());
-        }
 
         if (this.selectedMsgType != null) {
             selectedTransmitter = selectedMsgType.getSameTransmitters();
@@ -305,9 +300,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                 selectedSet.add(t.getMnemonic());
             }
         }
-        sameTransmitters.reset(enabledSet, selectedSet);
-        sameTransmitters
-                .setHelpText("A disabled transmitter does not\nintersect with area selection.");
+        sameTransmitters.reset(transmitterMap.keySet(), selectedSet);
     }
 
     /**
@@ -651,6 +644,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         sameTransmitters = new CheckScrollListComp(mainComp,
                 "SAME Transmitters: ", cld, true, 125, 300);
+        sameTransmitters.setAllowEnable(true);
     }
 
     /**
@@ -856,7 +850,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         }
 
         CheckListData sameData = sameTransmitters.getCheckedItems();
-        if (selectedMsgType.getSameTransmitters() != null) {
+        if (!selectedMsgType.getSameTransmitters().isEmpty()) {
             selectedMsgType.getSameTransmitters().clear();
         }
 
