@@ -84,9 +84,9 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Dec 01, 2015  5113      bkowal       Allow for Enter -> ... -> Enter creation for new
  *                                      DACs using the generated configuration.
  * Mar 25, 2016  5504      bkowal       Remove extra margin around the channels composite for a
+ *                                      consistent look.
  * Mar 30, 2016  5504      bkowal       Fix GUI sizing issues.
  * May 09, 2016  5630      rjpeter      Remove DAC Sync options.
- *                                      consistent look.
  * </pre>
  * 
  * @author lvenable
@@ -272,7 +272,7 @@ public class CreateEditDacConfigDlg extends CaveSWTDialog {
         dacNameDescLbl.setText("DAC Name:");
 
         dacNameTF = new Text(controlComp, SWT.BORDER);
-        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
+        GridData gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, false);
         GC gc = new GC(dacNameTF);
         gd.minimumWidth = gc.getFontMetrics().getAverageCharWidth()
                 * Dac.DAC_NAME_LENGTH;
