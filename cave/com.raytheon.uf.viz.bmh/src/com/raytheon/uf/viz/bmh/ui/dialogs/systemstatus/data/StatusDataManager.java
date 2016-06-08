@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.systemstatus.SystemStatusMonitor;
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * Apr 02, 2015  4248      rjpeter      Use PositionComparator.
  * Dec 01, 2015  5113      bkowal       Report when a BMH Dac and a DAC are no longer in sync.
+ * May 09, 2016  5630      rjpeter      Remove DAC Sync.
  * </pre>
  * 
  * @author lvenable
@@ -81,7 +82,7 @@ public class StatusDataManager {
      */
     public DacTransmitterStatusData createDacTransmitterStatusData(
             List<Dac> dacs, List<TransmitterGroup> transmitterGroups,
-            List<Integer> desyncedDacs, SystemStatusMonitor statusMonitor) {
+            SystemStatusMonitor statusMonitor) {
         Collections.sort(transmitterGroups, new PositionComparator());
 
         dtsd = new DacTransmitterStatusData();
@@ -94,7 +95,6 @@ public class StatusDataManager {
             di.setDacId(d.getId());
             di.setDacName(d.getName());
             di.setDacAddress(d.getAddress());
-            di.setDesync(desyncedDacs.contains(d.getId()));
             dtsd.addDacInfo(d.getId(), di);
         }
 
@@ -126,7 +126,6 @@ public class StatusDataManager {
                     if ((dhsn != null) && (updatedDac.contains(tgDac) == false)) {
                         di.setPsu1Voltage(dhsn.getPsu1Voltage());
                         di.setPsu2Voltage(dhsn.getPsu2Voltage());
-                        di.setDesync(desyncedDacs.contains(di.getDacId()));
                         updatedDac.add(tgDac);
                     }
                 } else {

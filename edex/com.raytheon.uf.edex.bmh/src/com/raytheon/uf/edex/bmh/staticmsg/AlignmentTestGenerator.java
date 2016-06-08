@@ -26,6 +26,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
@@ -58,6 +60,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Jul 08, 2015 4636       bkowal      Support transfer tone transmitter alignment tests.
  * Jul 13, 2015 4636       bkowal      Create separate alignment test files for 1800 and 2400 Hz
  *                                     transfer tones.
+ * May 23, 2016 5667       bkowal      Changed {@link #SAME} to "" instead of a valid SAME String.
  * 
  * </pre>
  * 
@@ -84,7 +87,11 @@ public class AlignmentTestGenerator {
 
     private static final double ALERT_DURATION = 30.0;
 
-    private static final String SAME = "ZCZC-WXR-IPW-031071-031183-031015-031017-031089-031115-031009-031000-031149-031103+0600-3311401-KOAX/NWS-";
+    /*
+     * The empty string ensures that the generated tones only consist of the
+     * preamble.
+     */
+    private static final String SAME = StringUtils.EMPTY;
 
     private Path audioMaintenancePath;
 

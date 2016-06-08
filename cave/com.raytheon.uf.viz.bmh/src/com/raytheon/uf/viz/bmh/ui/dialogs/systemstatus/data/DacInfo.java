@@ -43,7 +43,7 @@ import java.util.List;
  * Jan 29, 2015  4029      bkowal       Added {@link DAC_VOLTAGE}.
  * Apr 01, 2015  4219      bsteffen     Allow multiple transmitter groups with no ports assigned.
  * Dec 01, 2015  5113      bkowal       Report when a BMH Dac and a DAC are no longer in sync.
- * 
+ * May 09, 2016  5630      rjpeter      Remove DAC Sync.
  * </pre>
  * 
  * @author lvenable
@@ -80,12 +80,6 @@ public class DacInfo {
 
     /** Power supply unit two voltage. */
     private DAC_VOLTAGE psu2Voltage = DAC_VOLTAGE.NO_READING;
-
-    /**
-     * boolean flag indicating whether or not the BMH {@link Dac} associated
-     * with this {@link DacInfo} in in sync with the associated DAC.
-     */
-    private boolean desync = false;
 
     /** List of transmitter group information. */
     private final List<TransmitterGrpInfo> transmitterGrpInfoList = new ArrayList<>();
@@ -182,16 +176,8 @@ public class DacInfo {
         this.psu2Voltage = this.determineVoltageStatus(psu2Voltage);
     }
 
-    public boolean isDesync() {
-        return desync;
-    }
-
-    public void setDesync(boolean desync) {
-        this.desync = desync;
-    }
-
     private DAC_VOLTAGE determineVoltageStatus(Double voltage) {
-        if (voltage == null || voltage.isNaN()) {
+        if ((voltage == null) || voltage.isNaN()) {
             return DAC_VOLTAGE.NO_READING;
         }
 
