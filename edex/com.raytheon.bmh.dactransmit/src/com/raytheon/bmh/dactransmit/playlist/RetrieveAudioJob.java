@@ -70,6 +70,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * Mar 08, 2016 5382       bkowal      Check for null message data.
+ * Apr 26, 2016 5561       bkowal      Retry at least once if broadcast audio initialization 
+ *                                     fails.
  * </pre>
  * 
  * @author bkowal
@@ -77,6 +79,8 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  */
 
 public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
+    private static final long RANDOM_INIT_RETRY_MS = 20L;
+
     private IAudioJobListener listener;
 
     private String taskId;
@@ -145,7 +149,45 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             return null;
         }
 
-        final long start = System.currentTimeMillis();
+        ITimer timer = TimeUtil.getTimer();
+        timer.start();
+
+        IAudioFileBuffer buffer = null;
+        boolean retry = true;
+        try {
+            buffer = initAudioBuffer();
+            retry = false;
+        } catch (Exception e) {
+            final String msg = "Failed to initialize audio buffer for message: "
+                    + message.getBroadcastId() + ". Retrying ...";
+            logger.warn(msg, e);
+            try {
+                Thread.sleep(RANDOM_INIT_RETRY_MS);
+            } catch (InterruptedException e1) {
+                // Ignore
+            }
+        }
+
+        if (retry) {
+            try {
+                buffer = initAudioBuffer();
+            } catch (Exception e) {
+                this.notifyAttemptComplete(null);
+                throw e;
+            }
+        }
+
+        timer.stop();
+        logger.info("Successfully retrieved audio for message: "
+                + message.getBroadcastId() + " in "
+                + TimeUtil.prettyDuration(timer.getElapsedTime()) + ".");
+        this.notifyAttemptComplete(buffer);
+
+        return buffer;
+    }
+
+    private IAudioFileBuffer initAudioBuffer() throws IOException,
+            AudioRetrievalException {
         List<byte[]> rawDataArrays = new ArrayList<>(this.message
                 .getSoundFiles().size());
         Map<Integer, TIME_MSG_TOKENS> dynamicAudioPositionMap = new LinkedHashMap<>(
@@ -173,15 +215,7 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                 dynamicAudioPositionMap.put(i, token);
                 continue;
             }
-            /*
-             * We really don't want to leave essentially null messages in the
-             * cache for playback. However for the highly-controlled environment
-             * of the initial demo version, file read errors and tone generation
-             * errors shouldn't happen.
-             * 
-             * FIXME: if caching a message's audio data fails, perform retry of
-             * some sort.
-             */
+
             try {
                 byte[] rawData = Files.readAllBytes(filePath);
                 concatenatedSize += rawData.length;
@@ -195,7 +229,6 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (IOException e) {
                 String msg = "Failed to buffer audio file for message: "
                         + message.getBroadcastId() + ", file: " + filePath;
-                this.notifyAttemptComplete(null);
                 AudioRetrievalException audioEx = new AudioRetrievalException(
                         msg, e);
                 DefaultMessageLogger.getInstance().logError(this.message,
@@ -203,7 +236,6 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                         this.message, audioEx);
                 throw audioEx;
             } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete(null);
                 DefaultMessageLogger.getInstance().logError(this.message,
                         BMH_COMPONENT.DAC_TRANSMIT,
                         BMH_ACTIVITY.AUDIO_ALTERATION, this.message, e);
@@ -240,41 +272,29 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate end of message SAME tones for message: "
                         + message.getBroadcastId();
-                this.notifyAttemptComplete(null);
                 throw new AudioRetrievalException(msg, e);
             }
         }
 
         /* regulate tones (if they exist). */
         if (generatedTones != null) {
-            try {
-                if (generatedTones.getSameTones() != null) {
-                    byte[] regulatedTones = adjustAudio(
-                            generatedTones.getSameTones(), "Same Tones",
-                            this.sameAmplitude);
-                    generatedTones.setSameTones(regulatedTones);
-                }
-                if (generatedTones.getAlertTones() != null) {
-                    byte[] regulatedTones = adjustAudio(
-                            generatedTones.getAlertTones(), "Alert Tones",
-                            this.alertAmplitude);
-                    generatedTones.setAlertTones(regulatedTones);
-                }
-            } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete(null);
-                throw e;
+            if (generatedTones.getSameTones() != null) {
+                byte[] regulatedTones = adjustAudio(
+                        generatedTones.getSameTones(), "Same Tones",
+                        this.sameAmplitude);
+                generatedTones.setSameTones(regulatedTones);
+            }
+            if (generatedTones.getAlertTones() != null) {
+                byte[] regulatedTones = adjustAudio(
+                        generatedTones.getAlertTones(), "Alert Tones",
+                        this.alertAmplitude);
+                generatedTones.setAlertTones(regulatedTones);
             }
         }
         if (endOfMessage != null) {
-            try {
-                byte[] regulatedEndOfMessage = adjustAudio(
-                        endOfMessage.array(), "End of Message",
-                        this.sameAmplitude);
-                endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
-            } catch (AudioRetrievalException e) {
-                this.notifyAttemptComplete(null);
-                throw e;
-            }
+            byte[] regulatedEndOfMessage = adjustAudio(endOfMessage.array(),
+                    "End of Message", this.sameAmplitude);
+            endOfMessage = ByteBuffer.wrap(regulatedEndOfMessage);
         }
 
         if (dynamicMsg == false) {
@@ -319,12 +339,6 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
                     rawDataArrays, dynamicAudioPositionMap, endOfMessage,
                     timeCache);
         }
-
-        logger.info("Successfully retrieved audio for message: "
-                + message.getBroadcastId() + " in "
-                + TimeUtil.prettyDuration(System.currentTimeMillis() - start)
-                + ".");
-        this.notifyAttemptComplete(buffer);
 
         return buffer;
     }

@@ -28,6 +28,8 @@ import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.broadcast.BroadcastDelayAlarm;
+import com.raytheon.bmh.comms.broadcast.BroadcastMsgInitFailedAlarm;
+import com.raytheon.bmh.comms.broadcast.PriorityBroadcastMsgInitFailedAlarm;
 import com.raytheon.bmh.comms.broadcast.SAMEDurationTruncatedAlarm;
 import com.raytheon.bmh.comms.broadcast.WtchOrWrnNotBroadcastAlarm;
 import com.raytheon.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.bmh.broadcast.ILiveBroadcastMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistMessage;
 import com.raytheon.uf.common.bmh.comms.SendPlaylistResponse;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.bmh.notify.BroadcastMsgInitFailedNotification;
 import com.raytheon.uf.common.bmh.notify.DacTransmitShutdownNotification;
 import com.raytheon.uf.common.bmh.notify.LiveBroadcastSwitchNotification;
 import com.raytheon.uf.common.bmh.notify.MessageBroadcastNotifcation;
@@ -105,6 +108,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * Jan 07, 2016  4997     bkowal      dactransmit is no longer a uf edex plugin.
  * Feb 04, 2016  5308     rjpeter     Handle SendPlaylistMessage.
  * Mar 14, 2016  5472     rjpeter     Handle SendPlaylistResponse.
+ * Apr 26, 2016  5561     bkowal      Handle {@link BroadcastMsgInitFailedNotification}.
  * </pre>
  * 
  * @author bsteffen
@@ -141,6 +145,10 @@ public class DacTransmitCommunicator extends Thread {
     private final SAMEDurationTruncatedAlarm sameDurationTruncatedAlarm = new SAMEDurationTruncatedAlarm();
 
     private final WtchOrWrnNotBroadcastAlarm wtchOrWrnNotBroadcastAlarm = new WtchOrWrnNotBroadcastAlarm();
+
+    private final BroadcastMsgInitFailedAlarm broadcastMsgInitFailedAlarm = new BroadcastMsgInitFailedAlarm();
+
+    private final PriorityBroadcastMsgInitFailedAlarm priorityBroadcastMsgInitFailedAlarm = new PriorityBroadcastMsgInitFailedAlarm();
 
     public DacTransmitCommunicator(CommsManager manager, String groupName,
             int[] radios, Socket socket, short audioAmplitude,
@@ -244,6 +252,14 @@ public class DacTransmitCommunicator extends Thread {
         } else if (message instanceof SendPlaylistResponse) {
             manager.forwardPlaylistResponse((SendPlaylistResponse) message,
                     true);
+        } else if (message instanceof BroadcastMsgInitFailedNotification) {
+            BroadcastMsgInitFailedNotification notification = (BroadcastMsgInitFailedNotification) message;
+            notification.setTransmitterGroup(this.groupName);
+            if (notification.isHighPriority()) {
+                priorityBroadcastMsgInitFailedAlarm.notify(notification);
+            } else {
+                broadcastMsgInitFailedAlarm.notify(notification);
+            }
         } else {
             logger.error("Unexpected message from dac transmit of type: {}",
                     message.getClass().getSimpleName());

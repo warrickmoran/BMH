@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: DAC Simulator
 Bundle-SymbolicName: com.raytheon.bmh.dacsimulator
-Bundle-Version: 1.1.0.qualifier
+Bundle-Version: 1.2.0.qualifier
 Bundle-Vendor: RAYTHEON
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Require-Bundle: org.slf4j;bundle-version="1.7.5",

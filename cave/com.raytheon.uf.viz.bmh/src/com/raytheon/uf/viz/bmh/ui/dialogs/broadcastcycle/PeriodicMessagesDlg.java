@@ -60,6 +60,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 12, 2015    4482    rjpeter     Added DO_NOT_BLOCK.
  * Mar 10, 2016    5465    tgurney     Add missing trim button style
  * Apr 05, 2016    5504    bkowal      Fix GUI sizing issues.
+ * May 13, 2016    5465    tgurney     Add minimize button in trim
  * </pre>
  * 
  * @author mpduff
@@ -88,7 +89,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     public PeriodicMessagesDlg(Shell parent,
             BroadcastCycleDataManager dataManager, PlaylistData playlistData,
             String selectedTransmitterGrp) {
-        super(parent, SWT.DIALOG_TRIM, CAVE.INDEPENDENT_SHELL
+        super(parent, SWT.DIALOG_TRIM | SWT.MIN, CAVE.INDEPENDENT_SHELL
                 | CAVE.PERSPECTIVE_INDEPENDENT | CAVE.DO_NOT_BLOCK);
         setText("Periodic Messages");
         this.dataManager = dataManager;

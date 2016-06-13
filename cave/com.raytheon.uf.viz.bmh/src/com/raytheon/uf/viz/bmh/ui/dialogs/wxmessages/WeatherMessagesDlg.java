@@ -24,7 +24,6 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,6 +87,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.InputMessageSequence.SEQUENCE_DIRECTION;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
 import com.raytheon.viz.ui.dialogs.ICloseCallback;
+import com.raytheon.viz.ui.widgets.DateTimeSpinner;
 
 /**
  * Weather Messages dialog.
@@ -185,6 +185,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                   is submitted.
  * Jan 27, 2016 5160     rjpeter     Filter out DMO messages.
  * Apr 05, 2016 5504     bkowal      Updates for compatibility with {@link DateTimeFields}.
+ * May 04, 2016 5602     bkowal      Use {@link DateTimeSpinner}.
  * </pre>
  * 
  * @author lvenable
@@ -224,13 +225,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     private Label emergenyOverrideLbl;
 
     /** Create date/time field. */
-    private DateTimeFields creationDTF;
+    private DateTimeSpinner creationDateTimeSpinner;
 
     /** Effective date/time field. */
-    private DateTimeFields effectiveDTF;
+    private DateTimeSpinner effectiveDateTimeSpinner;
 
     /** Expiration date/time field. */
-    private DateTimeFields expirationDTF;
+    private DateTimeSpinner expirationDateTimeSpinner;
 
     /** Checkbox used to indicate that a message does not expire. */
     private Button noExpireChk;
@@ -472,8 +473,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             interruptChk.setEnabled(!editStatus);
             alertChk.setEnabled(!editStatus);
             confirmChk.setEnabled(!editStatus);
-            creationDTF.setEnabled(!editStatus);
-            effectiveDTF.setEnabled(!editStatus);
+            creationDateTimeSpinner.setEnabled(!editStatus);
+            effectiveDateTimeSpinner.setEnabled(!editStatus);
             sameTransmitters.setAllowEnableTransmitters(!editStatus);
         }
     }
@@ -660,13 +661,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
          * Creation, Effective, Expiration Dates
          */
 
-        Map<DateFieldType, Integer> dateTimeMap = new LinkedHashMap<DateFieldType, Integer>();
-        dateTimeMap.put(DateFieldType.YEAR, null);
-        dateTimeMap.put(DateFieldType.MONTH, null);
-        dateTimeMap.put(DateFieldType.DAY, null);
-        dateTimeMap.put(DateFieldType.HOUR, null);
-        dateTimeMap.put(DateFieldType.MINUTE, null);
-
         /*
          * Creation
          */
@@ -687,8 +681,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         gd.verticalIndent = 15;
         creationDTFComp.setLayoutData(gd);
 
-        creationDTF = new DateTimeFields(creationDTFComp, dateTimeMap, false,
-                false);
+        Calendar defaultDateTime = TimeUtil.newGmtCalendar();
+        creationDateTimeSpinner = new DateTimeSpinner(creationDTFComp,
+                defaultDateTime, 5, true);
 
         /*
          * Effective
@@ -709,8 +704,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         gd.horizontalSpan = 2;
         effectiveDTFComp.setLayoutData(gd);
 
-        effectiveDTF = new DateTimeFields(effectiveDTFComp, dateTimeMap, false,
-                false);
+        effectiveDateTimeSpinner = new DateTimeSpinner(effectiveDTFComp,
+                defaultDateTime, 5, true);
 
         /*
          * Expiration
@@ -730,8 +725,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
         expirationDTFComp.setLayoutData(gd);
-        expirationDTF = new DateTimeFields(expirationDTFComp, dateTimeMap,
-                false, false);
+        expirationDateTimeSpinner = new DateTimeSpinner(expirationDTFComp,
+                defaultDateTime, 5, true);
 
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
@@ -742,16 +737,17 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             @Override
             public void widgetSelected(SelectionEvent e) {
                 if (noExpireChk.getSelection()) {
-                    expirationDTF.setEnabled(false);
+                    expirationDateTimeSpinner.setEnabled(false);
                     userInputMessage.setExpirationTime(null);
                 } else {
-                    expirationDTF.setEnabled(true);
+                    expirationDateTimeSpinner.setEnabled(true);
                     /*
                      * this will eventually be updated to match whatever is in
                      * the spinners before the message is submitted.
                      */
-                    userInputMessage.setExpirationTime(expirationDTF
-                            .getBackingCalendar());
+                    userInputMessage
+                            .setExpirationTime(expirationDateTimeSpinner
+                                    .getSelection());
                 }
             }
         });
@@ -1069,9 +1065,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
             return true;
         }
-        long effectiveTime = this.effectiveDTF.getBackingCalendar()
+        long effectiveTime = effectiveDateTimeSpinner.getSelection()
                 .getTimeInMillis();
-        long expirationTime = this.expirationDTF.getBackingCalendar()
+        long expirationTime = expirationDateTimeSpinner.getSelection()
                 .getTimeInMillis();
         if ((expirationTime == effectiveTime)
                 || (expirationTime <= System.currentTimeMillis())) {
@@ -1214,18 +1210,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             this.userInputMessage.setLanguage(null);
             this.userInputMessage.setAfosid(null);
         }
-        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
-                this.userInputMessage.getCreationTime(),
-                this.creationDTF.getCalDateTimeValues()));
-        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
-                this.userInputMessage.getEffectiveTime(),
-                this.effectiveDTF.getCalDateTimeValues()));
+        userInputMessage
+                .setCreationTime(creationDateTimeSpinner.getSelection());
+        userInputMessage.setEffectiveTime(effectiveDateTimeSpinner
+                .getSelection());
         if (this.noExpireChk.getSelection()) {
             this.userInputMessage.setExpirationTime(null);
         } else {
-            this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
-                    this.userInputMessage.getExpirationTime(),
-                    this.expirationDTF.getCalDateTimeValues()));
+            userInputMessage.setExpirationTime(expirationDateTimeSpinner
+                    .getSelection());
         }
         if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
             this.userInputMessage.setPeriodicity(this.periodicityDTF
@@ -1355,11 +1348,10 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         Map<DateFieldType, Integer> durationMap = BmhUtils
                 .generateDayHourMinuteSecondMap(durationStr);
         long durationMillis = BmhUtils.getDurationMilliseconds(durationMap);
-        Calendar cal = effectiveDTF.getBackingCalendar();
+        Calendar cal = effectiveDateTimeSpinner.getSelection();
         cal.add(Calendar.SECOND,
                 (int) (durationMillis / TimeUtil.MILLIS_PER_SECOND));
-
-        expirationDTF.setDateTimeSpinners(cal);
+        expirationDateTimeSpinner.setSelection(cal, true);
 
         if (validatedMsg == null) {
             // eliminate any existing area codes.
@@ -1573,24 +1565,25 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
 
         // Creation, Expiration, Effective date time fields.
         if (userInputMessage.getCreationTime() != null) {
-            creationDTF.setDateTimeSpinners(userInputMessage.getCreationTime());
+            creationDateTimeSpinner.setSelection(
+                    userInputMessage.getCreationTime(), true);
         }
 
         if (userInputMessage.getEffectiveTime() != null) {
-            effectiveDTF.setDateTimeSpinners(userInputMessage
+            effectiveDateTimeSpinner.setSelection(userInputMessage
                     .getEffectiveTime());
         }
 
         if (userInputMessage.getExpirationTime() != null) {
             this.noExpireChk.setSelection(false);
-            expirationDTF.setDateTimeSpinners(userInputMessage
+            expirationDateTimeSpinner.setSelection(userInputMessage
                     .getExpirationTime());
-            this.expirationDTF.setEnabled(true);
+            expirationDateTimeSpinner.setEnabled(true);
         } else {
             if ((this.userInputMessage.getId() != 0)
                     && this.userInputMessage.isValidHeader()) {
                 this.noExpireChk.setSelection(true);
-                this.expirationDTF.setEnabled(false);
+                expirationDateTimeSpinner.setEnabled(false);
             }
         }
 
@@ -1669,23 +1662,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     private CONTENT_TYPE determineContentType(final String content) {
         return (RecordedByUtils.isMessage(content) || ImportedByUtils
                 .isMessage(content)) ? CONTENT_TYPE.AUDIO : CONTENT_TYPE.TEXT;
-    }
-
-    /*
-     * TODO: weather messages and broadcast schedule need to be updated to share
-     * common aspects.
-     */
-    private Calendar updateCalFromDTF(Calendar currentCal,
-            Map<Integer, Integer> fieldValuesMap) {
-        if (currentCal == null) {
-            currentCal = TimeUtil.newGmtCalendar();
-        }
-
-        for (Integer calField : fieldValuesMap.keySet()) {
-            currentCal.set(calField, fieldValuesMap.get(calField));
-        }
-
-        return currentCal;
     }
 
     private void continueSequence(final SEQUENCE_DIRECTION direction) {

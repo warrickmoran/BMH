@@ -54,6 +54,8 @@ import java.util.Map;
  * Nov 23, 2015 5113       bkowal      Added {@link #DAC_SYNC_ISSUE} and {@link #DAC_SYNC_VERIFY_FAIL}.
  * Feb 04, 2016 5308       rjpeter     Removed MESSAGE_VALIDATION_DUPLICATE.
  * Mar 30, 2016 5419       bkowal      Added {@link #COMMS_BALANCE_DISABLED}.
+ * Apr 26, 2016 5561       bkowal      Added {@link #MSG_RETRIEVAL_FAILED} and
+ *                                     {@link #PRIORITY_MSG_RETRIEVAL_FAILED}.
  * </pre>
  * 
  * @author bkowal
@@ -230,6 +232,18 @@ public enum BMH_CATEGORY {
      * indicates that clustering has been disabled in Comms Manager.
      */
     COMMS_BALANCE_DISABLED(37, "COMMS_MANAGER"),
+    /*
+     * indicates that a Dac Transmit process has attempted to read and/or alter
+     * raw audio during initial retrieval.
+     */
+    MSG_RETRIEVAL_FAILED(38, "DAC_TRANSMIT"),
+    /*
+     * similar to {@link MSG_RETRIEVAL_FAILED}. However, this variation exists
+     * specifically for high priority messages: interrupt, watch or warning and
+     * as a result will be configured to utilize AlertViz audio by default.
+     */
+    PRIORITY_MSG_RETRIEVAL_FAILED(39, "DAC_TRANSMIT"),
+
     /*
      * Specific to the legacy database import. Used to indicate an issue
      * occurred with the legacy database import.

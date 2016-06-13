@@ -8,7 +8,7 @@
 
 Name: awips2-common-bmh
 Summary: AWIPS II EDEX BMH Installation
-Version: 1.1
+Version: 1.2
 Release: %{_component_release}
 Group: AWIPSII
 BuildRoot: %{_build_root}
