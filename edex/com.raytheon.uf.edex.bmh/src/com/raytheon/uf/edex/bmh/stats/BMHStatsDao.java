@@ -42,22 +42,25 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 29, 2015 4686       bkowal      Initial creation
+ * Date          Ticket#  Engineer  Description
+ * ------------- -------- --------- ----------------------------
+ * Jul 29, 2015  4686     bkowal    Initial creation
+ * Jun 20, 2016  5679     rjpeter   Add admin database account.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
-
 public class BMHStatsDao extends CoreDao {
 
     private final String SP_QUERY = "SELECT messageDeliveryStat(:begin_time, :end_time)";
 
     public BMHStatsDao() {
-        super(DaoConfig.forDatabase(AbstractBMHDao.BMH_DATABASE_NAME));
+        this(false);
+    }
+
+    public BMHStatsDao(boolean admin) {
+        super(DaoConfig.forDatabase(AbstractBMHDao.BMH_DATABASE_NAME, true));
     }
 
     public void importSQLProcedure(final String sql) {

@@ -60,23 +60,22 @@ import com.raytheon.uf.edex.database.dao.DaoConfig;
  * 
  * SOFTWARE HISTORY
  * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 29, 2015 4686       bkowal      Initial creation
- * Aug 04, 2015 4424       bkowal      Retain the line separators in the
- *                                     statistics sql.
- * Aug 07, 2015 4424       bkowal      Fix aggregate end date.
- * Aug 10, 2015 4723       bkowal      Statistics calculation end time is now an
- *                                     hour ago instead of five minutes ago.
- * Aug 11, 2015 4715       bkowal      Stats are only calculated for as long as the
- *                                     start date is less than the end date now.
+ * Date          Ticket#  Engineer  Description
+ * ------------- -------- --------- --------------------------------------------
+ * Jul 29, 2015  4686     bkowal    Initial creation
+ * Aug 04, 2015  4424     bkowal    Retain the line separators in the statistics
+ *                                  sql.
+ * Aug 07, 2015  4424     bkowal    Fix aggregate end date.
+ * Aug 10, 2015  4723     bkowal    Statistics calculation end time is now an
+ *                                  hour ago instead of five minutes ago.
+ * Aug 11, 2015  4715     bkowal    Stats are only calculated for as long as the
+ *                                  start date is less than the end date now.
+ * Jun 20, 2016  5679     rjpeter   Add admin database account
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
-
 public class MessageDeliveryCalculator implements ApplicationContextAware {
 
     private static final String DATE_FORMAT = "MM-dd-yyy HH:mm";
@@ -158,7 +157,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
                 String sql = COLON_PATTERN.matcher(sb.toString()).replaceAll(
                         COLON_REPLACEMENT);
                 try {
-                    this.bmhStatsDao.importSQLProcedure(sql);
+                    new BMHStatsDao(true).importSQLProcedure(sql);
                 } catch (Exception e) {
                     throw new IllegalStateException(
                             "Failed to import SQL Procedure: " + PROCEDURE_SQL
@@ -191,9 +190,9 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
         /*
          * ensure that we are on a fifth minute.
          */
-        if (currentRunTime.get(Calendar.MINUTE) % 5 != 0) {
+        if ((currentRunTime.get(Calendar.MINUTE) % 5) != 0) {
             int minute = currentRunTime.get(Calendar.MINUTE) - 1;
-            while (minute % 5 != 0) {
+            while ((minute % 5) != 0) {
                 --minute;
             }
             currentRunTime.set(Calendar.MINUTE, minute);
@@ -210,7 +209,7 @@ public class MessageDeliveryCalculator implements ApplicationContextAware {
          */
         final ClusterTask task = ClusterLockUtils.lookupLock(LOCK_NAME,
                 LOCK_DETAILS);
-        if (task != null && task.getExtraInfo() != null) {
+        if ((task != null) && (task.getExtraInfo() != null)) {
             existingLock = true;
             try {
                 synchronized (df) {
