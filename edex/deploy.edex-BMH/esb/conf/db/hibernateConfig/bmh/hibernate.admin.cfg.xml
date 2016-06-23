@@ -29,7 +29,7 @@
             org.postgresql.Driver
         </property>
         <property name="dialect">
-            org.hibernate.spatial.dialect.postgis.PostgisDialect
+            org.hibernate.dialect.PostgreSQLDialect
         </property>
         <property name="connection.url">
             jdbc:postgresql://${db.addr}:${db.port}/bmh
@@ -41,14 +41,14 @@
 
         <!-- Optional Hibernate Configuration Properties -->
         <!-- Write all SQL statements to console -->
-        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.show_sql">false</property>
 
         <!-- Pretty print the SQL in the log and console -->
-        <property name="hibenate.format_sql">true</property>
+        <property name="hibenate.format_sql">false</property>
 
         <!-- If turned on, Hibernate will generate comments inside the SQL, for easier 
             debugging, defaults to false -->
-        <property name="hibernate.use_sql_comments">true</property>
+        <property name="hibernate.use_sql_comments">false</property>
 
         <!-- Use c3p0 connection pooling -->
         <property name="hibernate.connection.provider_class">org.hibernate.connection.C3P0ConnectionProvider</property>
