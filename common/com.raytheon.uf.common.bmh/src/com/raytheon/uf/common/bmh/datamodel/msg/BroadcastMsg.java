@@ -49,6 +49,7 @@ import org.hibernate.annotations.SortType;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.ReplacementType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
+import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 
@@ -86,10 +87,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 12, 2015  4248     rjpeter     Remove bmh schema, standardize foreign/unique keys.
  * May 21, 2015  4397     bkowal      Added {@link #broadcast}.
  * May 29, 2015  4686     bkowal      Renamed the broadcast flag to {@link #delivered}.
+ * Jul 01, 2016  5722     rjpeter     Fixed serialization of contents.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 @NamedQueries({
@@ -319,8 +320,13 @@ public class BroadcastMsg {
      * @param contents
      *            the contents to set
      */
-    public void setContents(SortedSet<BroadcastContents> contents) {
-        this.contents = contents;
+    public void setContents(Set<BroadcastContents> contents) {
+        if (contents instanceof SortedSet) {
+            this.contents = (SortedSet<BroadcastContents>) contents;
+        } else {
+            this.contents = new TreeSet<>(contents);
+        }
+
         if (this.contents != null && this.contents.isEmpty() == false) {
             for (BroadcastContents broadcastContents : this.contents) {
                 broadcastContents.setBroadcastMsg(this);
@@ -486,3 +492,4 @@ public class BroadcastMsg {
     }
 
 }
+
