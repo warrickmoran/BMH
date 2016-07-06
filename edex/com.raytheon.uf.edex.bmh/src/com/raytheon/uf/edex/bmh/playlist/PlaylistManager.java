@@ -213,10 +213,11 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Feb 04, 2016  5308     bkowal      Utilize {@link DacPlaylistMessageMetadata}.
  * Mar 01, 2016  5382     bkowal      Potentially restore a message file from the archive when
  *                                    a message that was previously archived is updated.
+ * Jul 01, 2016  5727     bkowal      The replaced message (when applicable) is now required to
+ *                                    determine the {@link DacTriggerSpan}s.
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class PlaylistManager implements IContextStateProcessor {
 
@@ -825,7 +826,7 @@ public class PlaylistManager implements IContextStateProcessor {
             AbstractBMHProcessingTimeEvent event, ITraceable traceable,
             BroadcastMsg replacedMessage) {
         List<DacTriggerSpan> triggerSpans = playlist.setTimes(
-                programSuite.getTriggers(), forced);
+                programSuite.getTriggers(), forced, replacedMessage);
 
         if (triggerSpans.isEmpty()) {
             /*
