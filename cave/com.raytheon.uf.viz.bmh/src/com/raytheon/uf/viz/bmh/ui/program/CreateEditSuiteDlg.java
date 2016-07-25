@@ -20,12 +20,14 @@
 package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.HashSet;
 
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -62,7 +64,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableMoveAction;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages;
 import com.raytheon.uf.viz.bmh.ui.common.utility.UpDownImages.Arrows;
@@ -119,6 +120,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jan 27, 2016   5160     rjpeter     Don't allow DMO messages to be added to a Suite.
  * Mar 25, 2016   5504     bkowal      Fix GUI sizing issues.
  * Apr 04, 2016   5504     bkowal      Updated for compatibility with TableComp changes.
+ * May 04, 2016   5562     bkowal      Highlight trigger message types in red. Display a
+ *                                     {@link TriggerSelectionDlg} for trigger message selection.
  * </pre>
  * 
  * @author lvenable
@@ -625,29 +628,33 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         for (MessageTypeSummary mts : triggerMessageTypes) {
             triggerAfosids.add(mts.getAfosid());
         }
-
+        List<String> allAfosids = new ArrayList<>(msgTypesInSuiteList.size());
         for (SuiteMessage sm : msgTypesInSuiteList) {
+            allAfosids.add(sm.getAfosid());
             cld.addDataItem(sm.getAfosid(),
                     triggerAfosids.contains(sm.getAfosid()));
         }
 
-        CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                "Trigger Selection", "Select Message Type to Trigger:", cld,
-                true);
-        checkListDlg.setCloseCallback(new ICloseCallback() {
+        TriggerSelectionDlg triggerSelectionDlg = new TriggerSelectionDlg(
+                getShell(), triggerAfosids, allAfosids);
+        triggerSelectionDlg.setCloseCallback(new ICloseCallback() {
             @Override
             public void dialogClosed(Object returnValue) {
-                if (returnValue instanceof CheckListData) {
-                    CheckListData listData = (CheckListData) returnValue;
-                    Map<String, Boolean> dataMap = listData.getDataMap();
+                if (returnValue instanceof Set<?>) {
+                    Set<?> returnValueSet = (Set<?>) returnValue;
+                    Set<String> selectedAfosIds = Collections.emptySet();
+                    if (!returnValueSet.isEmpty()) {
+                        selectedAfosIds = new HashSet<>(returnValueSet.size(),
+                                1.0f);
+                        for (Object returnValueObject : returnValueSet) {
+                            selectedAfosIds.add((String) returnValueObject);
+                        }
+                    }
 
                     triggerMessageTypes.clear();
 
                     for (SuiteMessage sm : msgTypesInSuiteList) {
-                        if (dataMap.containsKey(sm.getAfosid())) {
-                            if (dataMap.get(sm.getAfosid()) == false) {
-                                continue;
-                            }
+                        if (selectedAfosIds.contains(sm.getAfosid())) {
                             triggerMessageTypes.add(sm.getMsgTypeSummary());
                         }
                     }
@@ -655,9 +662,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                     populateSelectedMsgTypesTable(true);
                 }
             }
-
         });
-        checkListDlg.open();
+        triggerSelectionDlg.open();
     }
 
     /**
@@ -1265,8 +1271,14 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 }
             }
             if ((this.selectedProgram != null) && (this.selectedSuite != null)) {
-                trd.addTableCellData(new TableCellData(triggerMessageTypes
-                        .contains(sm.getMsgTypeSummary()) ? "Yes" : "No"));
+                TableCellData tcd = new TableCellData(
+                        triggerMessageTypes.contains(sm.getMsgTypeSummary()) ? "Yes"
+                                : "No");
+                if (triggerMessageTypes.contains(sm.getMsgTypeSummary())) {
+                    tcd.setBackgroundColor(getDisplay().getSystemColor(
+                            SWT.COLOR_RED));
+                }
+                trd.addTableCellData(tcd);
             }
 
             selectedMsgTypeTableData.addDataRow(trd);

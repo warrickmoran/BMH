@@ -29,6 +29,8 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
 /**
@@ -47,6 +49,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 08, 2016  5382      bkowal      Updated to only include information that BMH EDEX
  *                                     would manage.
  * Mar 24, 2016  5515      bkowal      Added {@link #lastReadTime}.
+ * Apr 26, 2016  5561      bkowal      Make {@link DynamicSerialize}able.
  * 
  * </pre>
  * 
@@ -55,6 +58,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  */
 @XmlRootElement(name = "bmhMessageMetadata")
 @XmlAccessorType(XmlAccessType.NONE)
+@DynamicSerialize
 public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
 
     /*
@@ -63,37 +67,48 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     private static final String NO_PERIODICTY = "00000000";
 
     @XmlElement
+    @DynamicSerializeElement
     private String name;
 
     @XmlElement
+    @DynamicSerializeElement
     private Calendar start;
 
     @XmlElement
+    @DynamicSerializeElement
     private String messageType;
 
     @XmlElement
+    @DynamicSerializeElement
     private String SAMEtone;
 
     @XmlElement
+    @DynamicSerializeElement
     private boolean alertTone;
 
     @XmlElement
+    @DynamicSerializeElement
     private boolean toneBlackoutEnabled;
 
     @XmlElement
+    @DynamicSerializeElement
     private String toneBlackoutStart;
 
     @XmlElement
+    @DynamicSerializeElement
     private String toneBlackoutEnd;
 
     /** format is DDHHMMSS */
     @XmlElement
+    @DynamicSerializeElement
     private String periodicity;
 
     @XmlElement(name = "soundFile")
+    @DynamicSerializeElement
     private List<String> soundFiles;
 
     @XmlElement
+    @DynamicSerializeElement
     private String messageText;
 
     /*
@@ -101,6 +116,7 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      * associated message.
      */
     @XmlElement
+    @DynamicSerializeElement
     private boolean confirm;
 
     /*
@@ -110,6 +126,7 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      * the message type designation.
      */
     @XmlElement
+    @DynamicSerializeElement
     private boolean watch;
 
     /*
@@ -119,6 +136,7 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      * on the message type designation.
      */
     @XmlElement
+    @DynamicSerializeElement
     private boolean warning;
 
     /**
@@ -131,9 +149,11 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      * once.
      */
     @XmlElement
+    @DynamicSerializeElement
     private long initialRecognitionTime;
 
     @XmlElement
+    @DynamicSerializeElement
     private boolean recognized = false;
 
     private transient boolean dynamic;

@@ -38,11 +38,13 @@ import org.eclipse.swt.widgets.Text;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
+import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
+import com.raytheon.viz.ui.widgets.DateTimeSpinner;
 
 /**
  * Message Schedule dialog for the Emergency Override.
@@ -59,6 +61,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  *                                      Implemented Ok and Cancel.
  * Apr 05, 2016  #5504     bkowal       Fix GUI sizing issues. Updates for compatibility with 
  *                                      {@link DateTimeFields}.
+ * May 04, 2016  #5602     bkowal       Use {@link DateTimeSpinner}.
  * 
  * </pre>
  * 
@@ -87,13 +90,13 @@ public class MessageScheduleDlg extends CaveSWTDialog {
     private Label emergenyOverrideLbl;
 
     /** Create date/time field. */
-    private DateTimeFields creationDTF;
+    private DateTimeSpinner creationDateTimeSpinner;
 
     /** Effective date/time field. */
-    private DateTimeFields effectiveDTF;
+    private DateTimeSpinner effectiveDateTimeSpinner;
 
     /** Expiration date/time field. */
-    private DateTimeFields expirationDTF;
+    private DateTimeSpinner expirationDateTimeSpinner;
 
     /** Periodicity date/time field. */
     private DateTimeFields periodicityDTF;
@@ -136,7 +139,6 @@ public class MessageScheduleDlg extends CaveSWTDialog {
 
     @Override
     protected void initializeComponents(Shell shell) {
-
         setText("Emergency Override - Message Schedule");
         createMainControls();
     }
@@ -250,7 +252,9 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         creationLbl.setText("Creation Date/Time\n(YYMMDDHHmm): ");
         creationLbl.setLayoutData(gd);
 
-        creationDTF = new DateTimeFields(controlComp, dateTimeMap, false, true);
+        Calendar defaultDateTime = TimeUtil.newGmtCalendar();
+        creationDateTimeSpinner = new DateTimeSpinner(controlComp,
+                defaultDateTime, 5, true);
 
         /*
          * Effective
@@ -260,7 +264,8 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         effectiveLbl.setText("Effective Date/Time\n(YYMMDDHHmm): ");
         effectiveLbl.setLayoutData(gd);
 
-        effectiveDTF = new DateTimeFields(controlComp, dateTimeMap, false, true);
+        effectiveDateTimeSpinner = new DateTimeSpinner(controlComp,
+                defaultDateTime, 5, true);
 
         /*
          * Expiration
@@ -270,8 +275,8 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         expirationLbl.setText("Expiration Date/Time\n(YYMMDDHHmm): ");
         expirationLbl.setLayoutData(gd);
 
-        expirationDTF = new DateTimeFields(controlComp, dateTimeMap, false,
-                true);
+        expirationDateTimeSpinner = new DateTimeSpinner(controlComp,
+                defaultDateTime, 5, true);
     }
 
     /**
@@ -357,15 +362,12 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         // TODO: validate fields - date / time spinners self validate.
 
         this.userInputMessage.setName(this.msgNameTF.getText());
-        this.userInputMessage.setCreationTime(this.updateCalFromDTF(
-                this.userInputMessage.getCreationTime(),
-                this.creationDTF.getCalDateTimeValues()));
-        this.userInputMessage.setEffectiveTime(this.updateCalFromDTF(
-                this.userInputMessage.getEffectiveTime(),
-                this.effectiveDTF.getCalDateTimeValues()));
-        this.userInputMessage.setExpirationTime(this.updateCalFromDTF(
-                this.userInputMessage.getExpirationTime(),
-                this.expirationDTF.getCalDateTimeValues()));
+        userInputMessage
+                .setCreationTime(creationDateTimeSpinner.getSelection());
+        userInputMessage.setEffectiveTime(effectiveDateTimeSpinner
+                .getSelection());
+        userInputMessage.setExpirationTime(expirationDateTimeSpinner
+                .getSelection());
         if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
             this.userInputMessage.setPeriodicity(this.periodicityDTF
                     .getFormattedValue());
@@ -376,15 +378,6 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         // Note: if dialog contents are not valid, the dialog will not be
         // closed.
         close();
-    }
-
-    private Calendar updateCalFromDTF(Calendar currentCal,
-            Map<Integer, Integer> fieldValuesMap) {
-        for (Integer calField : fieldValuesMap.keySet()) {
-            currentCal.set(calField, fieldValuesMap.get(calField));
-        }
-
-        return currentCal;
     }
 
     /**
@@ -400,11 +393,11 @@ public class MessageScheduleDlg extends CaveSWTDialog {
                 .name());
         this.emergenyOverrideLbl.setText(this.selectedMessageType
                 .isEmergencyOverride() ? "YES" : "NO");
-        this.creationDTF.setDateTimeSpinners(this.userInputMessage
-                .getCreationTime());
-        this.effectiveDTF.setDateTimeSpinners(this.userInputMessage
+        creationDateTimeSpinner
+                .setSelection(userInputMessage.getCreationTime());
+        effectiveDateTimeSpinner.setSelection(userInputMessage
                 .getEffectiveTime());
-        this.expirationDTF.setDateTimeSpinners(this.userInputMessage
+        expirationDateTimeSpinner.setSelection(userInputMessage
                 .getExpirationTime());
         if (this.userInputMessage.getPeriodicity() != null) {
             Map<DateFieldType, Integer> dateTimeMap = BmhUtils
