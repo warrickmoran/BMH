@@ -36,6 +36,7 @@
 #    12/08/14        3651          bkowal         Dynamically set logfile_base based on the
 #                                                 mode.
 #    04/28/16        5603          bkowal         Specify java.io.tmpdir for YAJSW.
+#    07/06/16        5732          bkowal         Default yajsw wrapper logging to NONE.
 ##############################################################################
 
 CONF_FILE="wrapper.conf"
@@ -71,7 +72,7 @@ export EDEX_HOME="${awips_home}/edex"
 export JAVA_HOME="${awips_home}/java"
 export JAVA=${JAVA_HOME}/bin/java
 export YAJSW_HOME="${awips_home}/yajsw"
-export CONSOLE_LOGLEVEL=DEBUG
+export CONSOLE_LOGLEVEL=NONE
 comms_pid=`pgrep -f "java.*-c ${BMH_HOME}/conf/${CONF_FILE}"`
 if [ $? -eq 0 ]; then
   echo "Comms manager (pid ${comms_pid}) is already running."

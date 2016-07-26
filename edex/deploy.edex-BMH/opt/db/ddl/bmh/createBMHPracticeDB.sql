@@ -20,6 +20,15 @@
 \set ON_ERROR_STOP 1
 DROP DATABASE IF EXISTS bmh_practice;
 DROP TABLESPACE IF EXISTS bmh_practice;
-CREATE TABLESPACE bmh_practice owner awips location '/awips2/data/bmh_practice';
-CREATE DATABASE bmh_practice OWNER awips TABLESPACE bmh_practice;
+CREATE TABLESPACE bmh_practice owner awipsadmin location '/awips2/data/bmh_practice';
+CREATE DATABASE bmh_practice OWNER awipsadmin TABLESPACE bmh_practice;
 
+BEGIN TRANSACTION;
+GRANT CONNECT ON DATABASE metadata TO awips;
+
+GRANT USAGE ON SCHEMA public to awips; -- Don't grant create
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER, TRUNCATE ON TABLES TO awips; -- Don't grant references
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO awips;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO awips;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TYPES TO awips;
+COMMIT TRANSACTION;

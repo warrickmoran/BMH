@@ -104,14 +104,14 @@ else
 fi
 
 BMH_DB_EXISTS="false"
-BMH_DB=`${PSQL} -U awips -l | grep bmh | awk '{print $1}'`
+BMH_DB=`${PSQL} -U awipsadmin -l | grep bmh | awk '{print $1}'`
 if [ "${BMH_DB}" = "bmh" ]; then
    BMH_DB_EXISTS="true"
    # There is already a BMH database. 
 fi
 
 BMH_PRAC_DB_EXISTS="false"
-BMH_PRAC_DB=`${PSQL} -U awips -l | grep bmh_practice | awk '{print $1}'`
+BMH_PRAC_DB=`${PSQL} -U awipsadmin -l | grep bmh_practice | awk '{print $1}'`
 if [ "${BMH_PRAC_DB}" = "bmh_practice" ]; then
    BMH_PRAC_DB_EXISTS="true"
    # There is already a BMH Practice database. 
@@ -158,7 +158,7 @@ if [ "${BMH_DB_EXISTS}" = "false" ]; then
 
    # Run the bmh SQL creation scripts
    su ${DB_OWNER} -c \
-      "${PSQL} -U awips -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHDB.sql" >> ${SQL_LOG} 2>&1
+      "${PSQL} -U awipsadmin -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHDB.sql" >> ${SQL_LOG} 2>&1
    if [ $? -ne 0 ]; then
       exit 1
    fi
@@ -200,7 +200,7 @@ if [ "${BMH_PRAC_DB_EXISTS}" = "false" ]; then
    sleep 5
 
    su ${DB_OWNER} -c \
-      "${PSQL} -U awips -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHPracticeDB.sql" >> ${SQL_LOG} 2>&1
+      "${PSQL} -U awipsadmin -d postgres -f /awips2/database/sqlScripts/share/sql/bmh/createBMHPracticeDB.sql" >> ${SQL_LOG} 2>&1
    if [ $? -ne 0 ]; then
       exit 1
    fi
@@ -273,22 +273,22 @@ else
 fi
 
 # Is there a bmh database?
-BMH_DB=`${PSQL} -U awips -l | grep bmh | awk '{print $1}'`
+BMH_DB=`${PSQL} -U awipsadmin -l | grep bmh | awk '{print $1}'`
 
 if [ "${BMH_DB}" = "bmh" ]; then
    # drop the bmh database
    su ${DB_OWNER} -c \
-      "${DROPDB} -U awips bmh" >> ${SQL_LOG}
+      "${DROPDB} -U awipsadmin bmh" >> ${SQL_LOG}
 fi
 
 # Is there a bmh tablespace?
 # ask psql where the bmh tablespace is ...
-BMH_DIR=`${PSQL} -U awips -d postgres -c "\db" | grep bmh | awk '{print $5}'`
+BMH_DIR=`${PSQL} -U awipsadmin -d postgres -c "\db" | grep bmh | awk '{print $5}'`
 
 if [ ! "${BMH_DIR}" = "" ]; then
    # drop the bmh tablespace
    su ${DB_OWNER} -c \
-      "${PSQL} -U awips -d postgres -c \"DROP TABLESPACE bmh\"" >> ${SQL_LOG}
+      "${PSQL} -U awipsadmin -d postgres -c \"DROP TABLESPACE bmh\"" >> ${SQL_LOG}
 fi
 
 # stop PostgreSQL if we started it

@@ -133,12 +133,11 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Mar 30, 2016 5419       bkowal       Regenerate any message files that were not completely
  *                                      generated the first time.
  * Apr 26, 2016 5561       bkowal       Publish a {@link BroadcastMsgInitFailedNotification} when
- *                                      a message cannot be refreshed.                                     
- * 
+ *                                      a message cannot be refreshed.
+ * Jul 06, 2016 5727       bkowal       No longer assume that a replaced message expires immediately.
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class PlaylistMessageCache implements IAudioJobListener {
@@ -286,20 +285,12 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            the id of the message to update the expiration time for.
      */
     public void expirePlaylistMessage(DacPlaylistMessageId message) {
-        /*
-         * This method does not explicitly mention expired messages because the
-         * same action may be extended to messages that are deactivated as well.
-         */
-        Future<IAudioFileBuffer> jobStatus = cacheStatus.remove(message);
-        if (jobStatus != null) {
-            jobStatus.cancel(true);
-        }
-
         if (this.cachedMessages.containsKey(message) == false) {
             return;
         }
 
-        logger.info("Expiring message: {}.", message.toString());
+        logger.info("Updating expiration of message: {} to: {}.",
+                message.toString(), message.getExpire().getTime().toString());
 
         /*
          * We only update the expiration time instead of actually removing the

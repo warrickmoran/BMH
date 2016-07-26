@@ -105,10 +105,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jun 15, 2015  4490     bkowal      All valid messages in a General Suite can now trigger a
  *                                    Suite change.
  * Jan 25, 2016  5278     bkowal      Support {@link DacTriggerSpan}.
+ * Jul 01, 2016  5727     bkowal      Do not create a {@link DacTriggerSpan} for trigger messages
+ *                                    that have just been replaced.
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 @NamedQueries({
         @NamedQuery(name = Playlist.QUERY_BY_SUITE_GROUP_NAMES, query = Playlist.QUERY_BY_SUITE_GROUP_NAMES_HQL),
@@ -384,12 +385,15 @@ public class Playlist {
      * @param forced
      *            true if the playlist should be forced, this will ignore
      *            triggers and treat all messages as triggers.
+     * @param replacedMessage
+     *            the {@link BroadcastMsg} that has been replaced during this
+     *            iteration of playlist generation (when applicable)
      * @return the applicable trigger times for this playlist, essentially every
      *         start time of a trigger type message. Only the most recent past
      *         trigger time is included, along with all future trigger times.
      */
     public List<DacTriggerSpan> setTimes(Set<MessageTypeSummary> triggers,
-            boolean forced) {
+            boolean forced, final BroadcastMsg replacedMessage) {
         Set<String> triggerAfosids = new HashSet<>(triggers == null ? 0
                 : triggers.size(), 1.0f);
         if (suite.getType() == SuiteType.GENERAL) {
@@ -429,10 +433,22 @@ public class Playlist {
         for (BroadcastMsg message : messages) {
             /*
              * only consider potential trigger times for messages that are
-             * active.
+             * active. Exclude a trigger message if it has been replaced by
+             * another message. However, if the replaced message is still
+             * playable, the replacement does not occur until the future so it
+             * should still be taken into account.
              */
             if (triggerAfosids.contains(message.getAfosid())
                     && message.isActive()) {
+                if (replacedMessage != null
+                        && replacedMessage.getId() == message.getId()
+                        && !isPlayableNow(message)) {
+                    /*
+                     * This trigger message has just been replaced. And the
+                     * replacement takes place immediately.
+                     */
+                    continue;
+                }
                 Calendar messageStart = message.getEffectiveTime();
                 Calendar messageEnd = message.getExpirationTime();
                 if ((startTime == null) || startTime.after(messageStart)) {
@@ -489,6 +505,24 @@ public class Playlist {
             triggerSpans.add(0, mostRecentPastTrigger);
         }
         return triggerSpans;
+    }
+
+    /**
+     * Determines if the specified {@link BroadcastMsg} is playable immediately.
+     * 
+     * @param msg
+     *            the specified {@link BroadcastMsg}
+     * @return {@code true}, if the message is immediately playable;
+     *         {@code false}, otherwise.
+     */
+    private boolean isPlayableNow(final BroadcastMsg msg) {
+        final long currentTime = TimeUtil.currentTimeMillis();
+        boolean started = currentTime >= msg.getInputMessage()
+                .getEffectiveTime().getTimeInMillis();
+        final Calendar expire = msg.getInputMessage().getExpirationTime();
+        boolean ended = (expire != null && currentTime >= expire
+                .getTimeInMillis());
+        return started && !ended;
     }
 
     /**

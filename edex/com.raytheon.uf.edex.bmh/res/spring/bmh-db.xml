@@ -1,30 +1,31 @@
 <beans xmlns="http://www.springframework.org/schema/beans"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd">
-    
+
     <bean id="bmhCommonDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
         <property name="pluginFQN" value="com.raytheon.uf.edex.database" />
         <property name="database" value="bmh" />
         <property name="forceCheck" value="true" />
     </bean>
-    
-    <bean id="bmhCommonDbRegistered" factory-bean="dbPluginRegistry" factory-method="register">
+
+    <bean id="bmhCommonDbRegistered" factory-bean="dbPluginRegistry"
+        factory-method="register">
         <constructor-arg value="com.raytheon.uf.edex.database.bmh" />
         <constructor-arg ref="bmhCommonDbPluginProperties" />
     </bean>
-    
+
     <bean id="bmhDbPluginProperties" class="com.raytheon.uf.edex.database.DatabasePluginProperties">
         <property name="pluginFQN" value="com.raytheon.uf.common.bmh" />
         <property name="database" value="bmh" />
     </bean>
 
-    <bean id="bmhDbRegistered" factory-bean="dbPluginRegistry" factory-method="register" depends-on="bmhCommonDbRegistered">
+    <bean id="bmhDbRegistered" factory-bean="dbPluginRegistry"
+        factory-method="register" depends-on="bmhCommonDbRegistered">
         <constructor-arg value="com.raytheon.uf.common.bmh" />
         <constructor-arg ref="bmhDbPluginProperties" />
     </bean>
 
-    <bean id="bmhDbSessionConfig"
-        class="com.raytheon.uf.edex.database.DatabaseSessionConfiguration">
+    <bean id="bmhDbSessionConfig" class="com.raytheon.uf.edex.database.DatabaseSessionConfiguration">
         <property name="classFinder" ref="dbClassFinder" />
         <property name="includes">
             <list>
@@ -38,8 +39,7 @@
         </property>
     </bean>
 
-    <bean id="bmhSessionFactory"
-        class="com.raytheon.uf.edex.database.DatabaseSessionFactoryBean">
+    <bean id="bmhSessionFactory" class="com.raytheon.uf.edex.database.DatabaseSessionFactoryBean">
         <property name="configLocation">
             <value>file:///${edex.home}/conf/db/hibernateConfig/bmh/hibernate.cfg.xml
             </value>
@@ -52,8 +52,20 @@
         <property name="sessionFactory" ref="bmhSessionFactory" />
     </bean>
 
-    <bean id="bmhTxTemplate"
-        class="org.springframework.transaction.support.TransactionTemplate"
+    <bean id="admin_bmhSessionFactory" class="com.raytheon.uf.edex.database.DatabaseSessionFactoryBean">
+        <property name="configLocation">
+            <value>file:///${edex.home}/conf/db/hibernateConfig/bmh/hibernate.admin.cfg.xml
+            </value>
+        </property>
+        <property name="databaseSessionConfiguration" ref="bmhDbSessionConfig" />
+    </bean>
+
+    <bean id="admin_bmhTxManager"
+        class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="admin_bmhSessionFactory" />
+    </bean>
+
+    <bean id="bmhTxTemplate" class="org.springframework.transaction.support.TransactionTemplate"
         depends-on="util">
         <property name="transactionManager" ref="bmhTxManager" />
     </bean>
@@ -61,11 +73,11 @@
     <bean id="bmhBloatMonitor" class="com.raytheon.uf.edex.database.health.DatabaseBloatMonitor">
         <constructor-arg>
             <bean class="com.raytheon.uf.edex.database.health.PostgresBloatDao">
-                <constructor-arg value="bmh"/>
+                <constructor-arg value="bmh" />
             </bean>
         </constructor-arg>
-        <constructor-arg ref="warningThresholds"/>
-        <constructor-arg ref="criticalThresholds"/>
+        <constructor-arg ref="warningThresholds" />
+        <constructor-arg ref="criticalThresholds" />
     </bean>
 
     <bean factory-bean="dbMonitorRegistry" factory-method="registerMonitor">
@@ -73,56 +85,56 @@
         <constructor-arg ref="bmhBloatMonitor" />
     </bean>
 
-  <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
-    depends-on="bmhTxTemplate">
-    <constructor-arg ref="edexMessageLogger" />
-  </bean>
+    <bean id="inputMessageDao" class="com.raytheon.uf.edex.bmh.dao.InputMessageDao"
+        depends-on="bmhTxTemplate">
+        <constructor-arg ref="edexMessageLogger" />
+    </bean>
 
-  <bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
-    depends-on="bmhTxTemplate">
-    <constructor-arg ref="edexMessageLogger" />
-  </bean>
+    <bean id="validatedMessageDao" class="com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao"
+        depends-on="bmhTxTemplate">
+        <constructor-arg ref="edexMessageLogger" />
+    </bean>
 
-  <bean id="broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
-    depends-on="bmhTxTemplate">
-    <constructor-arg ref="edexMessageLogger" />
-  </bean>
+    <bean id="broadcastMsgDao" class="com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao"
+        depends-on="bmhTxTemplate">
+        <constructor-arg ref="edexMessageLogger" />
+    </bean>
 
-  <bean id="ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="ttsVoiceDao" class="com.raytheon.uf.edex.bmh.dao.TtsVoiceDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="programDao" class="com.raytheon.uf.edex.bmh.dao.ProgramDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="programDao" class="com.raytheon.uf.edex.bmh.dao.ProgramDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
-    depends-on="bmhTxTemplate">
-  	<constructor-arg ref="edexMessageLogger" />  
-  </bean>
+    <bean id="playlistDao" class="com.raytheon.uf.edex.bmh.dao.PlaylistDao"
+        depends-on="bmhTxTemplate">
+        <constructor-arg ref="edexMessageLogger" />
+    </bean>
 
-  <bean id="zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="zoneDao" class="com.raytheon.uf.edex.bmh.dao.ZoneDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="areaDao" class="com.raytheon.uf.edex.bmh.dao.AreaDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="areaDao" class="com.raytheon.uf.edex.bmh.dao.AreaDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="transmitterGroupDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="transmitterGroupDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterGroupDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="dacDao" class="com.raytheon.uf.edex.bmh.dao.DacDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="dacDao" class="com.raytheon.uf.edex.bmh.dao.DacDao"
+        depends-on="bmhTxTemplate" />
 
-  <bean id="messageTypeDao" class="com.raytheon.uf.edex.bmh.dao.MessageTypeDao"
-    depends-on="bmhTxTemplate" />
-    
-  <bean id="transmitterLanguageDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao"
-  	depends-on="bmhTxTemplate" />
-  	
-  <bean id="ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
-  	depends-on="bmhTxTemplate" />
-  	
-  <bean id="dictionaryDao" class="com.raytheon.uf.edex.bmh.dao.DictionaryDao"
-  	depends-on="bmhTxTemplate" />
-	
-  <bean id="staticMessageTypeDao" class="com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao"
-    depends-on="bmhTxTemplate" />
+    <bean id="messageTypeDao" class="com.raytheon.uf.edex.bmh.dao.MessageTypeDao"
+        depends-on="bmhTxTemplate" />
+
+    <bean id="transmitterLanguageDao" class="com.raytheon.uf.edex.bmh.dao.TransmitterLanguageDao"
+        depends-on="bmhTxTemplate" />
+
+    <bean id="ldadConfigDao" class="com.raytheon.uf.edex.bmh.dao.LdadConfigDao"
+        depends-on="bmhTxTemplate" />
+
+    <bean id="dictionaryDao" class="com.raytheon.uf.edex.bmh.dao.DictionaryDao"
+        depends-on="bmhTxTemplate" />
+
+    <bean id="staticMessageTypeDao" class="com.raytheon.uf.edex.bmh.dao.StaticMessageTypeDao"
+        depends-on="bmhTxTemplate" />
 </beans>
