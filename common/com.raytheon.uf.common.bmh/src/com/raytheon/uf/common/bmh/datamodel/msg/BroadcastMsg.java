@@ -88,6 +88,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * May 21, 2015  4397     bkowal      Added {@link #broadcast}.
  * May 29, 2015  4686     bkowal      Renamed the broadcast flag to {@link #delivered}.
  * Jul 01, 2016  5722     rjpeter     Fixed serialization of contents.
+ * Jul 28, 2016  5722     rjpeter     Handled null contents.
  * </pre>
  * 
  * @author bkowal
@@ -321,7 +322,9 @@ public class BroadcastMsg {
      *            the contents to set
      */
     public void setContents(Set<BroadcastContents> contents) {
-        if (contents instanceof SortedSet) {
+        if (contents == null) {
+            this.contents = null;
+        } else if (contents instanceof SortedSet) {
             this.contents = (SortedSet<BroadcastContents>) contents;
         } else {
             this.contents = new TreeSet<>(contents);
