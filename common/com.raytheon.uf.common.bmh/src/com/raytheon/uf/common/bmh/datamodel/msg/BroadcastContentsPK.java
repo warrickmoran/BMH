@@ -38,11 +38,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Apr 2, 2015  4293       bkowal      Initial creation
  * Apr 15, 2015 4397       bkowal      Added {@link #hashCode()} and {@link #equals(Object)}.
- * 
+ * Jul 28, 2016 5722       rjpeter     Handled null in compare.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 @Embeddable
 @DynamicSerialize
@@ -105,6 +104,10 @@ public class BroadcastContentsPK implements Serializable,
      */
     @Override
     public int compareTo(BroadcastContentsPK o) {
+        if (o == null) {
+            return 1;
+        }
+
         /*
          * Note: we want the most recent time to be first in the list.
          */
