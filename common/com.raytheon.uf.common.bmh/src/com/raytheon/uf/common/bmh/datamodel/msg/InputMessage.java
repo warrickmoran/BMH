@@ -102,6 +102,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    expiration times and removed mrd comparison.
  * Jul 29, 2015  4690     rjpeter     Added originalFile.
  * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
+ * Jul 29, 2016 5766      bkowal      Added {@link #cycles}.
  * </pre>
  * 
  * @author bsteffen
@@ -235,6 +236,10 @@ public class InputMessage {
     @Column(length = 8)
     @DynamicSerializeElement
     private String periodicity;
+    
+    @Column(nullable = true)
+    @DynamicSerializeElement
+    private Integer cycles;
 
     /**
      * This is an optional field containing three pieces of information. A
@@ -475,6 +480,14 @@ public class InputMessage {
 
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
+    }
+
+    public Integer getCycles() {
+        return cycles;
+    }
+
+    public void setCycles(Integer cycles) {
+        this.cycles = cycles;
     }
 
     public String getMrd() {
