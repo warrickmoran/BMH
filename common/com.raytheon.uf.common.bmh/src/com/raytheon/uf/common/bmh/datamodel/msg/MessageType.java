@@ -91,10 +91,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Jan 27, 2016  5160      rjpeter     Added {@link #GET_DEMO_AFOSIDS}.
  * May 09, 2016  5634      bkowal      Return an empty {@link Set} when there are not any
  *                                     {@link #sameTransmitters}.
+ * Jul 29, 2016 5766       bkowal      Added {@link #cycles}.
  * </pre>
  * 
  * @author rjpeter
- * @version 1.0
  */
 @NamedQueries({
         @NamedQuery(name = MessageType.GET_MESSAGETYPE_AFOSID_TITLE, query = MessageType.GET_MESSAGETYPE_AFOSID_TITLE_QUERY),
@@ -157,6 +157,12 @@ public class MessageType {
 
     public static final int AFOS_ID_LENGTH = 9;
 
+    public static final String DEFAULT_NO_PERIODICITY = "00000000";
+
+    public static final int MIN_PERIODICITY_CYCLES = 2;
+
+    public static final int MAX_PERIODICITY_CYLES = 100;
+
     // use surrogate key
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -204,6 +210,10 @@ public class MessageType {
     @Column(length = 8, nullable = false)
     @DynamicSerializeElement
     private String periodicity;
+
+    @Column(nullable = true)
+    @DynamicSerializeElement
+    private Integer cycles;
 
     @ManyToOne(optional = false)
     @JoinColumn(name = "voice")
@@ -379,6 +389,14 @@ public class MessageType {
 
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
+    }
+
+    public Integer getCycles() {
+        return cycles;
+    }
+
+    public void setCycles(Integer cycles) {
+        this.cycles = cycles;
     }
 
     public TtsVoice getVoice() {

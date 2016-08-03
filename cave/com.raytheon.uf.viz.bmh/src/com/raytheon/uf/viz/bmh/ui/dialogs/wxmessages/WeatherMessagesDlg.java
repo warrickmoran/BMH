@@ -83,6 +83,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.AreaSelectionSaveData;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.PeriodicitySelectionGroup;
 import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.SelectMessageTypeDlg;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.InputMessageSequence.SEQUENCE_DIRECTION;
 import com.raytheon.uf.viz.bmh.ui.dialogs.wxmessages.WxMessagesContent.CONTENT_TYPE;
@@ -186,6 +187,7 @@ import com.raytheon.viz.ui.widgets.DateTimeSpinner;
  * Jan 27, 2016 5160     rjpeter     Filter out DMO messages.
  * Apr 05, 2016 5504     bkowal      Updates for compatibility with {@link DateTimeFields}.
  * May 04, 2016 5602     bkowal      Use {@link DateTimeSpinner}.
+ * Jul 29, 2016 5766     bkowal      Updates to support periodic cycles.
  * </pre>
  * 
  * @author lvenable
@@ -236,11 +238,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
     /** Checkbox used to indicate that a message does not expire. */
     private Button noExpireChk;
 
-    /** Periodicity date/time field. */
-    private DateTimeFields periodicityDTF;
-
     /** List of SAME transmitters. */
     private SAMETransmitterSelector sameTransmitters;
+
+    /** Periodicity settings group. */
+    PeriodicitySelectionGroup psg;
 
     /** Interrupt check box. */
     private Button interruptChk;
@@ -807,22 +809,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         defaultsGrp.setText(" Defaults: ");
 
         // Periodicity
-        Label periodicityLbl = new Label(defaultsGrp, SWT.RIGHT);
-        periodicityLbl.setText("Periodicity\n(DDHHMMSS): ");
-        periodicityLbl.setLayoutData(gd);
-
-        Map<DateFieldType, Integer> periodicityMap = null;
-        String periodicityDateTimeStr = null;
-
+        psg = new PeriodicitySelectionGroup(defaultsGrp);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        psg.setLayoutData(gd);
         if (selectedMessageType != null) {
-            periodicityDateTimeStr = selectedMessageType.getPeriodicity();
+            psg.populate(selectedMessageType.getPeriodicity(),
+                    selectedMessageType.getCycles());
         }
-
-        periodicityMap = BmhUtils
-                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
-
-        periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
-                true);
 
         // Interrupt, Alert, Confirm
         int hIndent = 15;
@@ -1220,12 +1214,13 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
             userInputMessage.setExpirationTime(expirationDateTimeSpinner
                     .getSelection());
         }
-        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
-            this.userInputMessage.setPeriodicity(this.periodicityDTF
-                    .getFormattedValue());
+        if (!MessageType.DEFAULT_NO_PERIODICITY
+                .equals(psg.getPeriodicityTime())) {
+            this.userInputMessage.setPeriodicity(psg.getPeriodicityTime());
         } else {
             this.userInputMessage.setPeriodicity(null);
         }
+        userInputMessage.setCycles(psg.getPeriodicityCycles());
         // skip mrd
         this.userInputMessage.setActive(this.activeRdo.getSelection());
         this.userInputMessage.setConfirm(this.confirmChk.getSelection());
@@ -1332,12 +1327,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         this.areaSelectionBtn.setEnabled(true);
         this.contentsBtn.setEnabled(true);
 
-        String periodicityDateTimeStr = selectedMessageType.getPeriodicity();
-
-        Map<DateFieldType, Integer> periodicityMap = BmhUtils
-                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
-
-        periodicityDTF.setFieldValues(periodicityMap);
+        psg.populate(selectedMessageType.getPeriodicity(),
+                selectedMessageType.getCycles());
 
         interruptChk.setSelection(selectedMessageType.isInterrupt());
         sameTransmitters.setInterrupt(selectedMessageType.isInterrupt());
@@ -1456,10 +1447,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         activeRdo.setSelection(true);
         inactiveRdo.setSelection(false);
 
-        periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
-        periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
-        periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
-        periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
+        psg.populate(null, null);
     }
 
     /**
@@ -1591,22 +1579,9 @@ public class WeatherMessagesDlg extends AbstractBMHDialog implements
         String peridicityStr = userInputMessage.getPeriodicity();
         if ((peridicityStr == null) || (peridicityStr.length() == 0)
                 || (peridicityStr.length() != 8)) {
-            periodicityDTF.setFieldValue(DateFieldType.DAY, 0);
-            periodicityDTF.setFieldValue(DateFieldType.HOUR, 0);
-            periodicityDTF.setFieldValue(DateFieldType.MINUTE, 0);
-            periodicityDTF.setFieldValue(DateFieldType.SECOND, 0);
-        } else {
-            int[] periodicityValues = BmhUtils
-                    .splitDateTimeString(peridicityStr);
-            periodicityDTF.setFieldValue(DateFieldType.DAY,
-                    periodicityValues[0]);
-            periodicityDTF.setFieldValue(DateFieldType.HOUR,
-                    periodicityValues[1]);
-            periodicityDTF.setFieldValue(DateFieldType.MINUTE,
-                    periodicityValues[2]);
-            periodicityDTF.setFieldValue(DateFieldType.SECOND,
-                    periodicityValues[3]);
+            peridicityStr = null;
         }
+        psg.populate(peridicityStr, userInputMessage.getCycles());
 
         // handle message contents.
         WxMessagesContent msgContent = new WxMessagesContent(

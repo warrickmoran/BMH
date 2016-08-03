@@ -36,6 +36,7 @@ import javax.persistence.UniqueConstraint;
 import org.hibernate.annotations.ForeignKey;
 
 import com.raytheon.uf.common.bmh.datamodel.PositionOrdered;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageTypeSummary;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -52,10 +53,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * Mar 9, 2015  4213       bkowal      Initial creation
  * Apr 02, 2015 4248       rjpeter     Implement PositionOrdered
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 29, 2016 5766       bkowal      Added {@link #cycles}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 @NamedQueries({ @NamedQuery(name = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP, query = StaticMessageType.GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP_QUERY) })
 @Entity
@@ -70,8 +71,6 @@ public class StaticMessageType implements PositionOrdered {
     static final String GEN = "Transmitter Generator";
 
     public static final int MSG_LENGTH = 4096;
-
-    private static final String DEFAULT_NO_PERIODICITY = "00000000";
 
     public static final String GET_STATIC_MSG_BY_MSG_TYPE_AND_GROUP = "getStaticMsgTypeByMsgTypeAndGroup";
 
@@ -111,7 +110,11 @@ public class StaticMessageType implements PositionOrdered {
 
     @Column(nullable = false)
     @DynamicSerializeElement
-    private String periodicity = DEFAULT_NO_PERIODICITY;
+    private String periodicity = MessageType.DEFAULT_NO_PERIODICITY;
+
+    @Column(nullable = true)
+    @DynamicSerializeElement
+    private Integer cycles;
 
     /*
      * Position within its parent.
@@ -215,15 +218,23 @@ public class StaticMessageType implements PositionOrdered {
     public void setPeriodicity(String periodicity) {
         if ((periodicity == null)
                 || periodicity.trim().isEmpty()
-                || (periodicity.trim().length() != DEFAULT_NO_PERIODICITY
+                || (periodicity.trim().length() != MessageType.DEFAULT_NO_PERIODICITY
                         .length())) {
             /*
              * ensure that only valid and recognized values are provided for the
              * periodicity.
              */
-            periodicity = DEFAULT_NO_PERIODICITY;
+            periodicity = MessageType.DEFAULT_NO_PERIODICITY;
         }
         this.periodicity = periodicity.trim();
+    }
+
+    public Integer getCycles() {
+        return cycles;
+    }
+
+    public void setCycles(Integer cycles) {
+        this.cycles = cycles;
     }
 
     /*

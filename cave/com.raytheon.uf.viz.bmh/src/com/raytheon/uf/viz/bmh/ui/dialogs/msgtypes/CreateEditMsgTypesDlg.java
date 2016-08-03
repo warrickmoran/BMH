@@ -110,10 +110,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 05, 2016   5504     bkowal      Updates for compatibility with {@link DateTimeFields}.
  * May 09, 2016   5634     bkowal      Allow any Transmitter to be selected as a SAME Transmitter
  *                                     regardless of area selection.
+ * Jul 29, 2016   5766     bkowal      Updates to support periodic cycles.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
@@ -144,8 +144,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     /** Duration date/time fields. */
     private DateTimeFields durationDTF;
 
-    /** Periodicity date/time fields. */
-    private DateTimeFields periodicityDTF;
+    /** Periodicity settings group. */
+    private PeriodicitySelectionGroup psg;
 
     /** Alert check box. */
     private Button alertChk;
@@ -456,34 +456,22 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         durationLbl.setText("Duration (DDHHMMSS): ");
         durationLbl.setLayoutData(gd);
 
-        Map<DateFieldType, Integer> durMap = null;
         String durDateTimeStr = null;
-
         if (selectedMsgType != null) {
             durDateTimeStr = selectedMsgType.getDuration();
         }
-
-        durMap = BmhUtils.generateDayHourMinuteSecondMap(durDateTimeStr);
-
+        Map<DateFieldType, Integer> durMap = BmhUtils
+                .generateDayHourMinuteSecondMap(durDateTimeStr);
         durationDTF = new DateTimeFields(defaultsGroup, durMap, false, true);
 
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, true, true);
-        Label periodicityLbl = new Label(defaultsGroup, SWT.RIGHT);
-        periodicityLbl.setText("Periodicity (DDHHMMSS): ");
-        periodicityLbl.setLayoutData(gd);
-
-        Map<DateFieldType, Integer> periodicityMap = null;
-        String periodicityDateTimeStr = null;
-
+        psg = new PeriodicitySelectionGroup(defaultsGroup);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        psg.setLayoutData(gd);
         if (selectedMsgType != null) {
-            periodicityDateTimeStr = selectedMsgType.getPeriodicity();
+            psg.populate(selectedMsgType.getPeriodicity(),
+                    selectedMsgType.getCycles());
         }
-
-        periodicityMap = BmhUtils
-                .generateDayHourMinuteSecondMap(periodicityDateTimeStr);
-
-        periodicityDTF = new DateTimeFields(defaultsGroup, periodicityMap,
-                false, true);
 
         /*
          * Check box controls
@@ -797,7 +785,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             valid = false;
         }
 
-        String periodicity = this.periodicityDTF.getFormattedValue();
+        String periodicity = psg.getPeriodicityTime();
         if (periodicity.length() != 8) {
             msg.append("Periodicity is invalid\n");
             valid = false;
@@ -839,6 +827,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         selectedMsgType.setEmergencyOverride(eoChk.getSelection());
         selectedMsgType.setInterrupt(interruptChk.getSelection());
         selectedMsgType.setPeriodicity(periodicity);
+        selectedMsgType.setCycles(psg.getPeriodicityCycles());
         selectedMsgType.setTitle(msgTypeTitleTF.getText().trim());
         selectedMsgType
                 .setToneBlackoutEnabled(enableBlackoutChk.getSelection());
