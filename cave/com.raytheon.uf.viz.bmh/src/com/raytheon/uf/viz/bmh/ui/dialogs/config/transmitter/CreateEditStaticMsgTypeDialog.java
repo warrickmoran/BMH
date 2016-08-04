@@ -19,8 +19,6 @@
  **/
 package com.raytheon.uf.viz.bmh.ui.dialogs.config.transmitter;
 
-import java.util.Map;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -41,10 +39,9 @@ import com.raytheon.uf.common.bmh.datamodel.transmitter.StaticMessageType;
 import com.raytheon.uf.common.bmh.request.StaticMsgValidationResult;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
-import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.PeriodicitySelectionGroup;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 
 /**
@@ -66,10 +63,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 12, 2015 4482       rjpeter     Added DO_NOT_BLOCK.
  * Jul 06, 2015 4603       bkowal      Display a message dialog if message text fails validation.
  * Apr 05, 2016 5504       bkowal      Updates for compatibility with {@link DateTimeFields}.
+ * Aug 01, 2016 5766       bkowal      Updates to support periodic cycles.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
@@ -95,7 +92,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
 
     private StyledText txtMsg2Txt;
 
-    private DateTimeFields periodicityDTF;
+    private PeriodicitySelectionGroup psg;
 
     public CreateEditStaticMsgTypeDialog(Shell parentShell,
             StaticMessageType staticMessageType, final Language language) {
@@ -117,34 +114,16 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
         this.setText(CREATE_TITLE);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#constructShellLayout()
-     */
     @Override
     protected Layout constructShellLayout() {
         return new GridLayout(1, false);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#constructShellLayoutData()
-     */
     @Override
     protected Object constructShellLayoutData() {
         return new GridData(SWT.FILL, SWT.FILL, true, true);
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.raytheon.viz.ui.dialogs.CaveSWTDialogBase#initializeComponents(org
-     * .eclipse.swt.widgets.Shell)
-     */
     @Override
     protected void initializeComponents(Shell shell) {
         this.createAttributeFields(shell);
@@ -215,19 +194,12 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
         this.txtMsg2Txt.setWordWrap(true);
         this.txtMsg2Txt.setTextLimit(StaticMessageType.MSG_LENGTH);
 
-        gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
-        Label periodicityLabel = new Label(attributesComp, SWT.NONE);
-        periodicityLabel.setText("Periodicity (DDHHMMSS): ");
-        periodicityLabel.setLayoutData(gd);
-
-        Map<DateFieldType, Integer> periodicityMap = BmhUtils
-                .generateDayHourMinuteSecondMap(this.staticMessageType
-                        .getPeriodicity());
-        gd = new GridData(SWT.FILL, SWT.CENTER, false, false);
-        gd.verticalIndent = 5;
-        periodicityDTF = new DateTimeFields(attributesComp, periodicityMap,
-                false, true);
-        periodicityDTF.setLayoutData(gd);
+        psg = new PeriodicitySelectionGroup(attributesComp);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        psg.setLayoutData(gd);
+        psg.populate(staticMessageType.getPeriodicity(),
+                staticMessageType.getCycles());
     }
 
     private void createBottomButtons(final Shell shell) {
@@ -264,7 +236,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
     private void handleConfirmAction() {
         String msg1Text = null;
         String msg2Text = null;
-        String periodicity = this.periodicityDTF.getFormattedValue();
+        String periodicity = psg.getPeriodicityTime();
 
         // update the static message type that was being created or edited.
         msg1Text = this.txtMsg1Txt.getText().trim();
@@ -298,6 +270,7 @@ public class CreateEditStaticMsgTypeDialog extends CaveSWTDialog {
         this.staticMessageType.setTextMsg1(msg1Text);
         this.staticMessageType.setTextMsg2(msg2Text);
         this.staticMessageType.setPeriodicity(periodicity);
+        staticMessageType.setCycles(psg.getPeriodicityCycles());
 
         setReturnValue(this.staticMessageType);
 

@@ -53,7 +53,6 @@ import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageId;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessageMetadata;
-import com.raytheon.uf.common.bmh.datamodel.playlist.compatibility.VerifyConvertVersionUtil16_1_3;
 import com.raytheon.uf.common.bmh.notify.BroadcastMsgInitFailedNotification;
 import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
@@ -135,6 +134,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Apr 26, 2016 5561       bkowal       Publish a {@link BroadcastMsgInitFailedNotification} when
  *                                      a message cannot be refreshed.
  * Jul 06, 2016 5727       bkowal       No longer assume that a replaced message expires immediately.
+ * Aug 02, 2016 5766       bkowal       Eliminated message compatibility for previous versions.
  * </pre>
  * 
  * @author dgilling
@@ -513,31 +513,6 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             message = this.readMessage(id);
             DacPlaylistMessageMetadata messageMetadata = this
                     .readMessageMetadata(id);
-            /*
-             * There has been a message xml schema change from Version 16.1.3 to
-             * the current version. Need to verify that the metadata includes
-             * the expected content.
-             */
-            try {
-                VerifyConvertVersionUtil16_1_3.upsertMessageData(message,
-                        messageMetadata);
-            } catch (Exception e) {
-                logger.error("Failed to upconvert message: " + id.toString()
-                        + ".", e);
-                /*
-                 * The message is unusable at this point based on the changes
-                 * that this upconvert is meant to support. No start time, no
-                 * tone flags, no identifying message information. Is now a time
-                 * to send a request to EDEX to generate a new metadata file
-                 * based on the current schema? Presumably the message file
-                 * should remain usable because it has the play counts and the
-                 * tone played flags. This scenario is not seen as a common
-                 * occurence.
-                 */
-                cachedMessages.remove(id);
-                return null;
-            }
-
             messageMetadata.setLastReadTime(System.currentTimeMillis());
             message.setMetadata(messageMetadata);
 

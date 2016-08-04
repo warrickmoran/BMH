@@ -29,6 +29,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -50,6 +51,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                     would manage.
  * Mar 24, 2016  5515      bkowal      Added {@link #lastReadTime}.
  * Apr 26, 2016  5561      bkowal      Make {@link DynamicSerialize}able.
+ * Jul 29, 2016  5766      bkowal      Centralized the default/no periodicity constant.
  * 
  * </pre>
  * 
@@ -60,11 +62,6 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
-
-    /*
-     * indicates a message does not have a set periodicity.
-     */
-    private static final String NO_PERIODICTY = "00000000";
 
     @XmlElement
     @DynamicSerializeElement
@@ -215,8 +212,9 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     }
 
     public boolean isPeriodic() {
-        return periodicity != null && !periodicity.isEmpty()
-                && NO_PERIODICTY.equals(periodicity) == false;
+        return periodicity != null
+                && !periodicity.isEmpty()
+                && MessageType.DEFAULT_NO_PERIODICITY.equals(periodicity) == false;
     }
 
     public long getPlaybackInterval() {
