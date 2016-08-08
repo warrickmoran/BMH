@@ -66,6 +66,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Sep 24, 2015  4924     bkowal      Added {@link #getValidationNotificationCategory(TransmissionStatus)}.
  * Nov 16, 2015  5127     rjpeter     Renamed BMHRejectionDataManager to FileManager.
  * Feb 04, 2016  5308     rjpeter     Removed duplicate handling.
+ * Aug 04, 2016  5766     bkowal      Handle initialization of the cycles field on a validated message.
  * </pre>
  * 
  * @author bsteffen
@@ -121,6 +122,7 @@ public class InputMessageValidator {
         if (unacceptableWords.isEmpty()) {
             transmissionCheck.validate(valid);
             ldadCheck.validate(valid);
+            MessageType mt = this.messageTypeDao.getByAfosId(input.getAfosid());
             if (!valid.isAccepted()) {
                 statusHandler
                         .error(this.getValidationNotificationCategory(valid
@@ -138,8 +140,6 @@ public class InputMessageValidator {
                     /*
                      * is the message a watch or warning?
                      */
-                    MessageType mt = this.messageTypeDao.getByAfosId(input
-                            .getAfosid());
                     if ((mt != null)
                             && ((mt.getDesignation() == Designation.Watch) || (mt
                                     .getDesignation() == Designation.Warning))) {
@@ -169,6 +169,26 @@ public class InputMessageValidator {
                                             + "Failed to send notification: "
                                             + notification.toString() + ".", e);
                         }
+                    }
+                }
+            } else {
+                /*
+                 * At this point, the message is considered valid. So, the next
+                 * step is to determine if the cycle-based periodicity needs to
+                 * be updated because we now know the Message Type that is
+                 * associated with the afos id.
+                 */
+                if (mt != null && mt.getCycles() != null) {
+                    /*
+                     * Time-based periodicity overrides cycle-based periodicity.
+                     * So, only set the cycle-based periodicity on the Input
+                     * Message if the time-based periodicity is unset.
+                     */
+                    if (input.getPeriodicity() == null
+                            || MessageType.DEFAULT_NO_PERIODICITY.equals(input
+                                    .getPeriodicity())) {
+                        input.setCycles(mt.getCycles());
+                        inputMessageDao.saveOrUpdate(input);
                     }
                 }
             }

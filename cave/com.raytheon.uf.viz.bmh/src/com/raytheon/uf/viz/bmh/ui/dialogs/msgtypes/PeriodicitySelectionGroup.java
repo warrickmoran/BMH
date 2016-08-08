@@ -47,6 +47,7 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2016 5766       bkowal      Initial creation
+ * Aug 04, 2016 5766       bkowal      Added {@link #noPeriodicity(String)}.
  * 
  * </pre>
  * 
@@ -127,9 +128,19 @@ public class PeriodicitySelectionGroup {
         int selectedCycles = (cycles == null) ? MessageType.MIN_PERIODICITY_CYCLES
                 : cycles;
         periodicityCycleSpinner.setSelection(selectedCycles);
-        periodicityTimeBtn.setSelection(cycles == null);
-        periodicityCycleBtn.setSelection(cycles != null);
+        periodicityCycleBtn.setSelection(cycles != null
+                && noPeriodicity(periodicity));
+        /*
+         * time-based periodicity should be the default when cycle-based
+         * periodicity is not applicable.
+         */
+        periodicityTimeBtn.setSelection(!periodicityCycleBtn.getSelection());
         handlePeriodicityTypeChange();
+    }
+
+    private boolean noPeriodicity(final String periodicity) {
+        return (periodicity == null)
+                || (MessageType.DEFAULT_NO_PERIODICITY.equals(periodicity));
     }
 
     private void handlePeriodicityTypeChange() {

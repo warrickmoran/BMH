@@ -135,6 +135,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      a message cannot be refreshed.
  * Jul 06, 2016 5727       bkowal       No longer assume that a replaced message expires immediately.
  * Aug 02, 2016 5766       bkowal       Eliminated message compatibility for previous versions.
+ * Aug 04, 2016 5766       bkowal       Ensure periodicity cycles are set when retrieving a message.
  * </pre>
  * 
  * @author dgilling
@@ -337,6 +338,26 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 }
             }
             updatedMetadata.setLastReadTime(System.currentTimeMillis());
+            if (originalMetadata.getCycles() == null
+                    && updatedMetadata.getCycles() != null) {
+                /*
+                 * If a message was previously not a cycle-based periodic
+                 * message and it is now a cycle-based periodic message, ensure
+                 * that it will be correctly handled as a cycle-based periodic
+                 * message. Presently, if the number of cycles has been altered,
+                 * the message will be allowed to broadcast based on the
+                 * original schedule and it will transition into the new
+                 * schedule.
+                 */
+                dacMessage.setRemainingCycles(updatedMetadata.getCycles());
+            } else if (originalMetadata.getCycles() != null
+                    && updatedMetadata.getCycles() == null) {
+                /*
+                 * Not truly necessary. But, there is no reason to maintain
+                 * non-applicable fields.
+                 */
+                dacMessage.setRemainingCycles(null);
+            }
             dacMessage.setMetadata(updatedMetadata);
             dacMessage.setTimestamp(message.getTimestamp());
 
@@ -515,6 +536,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                     .readMessageMetadata(id);
             messageMetadata.setLastReadTime(System.currentTimeMillis());
             message.setMetadata(messageMetadata);
+            if (messageMetadata.getCycles() != null) {
+                message.setRemainingCycles(messageMetadata.getCycles());
+            }
 
             cachedMessages.put(id, message);
             message.setExpire(id.getExpire());
@@ -774,13 +798,6 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                 + this.timezone.getID());
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see com.raytheon.bmh.dactransmit.playlist.IAudioJobListener#
-     * audioRetrievalFinished(java.lang.String,
-     * com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage)
-     */
     @Override
     public void audioRetrievalFinished(String taskId,
             DacPlaylistMessage message, IAudioFileBuffer buffer) {

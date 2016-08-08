@@ -113,6 +113,7 @@ import com.raytheon.uf.edex.core.EdexException;
  * Sep 30, 2015  4938      bkowal      Validate that the afos id meets the minimum length
  *                                     requirements when the same tone flag is set.
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
+ * Aug 04, 2016  5766      bkowal      Ensure that cycle-based periodicty updates are persisted.
  * </pre>
  * 
  * @author bkowal
@@ -525,8 +526,11 @@ public class NewBroadcastMsgHandler extends
         // The expiration date/time can be modified.
         previous.setExpirationTime(inputMessage.getExpirationTime());
 
-        // The periodicity can be modified.
+        // The time-based periodicity can be modified.
         previous.setPeriodicity(inputMessage.getPeriodicity());
+
+        // The cycle-based periodicity can be modified.
+        previous.setCycles(inputMessage.getCycles());
 
         // The message can be activated or deactivated.
         previous.setActive(inputMessage.getActive());

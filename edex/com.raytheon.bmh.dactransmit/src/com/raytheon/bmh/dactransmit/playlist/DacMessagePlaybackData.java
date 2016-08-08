@@ -27,17 +27,12 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Calendar;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.ReentrantLock;
-
-import javax.xml.bind.JAXB;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.bmh.dactransmit.dacsession.DataTransmitConstants;
 import com.raytheon.uf.common.bmh.dac.dacsession.DacSessionConstants;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
-import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
 import com.raytheon.uf.common.bmh.notify.MessagePlaybackStatusNotification;
 import com.raytheon.uf.common.time.util.TimeUtil;
 
@@ -72,11 +67,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 04, 2015  #4452     bkowal       Added {@link #requiresToneTruncationNotification()}.
  * May 22, 2015  #4481     bkowal       Added {@link #dynamicAudio}.
  * Mar 01, 2016  #5382     bkowal       Added {@link #positionFileExpired(Path, AtomicReference)}.
+ * Aug 04, 2016  #5766     bkowal       Utilize {@link UpdatePlaylistMsgTask}.
  * 
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class DacMessagePlaybackData {
@@ -237,52 +232,8 @@ public final class DacMessagePlaybackData {
         return playbackStatus;
     }
 
-    /**
-     * Called when the message is no longer played to persist the current state
-     * and remove the position tracking file.
-     */
-    public void endPlayback() {
-        if (positionStream != null) {
-            try {
-                positionStream.close();
-            } catch (IOException e) {
-                logger.error("Unable to close position file.", e);
-            }
-            try {
-                Files.delete(message.getPositionPath());
-            } catch (IOException e) {
-                logger.error("Unable to delete position file.", e);
-            }
-        }
-        Path msgPath = message.getPath();
-        ReentrantLock fileLock = null;
-        try {
-            fileLock = InMemoryFileLockManager.getInstance()
-                    .requestResourceLock(msgPath, 1000L);
-            if (fileLock == null) {
-                logger.error("Unable to write updated message file: "
-                        + msgPath.toString() + ". Failed to lock the file.");
-                return;
-            }
-            JAXB.marshal(message, msgPath.toFile());
-        } catch (Throwable e) {
-            logger.error("Unable to persist message state.", e);
-        } finally {
-            if (fileLock != null) {
-                fileLock.unlock();
-            }
-        }
-    }
-
-    public Runnable getEndPlayBackTask() {
-        return new Runnable() {
-
-            @Override
-            public void run() {
-                endPlayback();
-            }
-
-        };
+    public EndPlaybackTask getEndPlayBackTask() {
+        return new EndPlaybackTask();
     }
 
     /**
@@ -417,5 +368,29 @@ public final class DacMessagePlaybackData {
     public boolean requiresToneTruncationNotification() {
         return this.message.getPlayCount() == 0
                 && this.audio.toneTruncationRequired();
+    }
+
+    protected class EndPlaybackTask extends UpdatePlaylistMsgTask {
+
+        public EndPlaybackTask() {
+            super(message);
+        }
+
+        @Override
+        public void run() {
+            if (positionStream != null) {
+                try {
+                    positionStream.close();
+                } catch (IOException e) {
+                    logger.error("Unable to close position file.", e);
+                }
+                try {
+                    Files.delete(messageToWrite.getPositionPath());
+                } catch (IOException e) {
+                    logger.error("Unable to delete position file.", e);
+                }
+            }
+            writePlaylistMsgState(messageToWrite);
+        }
     }
 }

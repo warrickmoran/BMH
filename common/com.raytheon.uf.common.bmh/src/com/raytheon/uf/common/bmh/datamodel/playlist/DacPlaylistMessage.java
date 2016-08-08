@@ -61,7 +61,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Jan 14, 2014  3969     bkowal      Added {@link #warning}, {@link #watch},
  *                                    {@link #messageBroadcastNotificationSent},
  *                                    and {@link #requiresExpirationNoPlaybackNotification()}.
- * Feb 03, 2015  4081     bkowal      Fix {@link #isPeriodic()}. Removed unused isStatic field.
+ * Feb 03, 2015  4081     bkowal      Fix {@link #isTimePeriodic()}. Removed unused isStatic field.
  * Mar 05, 2015  4222     bkowal      Handle messages that never expire.
  * Mar 13, 2015  4222     bkowal      Prevent NPE for messages that do not expire.
  * Mar 25, 2015  4290     bsteffen    Switch to global replacement.
@@ -73,11 +73,12 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Feb 04, 2016  5308     bkowal      Refactored into {@link DacPlaylistMessageMetadata}.
  * Mar 08, 2016  5382     bkowal      Updated to only include information that the Dac Transmit
  *                                    would manage.
+ * Aug 04, 2016  5766     bkowal      Keep track of the {@link #remainingCycles}. Added {@link #isTimePeriodic()}
+ *                                    and {@link #isCyclePeriodic()}.
  * 
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 @XmlRootElement(name = "bmhMessage")
 @XmlAccessorType(XmlAccessType.NONE)
@@ -95,6 +96,18 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
     @XmlElement
     private boolean playedAlertTone;
+
+    /**
+     * When cycle-based periodicity is in use, this quantity will keep track of
+     * the remaining cycles that must be completed until this message can be
+     * broadcast. The quantity will initially be set to the number of cycles
+     * associated with the message. Every cycle, the quantity will be
+     * decremented by 1. When the quantity reaches 0, the message will be
+     * broadcast and the quantity will be reset to the number of cycles
+     * associated with the message.
+     */
+    @XmlElement
+    private Integer remainingCycles;
 
     /**
      * boolean flag used to mark when a {@link MessageBroadcastNotifcation} is
@@ -120,11 +133,6 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see java.lang.Object#toString()
-     */
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
@@ -171,6 +179,14 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
     public void setPlayedAlertTone(boolean playedAlertTone) {
         this.playedAlertTone = playedAlertTone;
+    }
+
+    public Integer getRemainingCycles() {
+        return remainingCycles;
+    }
+
+    public void setRemainingCycles(Integer remainingCycles) {
+        this.remainingCycles = remainingCycles;
     }
 
     /**
@@ -339,7 +355,17 @@ public class DacPlaylistMessage extends DacPlaylistMessageId implements
 
     @Override
     public boolean isPeriodic() {
-        return this.metadata.isPeriodic();
+        return (isTimePeriodic() || isCyclePeriodic());
+    }
+
+    @Override
+    public boolean isTimePeriodic() {
+        return this.metadata.isTimePeriodic();
+    }
+
+    @Override
+    public boolean isCyclePeriodic() {
+        return metadata.isCyclePeriodic();
     }
 
     @Override

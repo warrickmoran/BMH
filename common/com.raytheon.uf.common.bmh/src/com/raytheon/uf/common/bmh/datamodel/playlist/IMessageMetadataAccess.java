@@ -32,6 +32,7 @@ import java.util.List;
  * ------------ ---------- ----------- --------------------------
  * Feb 03, 2016 5308       bkowal      Initial creation
  * Mar 08, 2016 5382       bkowal      Added additional EDEX BMH-specific fields.
+ * Aug 04, 2016 5766       bkowal      Added {@link #isTimePeriodic()} and {@link #isCyclePeriodic()}.
  * 
  * </pre>
  * 
@@ -52,6 +53,10 @@ public interface IMessageMetadataAccess {
     public boolean isSAMETones();
 
     public boolean isPeriodic();
+
+    public boolean isTimePeriodic();
+
+    public boolean isCyclePeriodic();
 
     /**
      * If this message has a valid "periodicity" setting, this method calculates

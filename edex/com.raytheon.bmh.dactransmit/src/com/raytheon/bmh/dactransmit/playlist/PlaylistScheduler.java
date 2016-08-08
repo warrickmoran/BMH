@@ -167,10 +167,12 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      playlist when refreshing time-sensitive audio.
  * Aug 02, 2016  5768      bkowal       Allow resuming interrupted messages after an interrupt when
  *                                      the broadcast returns to the interrupted suite.
+ * Aug 04, 2016  5766      bkowal       Handle scheduling and prediction of cycle-based periodic
+ *                                      messages. Next playback of time-based periodic messages now
+ *                                      based on the effective time.
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class PlaylistScheduler implements
@@ -1196,15 +1198,14 @@ public final class PlaylistScheduler implements
         }
         /* Contains messages that should be scheduled periodically. */
         SortedMap<Long, DacPlaylistMessageId> periodicMessages = new TreeMap<>();
+        List<DacPlaylistMessageId> cycleMessages = new ArrayList<>();
         /*
          * Contains messages that should be scheduled in order(including
          * periodic messages playing for the first time or forced periodic
          * message).
          */
         List<DacPlaylistMessageId> unperiodicMessages = new ArrayList<>();
-        /*
-         * 
-         */
+
         final boolean checkAllForDelay = this.delayInterrupts
                 && (this.type == BROADCASTTYPE.BL);
         for (DacPlaylistMessageId id : playlistMessages) {
@@ -1228,26 +1229,89 @@ public final class PlaylistScheduler implements
             }
             if (!past.contains(id)) {
                 DacPlaylistMessage messageData = cache.getMessage(id);
-                if (messageData != null && messageData.isPeriodic()
-                        && (messageData.getPlayCount() > 0)
-                        && !forceSchedulePeriodic) {
+                if (messageData != null && (messageData.getPlayCount() > 0)
+                        && !forceSchedulePeriodic && messageData.isPeriodic()) {
+                    final long currentTime = System.currentTimeMillis();
+                    long firstTransmitMillis = System.currentTimeMillis();
                     long lastTransmitMillis = System.currentTimeMillis();
-                    if (messageData.getLastTransmitTime() != null) {
-                        lastTransmitMillis = messageData.getLastTransmitTime()
-                                .getTimeInMillis();
+                    if (messageData.isTimePeriodic()) {
+                        /*
+                         * Note: there should never be a case in which either of
+                         * these (metadata or start) are null.
+                         */
+                        if (messageData.getMetadata() != null
+                                && messageData.getMetadata().getStart() != null) {
+                            firstTransmitMillis = messageData.getMetadata()
+                                    .getStart().getTimeInMillis();
+                            logger.info("Playback interval is: {}",
+                                    messageData.getPlaybackInterval());
+                        }
+                        if (messageData.getLastTransmitTime() != null) {
+                            lastTransmitMillis = messageData
+                                    .getLastTransmitTime().getTimeInMillis();
+                        }
+
+                        /*
+                         * First, the expected broadcast cycle must be
+                         * calculated. This may not match the actual broadcast
+                         * cycle (play count) due to potential downtime or
+                         * playlist switches.
+                         */
+                        final long expectedCycle = (currentTime - firstTransmitMillis)
+                                / messageData.getPlaybackInterval();
+                        long nextBroadcastTime = ((expectedCycle * messageData
+                                .getPlaybackInterval()) + firstTransmitMillis);
+                        if (nextBroadcastTime < currentTime
+                                && lastTransmitMillis >= nextBroadcastTime) {
+                            /*
+                             * Since the goal is to calculate the next broadcast
+                             * time, add a cycle if the calculated time is less
+                             * than the current time.
+                             */
+                            nextBroadcastTime += messageData
+                                    .getPlaybackInterval();
+                        }
+                        while (periodicMessages.containsKey(nextBroadcastTime)) {
+                            nextBroadcastTime += 1;
+                        }
+                        periodicMessages.put(nextBroadcastTime, id);
                     }
-                    /*
-                     * Playback interval is based on periodicity which must be
-                     * non-null to reach this point. So, there is no need to
-                     * verify that it has been set as has been done with the
-                     * last transmit time.
-                     */
-                    long nextPlayTime = lastTransmitMillis
-                            + messageData.getPlaybackInterval();
-                    while (periodicMessages.containsKey(nextPlayTime)) {
-                        nextPlayTime += 1;
+                    if (messageData.isCyclePeriodic()) {
+                        if (update) {
+                            /*
+                             * Do not alter the number of remaining cycles if
+                             * this check has only been triggered by an update
+                             * to the existing playlist. But, add the message as
+                             * a potential future message so that it still shows
+                             * up within the "Periodic Messages" dialog.
+                             */
+                            cycleMessages.add(id);
+                        } else {
+                            int remainingCycles = messageData
+                                    .getRemainingCycles();
+                            --remainingCycles;
+                            if (remainingCycles == 0) {
+                                /*
+                                 * Reset the count.
+                                 */
+                                messageData.setRemainingCycles(messageData
+                                        .getMetadata().getCycles());
+                                unperiodicMessages.add(id);
+                            } else {
+                                messageData.setRemainingCycles(remainingCycles);
+                                cycleMessages.add(id);
+                            }
+                            /*
+                             * Write the updated remaining cycle count to the
+                             * XML file. This is only to ensure that if this
+                             * particular Dac Transmit is ever temporarily
+                             * shutdown, an accurate count of the next broadcast
+                             * cycle for this particular message is maintained.
+                             */
+                            executorService.submit(new UpdatePlaylistMsgTask(
+                                    messageData));
+                        }
                     }
-                    periodicMessages.put(nextPlayTime, id);
                 } else {
                     unperiodicMessages.add(id);
                 }
@@ -1360,9 +1424,32 @@ public final class PlaylistScheduler implements
         PlaylistNotification notification = new PlaylistNotification(
                 playlist.getSuite(), playlist.getTransmitterGroup(),
                 predictions, cycleTime);
+        if (!cycleMessages.isEmpty()) {
+            for (DacPlaylistMessageId id : cycleMessages) {
+                DacPlaylistMessage messageData = cache.getMessage(id);
+                if (messageData != null) {
+                    long lastTransmitMillis = System.currentTimeMillis();
+
+                    /*
+                     * The next broadcast time of the cycle-based periodic
+                     * messages will be based on the product of the total
+                     * duration of the playlist and the remaining number of
+                     * cycles that need to finish before the broadcast.
+                     */
+                    final int remainingCycles = messageData
+                            .getRemainingCycles();
+                    long nextPlayTime = lastTransmitMillis
+                            + (remainingCycles * cycleTime);
+                    while (periodicMessages.containsKey(nextPlayTime)) {
+                        nextPlayTime += 1;
+                    }
+                    periodicMessages.put(nextPlayTime, id);
+                }
+            }
+        }
         if (!periodicMessages.isEmpty()) {
             List<MessagePlaybackPrediction> periodicPredictions = new ArrayList<>(
-                    periodicMessages.size());
+                    periodicMessages.size() + cycleMessages.size());
             for (Entry<Long, DacPlaylistMessageId> entry : periodicMessages
                     .entrySet()) {
                 DacPlaylistMessage messageData = cache.getMessage(entry
@@ -1371,8 +1458,8 @@ public final class PlaylistScheduler implements
                     periodicPredictions.add(new MessagePlaybackPrediction(entry
                             .getKey(), messageData));
                 }
+                notification.setPeriodicMessages(periodicPredictions);
             }
-            notification.setPeriodicMessages(periodicPredictions);
         }
         eventBus.post(notification);
         currentMessages = predictedMessages;
