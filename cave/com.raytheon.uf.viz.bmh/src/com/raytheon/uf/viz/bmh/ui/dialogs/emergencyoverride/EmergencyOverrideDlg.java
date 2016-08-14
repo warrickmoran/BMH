@@ -117,6 +117,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
  * Apr 11, 2016  5504      bkowal      Adjust size of image-based EO buttons.
+ * Aug 04, 2016  5766      bkowal      Set cycles on the {@link InputMessage} that is constructed.
  * </pre>
  * 
  * @author lvenable
@@ -795,6 +796,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         inputMsg.setCreationTime(TimeUtil.newGmtCalendar());
         inputMsg.setEffectiveTime(settingsBuilder.getEffectiveTime());
         inputMsg.setPeriodicity(messageType.getPeriodicity());
+        inputMsg.setCycles(messageType.getCycles());
         // no default mrd
         inputMsg.setActive(true);
         // default confirm to FALSE to prevent NPE

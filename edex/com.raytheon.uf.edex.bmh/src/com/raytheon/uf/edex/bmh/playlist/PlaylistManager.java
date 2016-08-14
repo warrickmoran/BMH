@@ -215,6 +215,8 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    a message that was previously archived is updated.
  * Jul 01, 2016  5727     bkowal      The replaced message (when applicable) is now required to
  *                                    determine the {@link DacTriggerSpan}s.
+ * Aug 04, 2016  5766     bkowal      Handle the scheduling and prediction of cycle-based
+ *                                    periodic messages.
  * </pre>
  * 
  * @author bsteffen
@@ -1081,8 +1083,15 @@ public class PlaylistManager implements IContextStateProcessor {
                             .setWarning(messageType.getDesignation() == Designation.Warning);
                 }
                 dacMetadata.setMessageType(afosid);
-                dacMetadata.setPeriodicity(broadcast.getInputMessage()
-                        .getPeriodicity());
+                final String periodicity = broadcast.getInputMessage()
+                        .getPeriodicity();
+                dacMetadata.setPeriodicity(periodicity);
+                if (periodicity == null
+                        || MessageType.DEFAULT_NO_PERIODICITY
+                                .equals(periodicity)) {
+                    dacMetadata.setCycles(broadcast.getInputMessage()
+                            .getCycles());
+                }
                 dacMetadata.setMessageText(broadcast.getInputMessage()
                         .getContent());
 

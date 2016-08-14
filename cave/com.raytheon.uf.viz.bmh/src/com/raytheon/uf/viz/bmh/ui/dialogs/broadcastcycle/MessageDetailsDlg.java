@@ -90,10 +90,11 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jan 27, 2016    5160     rjpeter    Added MRD and fixed Time Zone.
  * Jan 28, 2016    5300     rjpeter    Fixed transmitters to be based on broadcast messages.
  * Mar 10, 2016    5465     tgurney    Add missing dialog trim style
+ * Aug 04, 2016    5766     bkowal     Alternate between displaying cycle-based periodicity
+ *                                     and time-based periodicity.
  * </pre>
  * 
  * @author mpduff
- * @version 1.0
  */
 
 public class MessageDetailsDlg extends CaveSWTDialog {
@@ -250,14 +251,23 @@ public class MessageDetailsDlg extends CaveSWTDialog {
         mrdValueLbl.setText(mrd);
         mrdValueLbl.setLayoutData(gd);
 
+        InputMessage im = broadcastMsg.getInputMessage();
         gd = new GridData(SWT.RIGHT, SWT.CENTER, false, false);
         Label periodicityLbl = new Label(comp, SWT.NONE);
-        periodicityLbl.setText("Periodicity\n(DD:HH:MM:SS): ");
+        final boolean cyclesPresent = im.getCycles() != null
+                && (im.getPeriodicity() == null || MessageType.DEFAULT_NO_PERIODICITY
+                        .equals(im.getPeriodicity()));
+        if (cyclesPresent) {
+            periodicityLbl.setText("Periodicity\n(Cycle): ");
+        } else {
+            periodicityLbl.setText("Periodicity\n(DD:HH:MM:SS): ");
+        }
         periodicityLbl.setLayoutData(gd);
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         Label periodicityValueLbl = new Label(comp, SWT.NONE);
-        String periodicity = getPeriodicity();
+        String periodicity = (cyclesPresent) ? Integer.toString(im.getCycles())
+                : getPeriodicity();
 
         periodicityValueLbl.setText(periodicity);
         periodicityValueLbl.setLayoutData(gd);

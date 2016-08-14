@@ -21,6 +21,7 @@ package com.raytheon.uf.edex.bmh.msg.validator;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
@@ -40,7 +41,6 @@ import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.common.util.FileUtil;
 import com.raytheon.uf.edex.bmh.BMHFileProcessException;
 import com.raytheon.uf.edex.bmh.FileManager;
 import com.raytheon.uf.edex.bmh.dao.MessageTypeDao;
@@ -85,10 +85,10 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  * Sep 30, 2015  4938     bkowal      Validate that the afos id meets the minimum length
  *                                    requirements when the same tone flag is set.
  * Nov 16, 2015  5127     rjpeter     Added logging of headers and archiving of original file.
+ * Aug 04, 2016  5766     bkowal      Eliminate deprecated use of FileUtil.
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class InputMessageParser {
 
@@ -144,8 +144,9 @@ public class InputMessageParser {
         this.archiveFileManager = archiveFileManager;
     }
 
-    public InputMessage parse(@Body File file,
-            @Headers Map<String, Object> headers) {
+    public InputMessage parse(@Body
+    File file, @Headers
+    Map<String, Object> headers) {
         InputMessage message = new InputMessage();
 
         String fileName = headers.get("CamelFileNameOnly").toString();
@@ -156,7 +157,7 @@ public class InputMessageParser {
         messageLogger.logParseActivity(message);
 
         try {
-            CharSequence text = FileUtil.file2String(file);
+            CharSequence text = new String(Files.readAllBytes(file.toPath()));
             int index = findStart(text);
             Matcher header = headerPattern.matcher(text);
             header.region(index, text.length());
