@@ -57,10 +57,10 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * ------------ ---------- ----------- --------------------------
  * Apr 2, 2015  4293       bkowal      Initial creation
  * May 12, 2015 4248       rjpeter     Remove bmh schema, standardize foreign/unique keys.
+ * Jul 28, 2016 5722       rjpeter     Serialized id, handled null in compare.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 @Entity
 @DynamicSerialize
@@ -68,6 +68,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 public class BroadcastContents implements Comparable<BroadcastContents> {
 
     @EmbeddedId
+    @DynamicSerializeElement
     private BroadcastContentsPK id;
 
     @OneToMany(mappedBy = "contents", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
@@ -182,6 +183,13 @@ public class BroadcastContents implements Comparable<BroadcastContents> {
      */
     @Override
     public int compareTo(BroadcastContents o) {
+        if (this.id == null) {
+            if (o.id == null) {
+                return 0;
+            } else {
+                return -1;
+            }
+        }
         return this.id.compareTo(o.getId());
     }
 }
