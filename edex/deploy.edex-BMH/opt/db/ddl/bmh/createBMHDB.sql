@@ -23,8 +23,10 @@ DROP TABLESPACE IF EXISTS bmh;
 CREATE TABLESPACE bmh owner awipsadmin location '/awips2/data/bmh';
 CREATE DATABASE bmh OWNER awipsadmin TABLESPACE bmh;
 
+\connect bmh
+
 BEGIN TRANSACTION;
-GRANT CONNECT ON DATABASE metadata TO awips;
+GRANT CONNECT, TEMPORARY ON DATABASE bmh TO awips;
 
 GRANT USAGE ON SCHEMA public to awips; -- Don't grant create
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER, TRUNCATE ON TABLES TO awips; -- Don't grant references
