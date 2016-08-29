@@ -35,6 +35,7 @@ import java.util.List;
  * Aug 01, 2014   #3479    lvenable    Added additional capability.
  * Aug 06, 2014   #3490    lvenable    Added a method to delete all of the data.
  * Aug 15, 2014   #3490    lvenable    Added ability to replace a row of data.
+ * Jul 25, 2016   #5767    bkowal      Added {@link #isEmpty()}.
  * 
  * </pre>
  */
@@ -167,6 +168,17 @@ public class TableData implements ISortColumn {
      */
     public List<TableRowData> getTableRows() {
         return tableRows;
+    }
+
+    /**
+     * Returns {@code true} if this {@link TableData} does not contain any
+     * {@link TableRowData}s.
+     * 
+     * @return true, if there is not any {@link TableRowData}s; false,
+     *         othwerise.
+     */
+    public boolean isEmpty() {
+        return getTableRowCount() <= 0;
     }
 
     /**

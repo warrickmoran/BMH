@@ -29,6 +29,7 @@ import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -50,21 +51,17 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                     would manage.
  * Mar 24, 2016  5515      bkowal      Added {@link #lastReadTime}.
  * Apr 26, 2016  5561      bkowal      Make {@link DynamicSerialize}able.
+ * Jul 29, 2016  5766      bkowal      Centralized the default/no periodicity constant.
+ * Aug 04, 2016  5766      bkowal      Added {@link #cycles}.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 @XmlRootElement(name = "bmhMessageMetadata")
 @XmlAccessorType(XmlAccessType.NONE)
 @DynamicSerialize
 public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
-
-    /*
-     * indicates a message does not have a set periodicity.
-     */
-    private static final String NO_PERIODICTY = "00000000";
 
     @XmlElement
     @DynamicSerializeElement
@@ -102,6 +99,10 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
     @XmlElement
     @DynamicSerializeElement
     private String periodicity;
+
+    @XmlElement
+    @DynamicSerializeElement
+    private Integer cycles;
 
     @XmlElement(name = "soundFile")
     @DynamicSerializeElement
@@ -214,13 +215,18 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
         return true;
     }
 
-    public boolean isPeriodic() {
-        return periodicity != null && !periodicity.isEmpty()
-                && NO_PERIODICTY.equals(periodicity) == false;
+    public boolean isTimePeriodic() {
+        return periodicity != null
+                && !periodicity.isEmpty()
+                && MessageType.DEFAULT_NO_PERIODICITY.equals(periodicity) == false;
+    }
+
+    public boolean isCyclePeriodic() {
+        return !isTimePeriodic() && cycles != null;
     }
 
     public long getPlaybackInterval() {
-        if (isPeriodic()) {
+        if (isTimePeriodic()) {
             int days = Integer.parseInt(periodicity.substring(0, 2));
             int hours = Integer.parseInt(periodicity.substring(2, 4));
             int minutes = Integer.parseInt(periodicity.substring(4, 6));
@@ -312,6 +318,14 @@ public class DacPlaylistMessageMetadata extends DacPlaylistMessageId {
      */
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
+    }
+
+    public Integer getCycles() {
+        return cycles;
+    }
+
+    public void setCycles(Integer cycles) {
+        this.cycles = cycles;
     }
 
     public List<String> getSoundFiles() {

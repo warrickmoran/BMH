@@ -38,6 +38,7 @@ import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.viz.bmh.ui.common.table.GenericTable;
+import com.raytheon.uf.viz.bmh.ui.common.table.ITableActionCB;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
@@ -61,10 +62,11 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 10, 2016    5465    tgurney     Add missing trim button style
  * Apr 05, 2016    5504    bkowal      Fix GUI sizing issues.
  * May 13, 2016    5465    tgurney     Add minimize button in trim
+ * Jul 25, 2016    5767    bkowal      Utilize {@link VizBroadcastCycleMessageExpirationUtil}
+ *                                     and support message expiration.
  * </pre>
  * 
  * @author mpduff
- * @version 1.0
  */
 
 public class PeriodicMessagesDlg extends CaveSWTDialog {
@@ -79,6 +81,8 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
     private final Map<Long, MessageDetailsDlg> detailsMap = new HashMap<>();
 
     private Button detailsBtn;
+
+    private Button expireBtn;
 
     private final String selectedTransmitterGrp;
 
@@ -132,11 +136,15 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
             tableData = playlistData
                     .getPeriodicTableData(selectedTransmitterGrp);
             tableComp.populateTable(tableData);
-            if (tableData.getTableRowCount() > 0) {
-                detailsBtn.setEnabled(true);
-            } else {
-                detailsBtn.setEnabled(false);
-            }
+            tableComp.setCallbackAction(new ITableActionCB() {
+                @Override
+                public void tableSelectionChange(int selectionCount) {
+                    boolean enabled = (selectionCount == 1);
+
+                    detailsBtn.setEnabled(enabled);
+                    expireBtn.setEnabled(enabled);
+                }
+            });
         } catch (Exception e) {
             statusHandler.error("Error accessing BMH Database.", e);
         }
@@ -144,7 +152,7 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
     private void createBottomButtons() {
         GridData gd = new GridData(SWT.CENTER, SWT.DEFAULT, false, false);
-        GridLayout gl = new GridLayout(2, false);
+        GridLayout gl = new GridLayout(3, false);
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(gl);
         buttonComp.setLayoutData(gd);
@@ -166,6 +174,19 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         gd.minimumWidth = minimumButtonWidth;
+        expireBtn = new Button(buttonComp, SWT.PUSH);
+        expireBtn.setText("Expire/Delete...");
+        expireBtn.setLayoutData(gd);
+        expireBtn.setEnabled(false);
+        expireBtn.addSelectionListener(new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent event) {
+                handleExpireAction();
+            }
+        });
+
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
+        gd.minimumWidth = minimumButtonWidth;
         Button closeBtn = new Button(buttonComp, SWT.PUSH);
         closeBtn.setText("Close");
         closeBtn.setLayoutData(gd);
@@ -182,12 +203,15 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
      */
     private void handleMessageDetails() {
         try {
-            List<TableRowData> selectionList = tableComp.getSelection();
-            if (selectionList.isEmpty()) {
-                return;
+            BroadcastMsg broadcastMsg = getSelectedBroadcastMsg();
+            if (broadcastMsg == null) {
+                /*
+                 * should never happen because the buttons should only be
+                 * enabled when a row is selected in the table.
+                 */
+                throw new IllegalStateException(
+                        "No broadcast message is selected when handling the message details action.");
             }
-            TableRowData selection = selectionList.get(0);
-            BroadcastMsg broadcastMsg = (BroadcastMsg) selection.getData();
             String afosId = broadcastMsg.getInputMessage().getAfosid();
             MessageType messageType = dataManager.getMessageType(afosId);
             long key = broadcastMsg.getId();
@@ -210,5 +234,39 @@ public class PeriodicMessagesDlg extends CaveSWTDialog {
         } catch (Exception e) {
             statusHandler.error("ERROR accessing BMH Database", e);
         }
+    }
+
+    private void handleExpireAction() {
+        BroadcastMsg broadcastMsg = getSelectedBroadcastMsg();
+        if (broadcastMsg == null) {
+            /*
+             * should never happen because the buttons should only be enabled
+             * when a row is selected in the table.
+             */
+            throw new IllegalStateException(
+                    "No broadcast message is selected when handling the expire/delete action.");
+        }
+        try {
+            VizBroadcastCycleMessageExpirationUtil.initiateMessageExpiration(
+                    broadcastMsg, dataManager, getShell(), statusHandler);
+        } catch (Exception e) {
+            statusHandler.error(
+                    "Error expiring message: " + broadcastMsg.getId(), e);
+        }
+    }
+
+    /**
+     * Retrieves the {@link BroadcastMsg} associated with the selected row in
+     * the table.
+     * 
+     * @return the selected {@link BroadcastMsg}
+     */
+    private BroadcastMsg getSelectedBroadcastMsg() {
+        List<TableRowData> selectionList = tableComp.getSelection();
+        if (selectionList.isEmpty()) {
+            return null;
+        }
+        TableRowData selection = selectionList.iterator().next();
+        return (BroadcastMsg) selection.getData();
     }
 }

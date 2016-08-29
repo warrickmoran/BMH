@@ -28,11 +28,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -92,7 +89,6 @@ import com.raytheon.uf.common.bmh.notify.config.ProgramConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
-import com.raytheon.uf.common.bmh.request.AbstractBMHServerRequest;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
@@ -113,8 +109,6 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableColumnData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableData.SortDirection;
 import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckListData;
-import com.raytheon.uf.viz.bmh.ui.common.utility.CheckScrollListDlg;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
 import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
@@ -222,10 +216,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 14, 2016  5472      rjpeter     Added playlist job.
  * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
  * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
+ * Jul 25, 2016  5767      bkowal      Utilize {@link VizBroadcastCycleMessageExpirationUtil}
  * </pre>
  * 
  * @author mpduff
- * @version 1.0
  */
 
 public class BroadcastCycleDlg extends AbstractBMHDialog implements
@@ -1236,157 +1230,11 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
                 mb.open();
                 return;
             }
-            final InputMessage inputMessage = broadcastMsg.getInputMessage();
-            List<BroadcastMsg> messages = dataManager
-                    .getBroadcastMessagesForInputMessage(inputMessage.getId());
-            Iterator<BroadcastMsg> it = messages.iterator();
-            while (it.hasNext()) {
-                if (it.next().getForcedExpiration()) {
-                    /*
-                     * Exclude individual broadcast messages that have already
-                     * been expired.
-                     */
-                    it.remove();
-                }
-            }
-            if (messages.size() == 1) {
-                this.expireMessageOneDestination(inputMessage, broadcastMsg);
-                return;
-            }
-
-            CheckListData cld = new CheckListData();
-
-            int scheduledCount = 0;
-            BroadcastMsg scheduledBroadcastMsg = null;
-            final Set<Transmitter> allTransmittersSet = new HashSet<>();
-            final Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap = new HashMap<>();
-            for (BroadcastMsg message : messages) {
-                TransmitterGroup transmitterGroup = message
-                        .getTransmitterGroup();
-                /*
-                 * Determine if the message has actually been scheduled for
-                 * broadcast.
-                 */
-                boolean scheduled = false;
-                try {
-                    scheduled = this.dataManager
-                            .isMessageScheduledForBroadcast(
-                                    transmitterGroup.getName(), message.getId());
-                } catch (Exception e) {
-                    StringBuilder sb = new StringBuilder(
-                            "Failed to determine if broadcast message: ");
-                    sb.append(message.getId())
-                            .append(" has been scheduled for broadcast on transmitter: ");
-                    sb.append(transmitterGroup.getName()).append(".");
-
-                    statusHandler.error(sb.toString(), e);
-                }
-                if (scheduled == false) {
-                    /*
-                     * Note: if the user expires the message on all Transmitters
-                     * that the message has been expired on, the message will be
-                     * permanently expired and it will not be broadcast on other
-                     * transmitters that it has not previously been scheduled on
-                     * even if they are enabled.
-                     */
-                    continue;
-                }
-
-                scheduledBroadcastMsg = message;
-                ++scheduledCount;
-
-                transmitterGrpToBroadcastMsgMap.put(transmitterGroup.getName(),
-                        message);
-                cld.addDataItem(transmitterGroup.getName(), true);
-                allTransmittersSet.addAll(transmitterGroup.getTransmitters());
-            }
-
-            if (scheduledCount == 1) {
-                /*
-                 * Only one message has actually been scheduled for broadcast.
-                 */
-                this.expireMessageOneDestination(inputMessage,
-                        scheduledBroadcastMsg);
-                return;
-            }
-
-            String dialogText = "Expiring " + inputMessage.getName()
-                    + "\n\nSelect Transmitter Groups:";
-
-            CheckScrollListDlg checkListDlg = new CheckScrollListDlg(shell,
-                    "Expire Selection", dialogText, cld, true);
-            checkListDlg.setCloseCallback(new ICloseCallback() {
-                @Override
-                public void dialogClosed(Object returnValue) {
-                    if ((returnValue != null)
-                            && (returnValue instanceof CheckListData)) {
-                        handleExpireDialogCallback(inputMessage,
-                                (CheckListData) returnValue,
-                                transmitterGrpToBroadcastMsgMap,
-                                allTransmittersSet);
-                    }
-                }
-
-            });
-            checkListDlg.open();
+            VizBroadcastCycleMessageExpirationUtil.initiateMessageExpiration(
+                    broadcastMsg, dataManager, getShell(), statusHandler);
         } catch (Exception e) {
             statusHandler.error(
                     "Error expiring message: " + dataEntry.getBroadcastId(), e);
-        }
-    }
-
-    private void expireMessageOneDestination(InputMessage inputMessage,
-            BroadcastMsg broadcastMsg) throws Exception {
-        String message = "Are you sure you want to Expire/Delete "
-                + inputMessage.getName() + "?";
-        MessageBox mb = new MessageBox(getShell(), SWT.OK | SWT.CANCEL
-                | SWT.ICON_QUESTION);
-        mb.setText("Confirm Expire/Delete");
-        mb.setMessage(message);
-        if (mb.open() == SWT.OK) {
-            NewBroadcastMsgRequest request = new NewBroadcastMsgRequest(
-                    System.currentTimeMillis());
-            inputMessage.setActive(false);
-            request.setInputMessage(inputMessage);
-            request.setSelectedTransmitters(new ArrayList<>(broadcastMsg
-                    .getTransmitterGroup().getTransmitters()));
-            BmhUtils.sendRequest(request);
-        }
-    }
-
-    private void handleExpireDialogCallback(InputMessage inputMessage,
-            CheckListData data,
-            Map<String, BroadcastMsg> transmitterGrpToBroadcastMsgMap,
-            Set<Transmitter> allTransmittersSet) {
-        if (data.allChecked()) {
-            NewBroadcastMsgRequest request = new NewBroadcastMsgRequest(
-                    System.currentTimeMillis());
-            inputMessage.setActive(false);
-            request.setInputMessage(inputMessage);
-            request.setSelectedTransmitters(new ArrayList<>(allTransmittersSet));
-            this.sendExpireRequest(request);
-        } else {
-            List<BroadcastMsg> messagesToExpire = new ArrayList<>();
-            for (Entry<String, Boolean> entry : data.getDataMap().entrySet()) {
-                if (entry.getValue()) {
-                    messagesToExpire.add(transmitterGrpToBroadcastMsgMap
-                            .get(entry.getKey()));
-                }
-            }
-            if (messagesToExpire.isEmpty()) {
-                return;
-            }
-            ExpireBroadcastMsgRequest request = new ExpireBroadcastMsgRequest();
-            request.setExpiredBroadcastMsgs(messagesToExpire);
-            this.sendExpireRequest(request);
-        }
-    }
-
-    private void sendExpireRequest(AbstractBMHServerRequest request) {
-        try {
-            BmhUtils.sendRequest(request);
-        } catch (Exception e) {
-            statusHandler.error("Error expiring message.", e);
         }
     }
 

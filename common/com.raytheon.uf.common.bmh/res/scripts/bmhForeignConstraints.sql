@@ -264,3 +264,18 @@ alter table static_msg_type add constraint fk_static_msg_type_to_msg_type
  * Delete duplicate constraint
  */
 alter table transmitter_group drop constraint fk_tx_group_to_program_delete_me;
+
+/**
+ * Check constraints for column: cycles on tables: msg_type, input_msg, static_msg_type
+ */
+ALTER TABLE msg_type DROP CONSTRAINT IF EXISTS chk_msg_type_cycles; 
+ALTER TABLE msg_type ADD CONSTRAINT chk_msg_type_cycles 
+    CHECK (cycles IS NULL OR (cycles >= 2 AND cycles <= 100));
+
+ALTER TABLE input_msg DROP CONSTRAINT IF EXISTS chk_input_msg_cycles;
+ALTER TABLE input_msg ADD CONSTRAINT chk_input_msg_cycles 
+    CHECK (cycles IS NULL OR (cycles >= 2 AND cycles <= 100));
+
+ALTER TABLE static_msg_type DROP CONSTRAINT IF EXISTS chk_static_msg_type_cycles;
+ALTER TABLE static_msg_type ADD CONSTRAINT chk_static_msg_type_cycles 
+    CHECK (cycles IS NULL OR (cycles >= 2 AND cycles <= 100));

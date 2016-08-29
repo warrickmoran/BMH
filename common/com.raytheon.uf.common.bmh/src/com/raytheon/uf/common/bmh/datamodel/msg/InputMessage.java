@@ -102,10 +102,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  *                                    expiration times and removed mrd comparison.
  * Jul 29, 2015  4690     rjpeter     Added originalFile.
  * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
+ * Jul 29, 2016 5766      bkowal      Added {@link #cycles}.
+ * Aug 04, 2016  5766     bkowal      Include {@link #cycles} in {@link #hashCode()} and {@link #equals(Object)}.
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 @NamedQueries({
         @NamedQuery(name = InputMessage.DUP_QUERY_NAME, query = InputMessage.DUP_QUERY),
@@ -235,6 +236,10 @@ public class InputMessage {
     @Column(length = 8)
     @DynamicSerializeElement
     private String periodicity;
+
+    @Column(nullable = true)
+    @DynamicSerializeElement
+    private Integer cycles;
 
     /**
      * This is an optional field containing three pieces of information. A
@@ -384,6 +389,7 @@ public class InputMessage {
         this.creationTime = cloneCal(other.creationTime);
         this.effectiveTime = cloneCal(other.effectiveTime);
         this.periodicity = other.periodicity;
+        this.cycles = other.cycles;
         this.mrd = other.mrd;
         this.active = other.active;
         this.confirm = other.confirm;
@@ -475,6 +481,14 @@ public class InputMessage {
 
     public void setPeriodicity(String periodicity) {
         this.periodicity = periodicity;
+    }
+
+    public Integer getCycles() {
+        return cycles;
+    }
+
+    public void setCycles(Integer cycles) {
+        this.cycles = cycles;
     }
 
     public String getMrd() {
@@ -800,6 +814,7 @@ public class InputMessage {
                 + ((nwrsameTone == null) ? 0 : nwrsameTone.hashCode());
         result = (prime * result)
                 + ((periodicity == null) ? 0 : periodicity.hashCode());
+        result = (prime * result) + ((cycles == null) ? 0 : cycles.hashCode());
         result = (prime * result)
                 + ((sameTransmitters == null) ? 0 : sameTransmitters.hashCode());
         result = (prime * result)
@@ -925,6 +940,13 @@ public class InputMessage {
                 return false;
             }
         } else if (!periodicity.equals(other.periodicity)) {
+            return false;
+        }
+        if (cycles == null) {
+            if (other.cycles != null) {
+                return false;
+            }
+        } else if (!cycles.equals(other.cycles)) {
             return false;
         }
         if (sameTransmitters == null) {

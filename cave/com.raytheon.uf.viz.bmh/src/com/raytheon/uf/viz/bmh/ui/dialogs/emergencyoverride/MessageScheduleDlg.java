@@ -39,10 +39,10 @@ import org.eclipse.swt.widgets.Text;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.time.util.TimeUtil;
-import com.raytheon.uf.viz.bmh.data.BmhUtils;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
 import com.raytheon.uf.viz.bmh.ui.common.utility.DialogUtility;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.PeriodicitySelectionGroup;
 import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
 import com.raytheon.viz.ui.widgets.DateTimeSpinner;
 
@@ -62,11 +62,11 @@ import com.raytheon.viz.ui.widgets.DateTimeSpinner;
  * Apr 05, 2016  #5504     bkowal       Fix GUI sizing issues. Updates for compatibility with 
  *                                      {@link DateTimeFields}.
  * May 04, 2016  #5602     bkowal       Use {@link DateTimeSpinner}.
+ * Aug 11, 2016  #5766     bkowal       Use {@link PeriodicitySelectionGroup}.
  * 
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 
 public class MessageScheduleDlg extends CaveSWTDialog {
@@ -98,8 +98,7 @@ public class MessageScheduleDlg extends CaveSWTDialog {
     /** Expiration date/time field. */
     private DateTimeSpinner expirationDateTimeSpinner;
 
-    /** Periodicity date/time field. */
-    private DateTimeFields periodicityDTF;
+    private PeriodicitySelectionGroup psg;
 
     /** Confirm check box. */
     private Button confirmChk;
@@ -298,15 +297,11 @@ public class MessageScheduleDlg extends CaveSWTDialog {
         defaultsGrp.setText(" Defaults: ");
 
         // Periodicity
-        Label periodicityLbl = new Label(defaultsGrp, SWT.RIGHT);
-        periodicityLbl.setText("Periodicity\n(DDHHMMSS): ");
-
-        Map<DateFieldType, Integer> periodicityMap = null;
-
-        periodicityMap = generateDayHourMinuteSecondMap();
-
-        periodicityDTF = new DateTimeFields(defaultsGrp, periodicityMap, false,
-                true);
+        psg = new PeriodicitySelectionGroup(defaultsGrp);
+        gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
+        gd.horizontalSpan = 2;
+        psg.setLayoutData(gd);
+        psg.populate(null, null);
 
         // Interrupt, Alert, Confirm
         gd = new GridData();
@@ -368,10 +363,10 @@ public class MessageScheduleDlg extends CaveSWTDialog {
                 .getSelection());
         userInputMessage.setExpirationTime(expirationDateTimeSpinner
                 .getSelection());
-        if ("00000000".equals(this.periodicityDTF.getFormattedValue()) == false) {
-            this.userInputMessage.setPeriodicity(this.periodicityDTF
-                    .getFormattedValue());
+        if (!"00000000".equals(psg.getPeriodicityTime())) {
+            this.userInputMessage.setPeriodicity(psg.getPeriodicityTime());
         }
+        userInputMessage.setCycles(psg.getPeriodicityCycles());
         this.userInputMessage.setConfirm(this.confirmChk.getSelection());
         setReturnValue(this.userInputMessage);
 
@@ -399,28 +394,8 @@ public class MessageScheduleDlg extends CaveSWTDialog {
                 .getEffectiveTime());
         expirationDateTimeSpinner.setSelection(userInputMessage
                 .getExpirationTime());
-        if (this.userInputMessage.getPeriodicity() != null) {
-            Map<DateFieldType, Integer> dateTimeMap = BmhUtils
-                    .generateDayHourMinuteSecondMap(this.userInputMessage
-                            .getPeriodicity());
-            this.periodicityDTF.setFieldValues(dateTimeMap);
-        }
+        psg.populate(userInputMessage.getPeriodicity(),
+                userInputMessage.getCycles());
         this.confirmChk.setSelection(this.userInputMessage.getConfirm());
-    }
-
-    /**
-     * Generate map for periodicity date/time controls.
-     * 
-     * @return Map of date/time types and initial values.
-     */
-    private Map<DateFieldType, Integer> generateDayHourMinuteSecondMap() {
-        Map<DateFieldType, Integer> durMap = new LinkedHashMap<DateFieldType, Integer>();
-
-        durMap.put(DateFieldType.DAY, 0);
-        durMap.put(DateFieldType.HOUR, 0);
-        durMap.put(DateFieldType.MINUTE, 0);
-        durMap.put(DateFieldType.SECOND, 0);
-
-        return durMap;
     }
 }
