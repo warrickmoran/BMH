@@ -36,6 +36,7 @@ import org.apache.commons.cli.ParseException;
 
 import com.raytheon.bmh.dactransmit.dacsession.AbstractDacConfig;
 import com.raytheon.bmh.dactransmit.dacsession.DacCommonConfig;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Defines and analyzes arguments that are required to start a dac session
@@ -51,10 +52,10 @@ import com.raytheon.bmh.dactransmit.dacsession.DacCommonConfig;
  * Apr 09, 2015 4364       bkowal      Fix the usage output.
  * Apr 29, 2015 4394       bkowal      Now handles the management port argument.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Sep 30, 2016 5912       bkowal      Construction now requires {@link SAMEPaddingConfiguration}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public abstract class AbstractDacArgParser {
@@ -100,7 +101,8 @@ public abstract class AbstractDacArgParser {
         this.usageStatement = usageStmtBuilder.toString();
     }
 
-    public AbstractDacConfig parseCommandLine(final String[] arguments)
+    public AbstractDacConfig parseCommandLine(final String[] arguments,
+            final SAMEPaddingConfiguration samePaddingConfiguration)
             throws ParseException {
         CommandLineParser parser = new BasicParser();
         CommandLine cmd = parser.parse(programOptions, arguments);
@@ -136,7 +138,8 @@ public abstract class AbstractDacArgParser {
         DacCommonConfig commonConfig = new DacCommonConfig(dacHostname,
                 dacAddress, dataPort, controlPort, transmitters,
                 amplitudeTarget, managerPort);
-        return this.parseCommandLineInternal(cmd, commonConfig);
+        return this.parseCommandLineInternal(cmd, commonConfig,
+                samePaddingConfiguration);
     }
 
     /**
@@ -234,7 +237,8 @@ public abstract class AbstractDacArgParser {
     }
 
     protected abstract AbstractDacConfig parseCommandLineInternal(
-            final CommandLine cmd, final DacCommonConfig commonConfig)
+            final CommandLine cmd, final DacCommonConfig commonConfig,
+            final SAMEPaddingConfiguration samePaddingConfiguration)
             throws ParseException;
 
     protected abstract List<Option> getOptions();

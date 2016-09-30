@@ -59,11 +59,11 @@ import com.raytheon.uf.common.bmh.tones.data.Tone;
  * Apr 24, 2015 4394       bkowal      Renamed TRANSFER_TYPE to {@link TransferType}.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Feb 09, 2016 5082       bkowal      Updates for Apache commons lang 3.
+ * Sep 30, 2016 5912       bkowal      Made {@link #PADDING_BYTE} public.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class TonesManager {
@@ -77,7 +77,7 @@ public class TonesManager {
             (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB,
             (byte) 0xAB, (byte) 0xAB, (byte) 0xAB, (byte) 0xAB };
 
-    private static final byte PADDING_BYTE = (byte) 0;
+    public static final byte PADDING_BYTE = (byte) 0;
 
     private static final double ALERT_TONE_FREQUENCY = 1050.0; // Hz
 

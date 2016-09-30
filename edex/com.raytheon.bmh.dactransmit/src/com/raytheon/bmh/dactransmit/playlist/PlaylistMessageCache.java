@@ -132,6 +132,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  *                                      current purge cycle.
  * Mar 30, 2016 5419       bkowal       Regenerate any message files that were not completely
  *                                      generated the first time.
+ * Sep 30, 2016 5912       bkowal       Specify the SAME padding to use when loading audio.
  * 
  * </pre>
  * 
@@ -209,10 +210,17 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private PlaylistMessageArchiver playlistMessageArchiver;
 
+    private final int samePadding;
+
+    private final int sameEOMPadding;
+
     public PlaylistMessageCache(DacSession dacSession,
             PlaylistScheduler playlistScheduler) {
         this.dacSession = dacSession;
         DacSessionConfig config = dacSession.getConfig();
+        samePadding = config.getSamePaddingConfiguration().getSamePadding();
+        sameEOMPadding = config.getSamePaddingConfiguration()
+                .getSameEOMPadding();
         this.messageDirectory = config.getInputDirectory().resolve("messages");
         this.cachedMessages = new ConcurrentHashMap<>();
         this.cachedFiles = new ConcurrentHashMap<>();
@@ -417,7 +425,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             final DacPlaylistMessageId id, final String taskId) {
         Callable<IAudioFileBuffer> retrieveAudioJob = new RetrieveAudioJob(
                 priority, this.audioAmplitude, this.sameAmplitude,
-                this.alertAmplitude, this.getMessage(id), this, taskId);
+                this.alertAmplitude, this.getMessage(id), this, taskId,
+                samePadding, sameEOMPadding);
         return executorService.submit(retrieveAudioJob);
     }
 

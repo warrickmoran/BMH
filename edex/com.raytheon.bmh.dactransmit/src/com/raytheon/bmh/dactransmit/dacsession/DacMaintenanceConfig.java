@@ -22,6 +22,7 @@ package com.raytheon.bmh.dactransmit.dacsession;
 import java.nio.file.Path;
 
 import com.raytheon.bmh.dactransmit.DAC_MODE;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Configuration information required by a dac session when in maintenance mode.
@@ -37,10 +38,10 @@ import com.raytheon.bmh.dactransmit.DAC_MODE;
  * Apr 24, 2015 4394       bkowal      Field renaming based on usage.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Sep 30, 2016 5912       bkowal      Construction now requires {@link SAMEPaddingConfiguration}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class DacMaintenanceConfig extends AbstractDacConfig {
@@ -59,8 +60,9 @@ public class DacMaintenanceConfig extends AbstractDacConfig {
      */
     public DacMaintenanceConfig(DacCommonConfig commonConfig,
             Path messageFilePath, int testDuration, int executionTimeout,
-            short transferAmplitude) {
-        super(DAC_MODE.MAINTENANCE, commonConfig);
+            short transferAmplitude,
+            final SAMEPaddingConfiguration samePaddingConfiguration) {
+        super(DAC_MODE.MAINTENANCE, commonConfig, samePaddingConfiguration);
         this.messageFilePath = messageFilePath;
         this.testDuration = testDuration;
         this.executionTimeout = executionTimeout;

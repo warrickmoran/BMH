@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.TimeZone;
 
 import com.raytheon.bmh.dactransmit.DAC_MODE;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Configuration parameters for a DacSession object. Defines all the necessary
@@ -50,6 +51,7 @@ import com.raytheon.bmh.dactransmit.DAC_MODE;
  * Aug 12, 2015  #4424     bkowal       Eliminate Dac Transmit Key.
  * Oct 14, 2015 4984       rjpeter     Added {@link #setAlertAmplitude(double)} and {@link #setSameAmplitude(double)}
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Sep 30, 2016 5912       bkowal      Construction now requires {@link SAMEPaddingConfiguration}.
  * </pre>
  * 
  * @author dgilling
@@ -69,8 +71,9 @@ public final class DacSessionConfig extends AbstractDacConfig {
     private final String transmitterGroup;
 
     public DacSessionConfig(DacCommonConfig commonConfig, Path inputDirectory,
-            TimeZone timezone, short sameAmplitude, short alertAmplitude) {
-        super(DAC_MODE.OPERATIONAL, commonConfig);
+            TimeZone timezone, short sameAmplitude, short alertAmplitude,
+            final SAMEPaddingConfiguration samePaddingConfiguration) {
+        super(DAC_MODE.OPERATIONAL, commonConfig, samePaddingConfiguration);
         this.inputDirectory = inputDirectory;
         this.timezone = timezone;
         this.sameAmplitude = sameAmplitude;

@@ -51,7 +51,9 @@ import com.raytheon.uf.common.auth.resp.SuccessfulExecution;
 import com.raytheon.uf.common.auth.user.IUser;
 import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.audio.AudioRegulationConfiguration;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.AudioRegulationSettingsCommand;
+import com.raytheon.uf.common.bmh.broadcast.SAMEPaddingSettingsCommand;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.Program;
 import com.raytheon.uf.common.bmh.datamodel.msg.ProgramSummary;
@@ -122,10 +124,11 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Aug 05, 2015   4685      bkowal      Added {@link #containsGeneralSuite(ProgramSummary)}.
  * Sep 01, 2015   4771      bkowal      Added {@link #retrieveRegulationConfiguration()}.
  * Nov 11, 2015   5114      rjpeter     Updated CommsManager to use a single port.
+ * Sep 30, 2016   5912      bkowal      Added {@link #retrieveSAMEPaddingConfiguration()} and
+ *                                      {@link #retrieveConfigFromCommsManager(Object)}.
  * </pre>
  * 
  * @author mpduff
- * @version 1.0
  */
 
 public class BmhUtils {
@@ -753,6 +756,19 @@ public class BmhUtils {
      */
     public static AudioRegulationConfiguration retrieveRegulationConfiguration()
             throws Exception {
+        return retrieveConfigFromCommsManager(
+                new AudioRegulationSettingsCommand(),
+                AudioRegulationConfiguration.class);
+    }
+
+    public static SAMEPaddingConfiguration retrieveSAMEPaddingConfiguration()
+            throws Exception {
+        return retrieveConfigFromCommsManager(new SAMEPaddingSettingsCommand(),
+                SAMEPaddingConfiguration.class);
+    }
+
+    private static <T> T retrieveConfigFromCommsManager(final Object command,
+            final Class<T> resultClass) throws Exception {
         String commsLoc = BMHServers.getCommsManager();
         if (commsLoc == null) {
             throw new CommsCommunicationException(
@@ -768,20 +784,23 @@ public class BmhUtils {
         }
         try (Socket socket = new Socket(commsURI.getHost(), commsURI.getPort())) {
             socket.setTcpNoDelay(true);
-            SerializationUtil.transformToThriftUsingStream(
-                    new AudioRegulationSettingsCommand(),
+            SerializationUtil.transformToThriftUsingStream(command,
                     socket.getOutputStream());
             Object message = SerializationUtil.transformFromThrift(
                     Object.class, socket.getInputStream());
             if (message == null) {
-                throw new NullPointerException(
+                throw new Exception(
                         "Unexpected null response from comms manager.");
-            } else if (message instanceof AudioRegulationConfiguration) {
-                return (AudioRegulationConfiguration) message;
-            } else {
+            }
+
+            try {
+                return resultClass.cast(message);
+            } catch (ClassCastException e) {
                 throw new IllegalStateException(
                         "Unexpected response from comms manager of type: "
-                                + message.getClass().getSimpleName());
+                                + message.getClass().getName()
+                                + ". Expected type: "
+                                + resultClass.getClass().getName() + ".", e);
             }
         }
     }

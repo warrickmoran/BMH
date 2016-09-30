@@ -70,13 +70,18 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Jul 08, 2015 4636       bkowal      Support same and alert decibel levels.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
  * Mar 08, 2016 5382       bkowal      Check for null message data.
+ * Sep 30, 2016 5912       bkowal      Added {@link #samePadding} and {@link #sameEOMPadding}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
+
+    private final int samePadding;
+
+    private final int sameEOMPadding;
+
     private IAudioJobListener listener;
 
     private String taskId;
@@ -94,13 +99,18 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      *            the target audio amplitude for SAME Tones.
      * @param alertAmplitude
      *            the target audio amplitude for Alert Tones.
+     * @param samePadding
+     *            the number of 0 bytes to pad the end of the SAME tone with
      * @param message
      *            identifying information
      */
     public RetrieveAudioJob(final int priority, final short audioAmplitude,
             final short sameAmplitude, final short alertAmplitude,
-            final DacPlaylistMessage message) {
+            final DacPlaylistMessage message, final int samePadding,
+            final int sameEOMPadding) {
         super(priority, audioAmplitude, sameAmplitude, alertAmplitude, message);
+        this.samePadding = samePadding;
+        this.sameEOMPadding = sameEOMPadding;
     }
 
     /**
@@ -124,12 +134,15 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
      * @param taskId
      *            identifier associated with a retrieval job for tracking
      *            purposes (optional)
+     * @param samePadding
+     *            the number of 0 bytes to pad the end of the SAME tone with
      */
     public RetrieveAudioJob(final int priority, final short audioAmplitude,
             final short sameAmplitude, final short alertAmplitude,
             final DacPlaylistMessage message, final IAudioJobListener listener,
-            final String taskId) {
-        this(priority, audioAmplitude, sameAmplitude, alertAmplitude, message);
+            final String taskId, int samePadding, final int sameEOMPadding) {
+        this(priority, audioAmplitude, sameAmplitude, alertAmplitude, message,
+                samePadding, sameEOMPadding);
         this.listener = listener;
         this.taskId = taskId;
     }
@@ -215,7 +228,8 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
         if (message.isSAMETones()) {
             try {
                 generatedTones = TonesGenerator.getSAMEAlertTones(
-                        message.getSAMEtone(), message.isAlertTone(), false);
+                        message.getSAMEtone(), message.isAlertTone(), false,
+                        samePadding);
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate SAME/alert tones for message: "
                         + message.getBroadcastId();
@@ -236,7 +250,8 @@ public class RetrieveAudioJob extends AbstractAudioJob<IAudioFileBuffer> {
         ByteBuffer endOfMessage = null;
         if (message.isSAMETones()) {
             try {
-                endOfMessage = TonesGenerator.getEndOfMessageTones();
+                endOfMessage = TonesGenerator
+                        .getEndOfMessageTones(sameEOMPadding);
             } catch (ToneGenerationException e) {
                 String msg = "Unable to generate end of message SAME tones for message: "
                         + message.getBroadcastId();
