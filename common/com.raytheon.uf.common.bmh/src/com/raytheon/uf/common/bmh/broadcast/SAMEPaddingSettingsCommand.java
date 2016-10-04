@@ -17,20 +17,28 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-\set ON_ERROR_STOP 1
-DROP DATABASE IF EXISTS bmh;
-DROP TABLESPACE IF EXISTS bmh;
-CREATE TABLESPACE bmh owner awipsadmin location '/awips2/data/bmh';
-CREATE DATABASE bmh OWNER awipsadmin TABLESPACE bmh;
+package com.raytheon.uf.common.bmh.broadcast;
 
-\connect bmh
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
+import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 
-BEGIN TRANSACTION;
-GRANT CONNECT, TEMPORARY ON DATABASE bmh TO awips;
-
-GRANT USAGE ON SCHEMA public to awips; -- Don't grant create
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE, TRIGGER, TRUNCATE ON TABLES TO awips; -- Don't grant references
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO awips;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO awips;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TYPES TO awips;
-COMMIT TRANSACTION;
+/**
+ * Request object used to retrieve the {@link SAMEPaddingConfiguration}
+ * from Comms Manager.
+ * 
+ * <pre>
+ *
+ * SOFTWARE HISTORY
+ *
+ * Date         Ticket#    Engineer    Description
+ * ------------ ---------- ----------- --------------------------
+ * Sep 30, 2016 5912       bkowal      Initial creation
+ *
+ * </pre>
+ *
+ * @author bkowal
+ */
+@DynamicSerialize
+public class SAMEPaddingSettingsCommand {
+    /* No code is needed */
+}

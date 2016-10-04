@@ -70,10 +70,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 09, 2014  #3646     rferrel     Convert programTable to GenerictTable.
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Mar 31, 2015  4248      rjpeter     Update SuiteMessages return to Set.
+ * Sep 29, 2016  5910      bkowal      Update for new {@link GenericTable} constructor.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class ViewMessageTypeDlg extends CaveSWTDialog {
 
@@ -191,7 +191,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Programs:");
         nameLbl.setLayoutData(gd);
 
-        programTable = new GenericTable(controlComp, 500, 100);
+        programTable = new GenericTable(controlComp, 5);
     }
 
     /**
@@ -210,7 +210,7 @@ public class ViewMessageTypeDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Suites:");
         nameLbl.setLayoutData(gd);
 
-        suiteTable = new SuiteTable(controlComp, 500, 100);
+        suiteTable = new SuiteTable(controlComp, 5);
     }
 
     /**
