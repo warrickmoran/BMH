@@ -49,6 +49,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 
 import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
@@ -117,10 +118,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Apr 04, 2016  5504      bkowal      Fix GUI sizing issues.
  * Apr 11, 2016  5504      bkowal      Adjust size of image-based EO buttons.
+ * Sep 30, 2016  5912      bkowal      Use the {@link SAMEPaddingConfiguration} to construct SAME Tones.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 
 public class EmergencyOverrideDlg extends AbstractBMHDialog {
@@ -518,6 +519,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         final EOBroadcastSettingsBuilder settingsBuilder;
         try {
+            /*
+             * Retrieve the SAME Padding settings.
+             */
+            SAMEPaddingConfiguration samePaddingConfig = BmhUtils
+                    .retrieveSAMEPaddingConfiguration();
+
             settingsBuilder = new EOBroadcastSettingsBuilder(
                     this.selectedMsgType,
                     sameTransmitters.getAffectedTransmitters(),
@@ -525,7 +532,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                     areaDataMap.get(selectedMsgType),
                     this.alertChk.getSelection(),
                     this.durHourSpnr.getSelection(),
-                    this.durMinuteSpnr.getSelection());
+                    this.durMinuteSpnr.getSelection(), samePaddingConfig);
         } catch (Exception e) {
             statusHandler.error("Failed to configure the live broadcast!", e);
             return;

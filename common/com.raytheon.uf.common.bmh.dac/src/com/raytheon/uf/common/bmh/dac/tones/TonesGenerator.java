@@ -46,22 +46,13 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
  * Jul 08, 2015  #4636     bkowal       Updated to use {@link GeneratedTonesBuffer}.
  * Nov 06, 2015  5068      rjpeter      Fix preambleHeader length.
+ * Sep 30, 2016  #5912     bkowal       Removed embedded determination of the SAME padding.
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class TonesGenerator {
-
-    /**
-     * Overridable SAME Tones padding constant. This is the number of 0 bytes
-     * that will be placed at the end of the SAME Tone bytes array that is
-     * generated. This property may no longer be overridable after we
-     * transitional to operational builds.
-     */
-    private static final int SAME_PADDING = Integer.getInteger(
-            "samePaddingOverride", 0);
 
     private static StaticTones defaultTonesInstance;
 
@@ -85,20 +76,22 @@ public final class TonesGenerator {
      * @param includeSilence
      *            Whether or not to include 4 seconds of silence after the same
      *            or alert tones.
+     * @param samePadding
+     *            the number of 0 bytes to pad the end of the SAME tone with
      * @return The tone patterns, including any necessary pauses.
      * @throws ToneGenerationException
      *             If an error occurred encoding the SAME tone header string or
      *             generating any of the necessary static tones.
      */
     public static GeneratedTonesBuffer getSAMEAlertTones(String sameHeader,
-            boolean includeAlertTone, boolean includeSilence)
+            boolean includeAlertTone, boolean includeSilence, int samePadding)
             throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
 
         byte[] betweenPause = staticTones.getBetweenPreambleOrClosingPause();
         byte[] beforeMessagePause = staticTones.getBeforeMessagePause();
         byte[] preambleHeader = TonesManager.generateSAMETone(sameHeader,
-                SAME_PADDING);
+                samePadding);
 
         int bufferSize = (3 * (preambleHeader.length))
                 + (2 * betweenPause.length);
@@ -145,15 +138,19 @@ public final class TonesGenerator {
      * end of message tone patterns including any necessary pauses between the
      * tone patterns.
      * 
+     * @param sameEOMPadding
+     *            number of padding bytes to add at the end of the end of
+     *            message tones.
+     * 
      * @return The end of message SAME tone patterns.
      * @throws ToneGenerationException
      *             If there was an error generating the static end of message
      *             tones.
      */
-    public static ByteBuffer getEndOfMessageTones()
+    public static ByteBuffer getEndOfMessageTones(final int sameEOMPadding)
             throws ToneGenerationException {
         StaticTones staticTones = getStaticTones();
-        return staticTones.getEndOfMessageTones();
+        return staticTones.getEndOfMessageTones(sameEOMPadding);
     }
 
     private TonesGenerator() {

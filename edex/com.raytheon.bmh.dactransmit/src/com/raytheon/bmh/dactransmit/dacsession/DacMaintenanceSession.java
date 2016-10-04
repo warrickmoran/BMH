@@ -89,10 +89,10 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger.TONE_TYPE;
  * Aug 24, 2015 4770       bkowal      Utilize the {@link AudioRegulationConfiguration}.
  * Aug 25, 2015 4771       bkowal      Updated to use {@link IAudioRegulator}.
  * Nov 04, 2015 5068       rjpeter     Switch audio units from dB to amplitude.
+ * Sep 30, 2016 5912       bkowal      Default SAME padding to 0.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class DacMaintenanceSession implements IDacSession,
@@ -198,8 +198,13 @@ public class DacMaintenanceSession implements IDacSession,
              */
             if (this.message.getSAMEtone() != null) {
                 byte[] same = TonesGenerator
-                        .getSAMEAlertTones(this.message.getSAMEtone(), false,
-                                true).combineTonesArray().array();
+                        .getSAMEAlertTones(
+                                this.message.getSAMEtone(),
+                                false,
+                                true,
+                                config.getSamePaddingConfiguration()
+                                        .getSamePadding()).combineTonesArray()
+                        .array();
                 /*
                  * Based on the length of the tones, determine which packet
                  * would mark the beginning of the end tones.
@@ -218,7 +223,9 @@ public class DacMaintenanceSession implements IDacSession,
                 }
                 this.endTonesStartPacket = endPacket;
 
-                byte[] endTones = TonesGenerator.getEndOfMessageTones().array();
+                byte[] endTones = TonesGenerator.getEndOfMessageTones(
+                        config.getSamePaddingConfiguration()
+                                .getSameEOMPadding()).array();
                 ByteBuffer tonesAudioBuffer = ByteBuffer.allocate(same.length
                         + endTones.length);
                 tonesAudioBuffer.put(same);
@@ -279,9 +286,7 @@ public class DacMaintenanceSession implements IDacSession,
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.bmh.dactransmit.dacsession.IDacSession#startPlayback
-     * ()
+     * @see com.raytheon.bmh.dactransmit.dacsession.IDacSession#startPlayback ()
      */
     @Override
     public void startPlayback() throws IOException {
@@ -408,8 +413,7 @@ public class DacMaintenanceSession implements IDacSession,
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.bmh.dactransmit.dacsession.IDacSession#waitForShutdown
+     * @see com.raytheon.bmh.dactransmit.dacsession.IDacSession#waitForShutdown
      * ()
      */
     @Override

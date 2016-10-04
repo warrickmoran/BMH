@@ -70,10 +70,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Mar 31, 2015   4248     rjpeter     Use PositionComparator.
  * Sep 24, 2015   4923     bkowal      Exclude {@link TransmitterGroup}s that the {@link Program}
  *                                     has already been assigned to from the backing {@link List}.
+ * Sep 29, 2016   5910     bkowal      Update for new {@link GenericTable} constructor.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class AddTransmittersDlg extends CaveSWTDialog {
 
@@ -162,7 +162,7 @@ public class AddTransmittersDlg extends CaveSWTDialog {
                 enableAddBtn(selectionCount);
             }
         };
-        tableComp = new GenericTable(shell, 650, 150);
+        tableComp = new GenericTable(shell, 10);
         tableComp.setCallbackAction(callback);
 
         populateTransmitterTable();

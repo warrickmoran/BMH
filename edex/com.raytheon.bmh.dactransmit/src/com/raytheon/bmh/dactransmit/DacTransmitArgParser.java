@@ -33,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import com.raytheon.bmh.dactransmit.dacsession.AbstractDacConfig;
 import com.raytheon.bmh.dactransmit.dacsession.DacCommonConfig;
 import com.raytheon.bmh.dactransmit.dacsession.DacSessionConfig;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Parses the command line to determine the configuration for the DacSession
@@ -59,10 +60,10 @@ import com.raytheon.bmh.dactransmit.dacsession.DacSessionConfig;
  * Apr 29, 2015  #4394     bkowal      No longer manages the management port argument.
  * Jul 08, 2015  #4636     bkowal      Support same and alert decibel levels.
  * Nov 04, 2015  #5068     rjpeter     Switch audio units from dB to amplitude.
+ * Sep 30, 2016 5912       bkowal      Construction now requires {@link SAMEPaddingConfiguration}.
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class DacTransmitArgParser extends AbstractDacArgParser {
@@ -118,7 +119,9 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
 
     @Override
     protected AbstractDacConfig parseCommandLineInternal(CommandLine cmd,
-            DacCommonConfig commonConfig) throws ParseException {
+            DacCommonConfig commonConfig,
+            final SAMEPaddingConfiguration samePaddingConfiguration)
+            throws ParseException {
 
         Path inputDirectory = FileSystems.getDefault().getPath(
                 cmd.getOptionValue(INPUT_DIR_OPTION_KEY));
@@ -147,6 +150,6 @@ public final class DacTransmitArgParser extends AbstractDacArgParser {
                 .getOptionValue(ALERT_AMPLITUDE_TARGET_KEY));
 
         return new DacSessionConfig(commonConfig, inputDirectory, timeZone,
-                sameAmplitude, alertAmplitude);
+                sameAmplitude, alertAmplitude, samePaddingConfiguration);
     }
 }

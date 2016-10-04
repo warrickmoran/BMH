@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Note: Comms Manager must be restarted before any changes to this file 
+  will take effect. -->
+<samePaddingConfiguration>
+  <!-- Number of padding bytes to add at the end of a SAME tone -->
+  <samePadding>3</samePadding>
+  <!-- Number of padding bytes to add at the end of End of Message tones -->
+  <sameEOMPadding>3</sameEOMPadding>
+</samePaddingConfiguration>
