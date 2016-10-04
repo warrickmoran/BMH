@@ -63,8 +63,8 @@ USE_POSITION_STREAM=false
 #Disabled audio attenuation. Exists primarily for debugging purposes. This does not affect live audio streams.
 DISABLE_AUDIO_ATTENUATION=false
 # Use to adjust the amount of padding bytes at the end of the SAME Tones.
-SAME_PADDING=0
-SAME_EOM_PADDING=0
+SAME_PADDING=3
+SAME_EOM_PADDING=3
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
