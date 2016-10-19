@@ -41,11 +41,11 @@ import com.raytheon.uf.common.bmh.tones.TonesManager;
  *                                      are added to SAME and End of Message Tones.
  * May 05, 2015  #4464     bkowal       SAME Tone Padding is now configurable via a system property.
  * Jul 07, 2015  #4464     bkowal       Default SAME padding is now 0.
+ * Sep 30, 2016  #5912     bkowal       Removed embedded determination of the SAME EoM padding.
  * 
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public final class StaticTones {
@@ -65,15 +65,6 @@ public final class StaticTones {
 
     private static final String END_OF_MESSAGE_CODE = "NNNN";
 
-    /**
-     * Overridable SAME End of Message Tones padding constant. This is the
-     * number of 0 bytes that will be placed at the end of the SAME End of
-     * Message Tone bytes array that is generated. This property may no longer
-     * be overridable after we transitional to operational builds.
-     */
-    private static final int SAME_EOM_PADDING = Integer.getInteger(
-            "sameEomPaddingOverride", 0);
-
     private final byte[] betweenPreambleOrClosingPause;
 
     private final byte[] beforeAlertTonePause;
@@ -82,7 +73,7 @@ public final class StaticTones {
 
     private final byte[] beforeMessagePause;
 
-    private final ByteBuffer endOfMessageTones;
+    private ByteBuffer endOfMessageTones;
 
     public StaticTones() throws ToneGenerationException {
         this.betweenPreambleOrClosingPause = generateSilence(SILENCE_BEWTWEEN_PREAMBLE);
@@ -90,19 +81,6 @@ public final class StaticTones {
         this.alertTone = TonesManager.generateAlertTone(ALERT_TONE_AMPLITUDE,
                 ALERT_TONE_DURATION);
         this.beforeMessagePause = generateSilence(SILENCE_BEFORE_MESSAGE);
-
-        byte[] eomTone = TonesManager.generateSAMETone(END_OF_MESSAGE_CODE,
-                SAME_EOM_PADDING);
-        byte[] afterMessagePause = generateSilence(SILENCE_AFTER_MESSAGE);
-        int eomBufferSize = afterMessagePause.length + (3 * eomTone.length)
-                + (2 * this.betweenPreambleOrClosingPause.length);
-        this.endOfMessageTones = ByteBuffer.allocate(eomBufferSize);
-        this.endOfMessageTones.put(afterMessagePause);
-        this.endOfMessageTones.put(eomTone);
-        this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
-        this.endOfMessageTones.put(eomTone);
-        this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
-        this.endOfMessageTones.put(eomTone);
     }
 
     private static byte[] generateSilence(int numBytes) {
@@ -127,7 +105,22 @@ public final class StaticTones {
         return beforeMessagePause;
     }
 
-    public ByteBuffer getEndOfMessageTones() {
+    public synchronized ByteBuffer getEndOfMessageTones(final int sameEOMPadding)
+            throws ToneGenerationException {
+        if (endOfMessageTones == null) {
+            byte[] eomTone = TonesManager.generateSAMETone(END_OF_MESSAGE_CODE,
+                    sameEOMPadding);
+            byte[] afterMessagePause = generateSilence(SILENCE_AFTER_MESSAGE);
+            int eomBufferSize = afterMessagePause.length + (3 * eomTone.length)
+                    + (2 * this.betweenPreambleOrClosingPause.length);
+            this.endOfMessageTones = ByteBuffer.allocate(eomBufferSize);
+            this.endOfMessageTones.put(afterMessagePause);
+            this.endOfMessageTones.put(eomTone);
+            this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
+            this.endOfMessageTones.put(eomTone);
+            this.endOfMessageTones.put(this.betweenPreambleOrClosingPause);
+            this.endOfMessageTones.put(eomTone);
+        }
         return endOfMessageTones;
     }
 }

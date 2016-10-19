@@ -27,6 +27,8 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import com.raytheon.bmh.dactransmit.dacsession.AbstractDacConfig;
 import com.raytheon.bmh.dactransmit.dacsession.IDacSession;
 import com.raytheon.bmh.dactransmit.dacsession.IDacSession.SHUTDOWN_STATUS;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
+import com.raytheon.uf.edex.bmh.LoadedSAMEPaddingConfiguration;
 
 /**
  * Main entry point for DacTransmit program. Reads from a specified directory
@@ -56,11 +58,11 @@ import com.raytheon.bmh.dactransmit.dacsession.IDacSession.SHUTDOWN_STATUS;
  *                                      startPlayback() doesn't block.
  * Oct 24, 2014  #3703     bsteffen     Bridge jul and slf4j.
  * Nov 7, 2014   #3630     bkowal       Support maintenance mode.
+ * Sep 30, 2016  #5912     bkowal       Retrieve {@link SAMEPaddingConfiguration} during startup.
  * 
  * </pre>
  * 
  * @author dgilling
- * @version 1.0
  */
 
 public class DacTransmitMain {
@@ -79,7 +81,23 @@ public class DacTransmitMain {
                 argParser.printUsage();
                 shutdown(SHUTDOWN_STATUS.SUCCESS);
             }
-            dacConfig = argParser.parseCommandLine(args);
+
+            /*
+             * Check JVM parameters for SAME Padding information.
+             */
+            SAMEPaddingConfiguration samePaddingConfiguration = null;
+            try {
+                samePaddingConfiguration = LoadedSAMEPaddingConfiguration
+                        .getConfiguration();
+            } catch (Exception e) {
+                samePaddingConfiguration = new SAMEPaddingConfiguration();
+                logger.warn(
+                        "Failed to load the SAME Padding Configuration. Using default configuration: "
+                                + samePaddingConfiguration.toString() + ".", e);
+            }
+
+            dacConfig = argParser.parseCommandLine(args,
+                    samePaddingConfiguration);
         } catch (ParseException e) {
             logger.error("Invalid argument specified.", e);
             if (argParser != null) {

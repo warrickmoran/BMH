@@ -48,6 +48,8 @@
 #    01/07/2016      4997          bkowal         dactransmit is no longer a uf edex plugin.
 #    02/09/2016      5082          bkowal         Updates for Apache commons lang 3.
 #    02/25/2016      5395          rjpeter        Removed incremental CMS.
+#    09/30/2016      5912          bkowal         Removed SAME Padding variables to transition
+#                                                 them to a permanent implementation.
 ##############################################################################
 
 
@@ -62,9 +64,6 @@ preservedArgs=()
 USE_POSITION_STREAM=false
 #Disabled audio attenuation. Exists primarily for debugging purposes. This does not affect live audio streams.
 DISABLE_AUDIO_ATTENUATION=false
-# Use to adjust the amount of padding bytes at the end of the SAME Tones.
-SAME_PADDING=3
-SAME_EOM_PADDING=3
 
 # This loop processes the command line args. We need to extract DAC_ADDRESS(-d)
 # and DAC_PORT(-p). To make it easier to grab the argument to flags $prev will
@@ -131,7 +130,6 @@ done;
 JVM_ARGS="-Xms16m -Xmx48m -XX:+UseConcMarkSweepGC -XX:NewSize=8m -XX:MaxNewSize=8m -XX:SurvivorRatio=6 -XX:MaxPermSize=24m -XX:ReservedCodeCacheSize=8m"
 JVM_PROPS="-Dthrift.stream.maxsize=20 -Duser.timezone=GMT -Dlogback.configurationFile=${BMH_HOME}/conf/logback-dactransmit.xml"
 JVM_PROPS="${JVM_PROPS} -DusePositionStream=${USE_POSITION_STREAM} -DdisableAudioAttenuation=${DISABLE_AUDIO_ATTENUATION}"
-JVM_PROPS="${JVM_PROPS} -DsamePaddingOverride=${SAME_PADDING} -DsameEomPaddingOverride=${SAME_EOM_PADDING}"
 
 
 java ${JVM_ARGS} ${JVM_PROPS} -classpath ${CLASSPATH} ${ENTRY_POINT} "${preservedArgs[@]}"

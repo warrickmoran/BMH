@@ -45,10 +45,12 @@ import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastGroupsMessage;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastListGroupsCommand;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand;
 import com.raytheon.uf.common.bmh.broadcast.OnDemandBroadcastConstants.MSGSOURCE;
+import com.raytheon.uf.common.bmh.broadcast.SAMEPaddingSettingsCommand;
 import com.raytheon.uf.common.bmh.broadcast.TransmitterMaintenanceCommand;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.serialization.SerializationUtil;
+import com.raytheon.uf.edex.bmh.LoadedSAMEPaddingConfiguration;
 import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
 
 /**
@@ -76,6 +78,7 @@ import com.raytheon.uf.edex.bmh.audio.LoadedAudioRegulationConfiguration;
  *                                     dac transmit connections.
  * Nov 11, 2015 5114       rjpeter     Updated CommsManager to use a single port.
  * Dec 15, 2015 5114       rjpeter     Updated SocketListener to use a ThreadPool.
+ * Sep 30, 2016 5912       bkowal      Handle {@link SAMEPaddingSettingsCommand}.
  * </pre>
  * 
  * @author bkowal
@@ -152,6 +155,20 @@ public class BroadcastStreamServer extends AbstractServer {
             }
 
             return true;
+        }
+        
+        if (obj instanceof SAMEPaddingSettingsCommand) {
+            try {
+                SerializationUtil.transformToThriftUsingStream(
+                        LoadedSAMEPaddingConfiguration.getConfiguration(),
+                        socket.getOutputStream());
+            } catch (Exception e) {
+                logger.error("Error occurred sending response to "
+                        + SAMEPaddingSettingsCommand.class.getSimpleName()
+                        + " request", e);
+            }
+
+            return true;            
         }
 
         if (!(obj instanceof IOnDemandBroadcastMsg)) {
@@ -428,6 +445,7 @@ public class BroadcastStreamServer extends AbstractServer {
         Set<Class<?>> rval = new HashSet<>(4, 1);
         rval.add(LiveBroadcastListGroupsCommand.class);
         rval.add(AudioRegulationSettingsCommand.class);
+        rval.add(SAMEPaddingSettingsCommand.class);
         rval.add(IOnDemandBroadcastMsg.class);
         return Collections.unmodifiableSet(rval);
     }
