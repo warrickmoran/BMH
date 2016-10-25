@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.BroadcastTransmitterConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.LiveBroadcastStartCommand.BROADCASTTYPE;
 import com.raytheon.uf.common.bmh.dac.tones.TonesGenerator;
@@ -78,10 +79,11 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jul 08, 2015 4636       bkowal      Updated to use {@link GeneratedTonesBuffer}.
  * Aug 24, 2015 4769       bkowal      Handle the case when no Transmitter has associated tones.
  * Sep 1, 2015  4825       bkowal      Updated to create a {@link LiveBroadcastMessage}.
+ * Sep 30, 2016 5912       bkowal      Use the {@link SAMEPaddingConfiguration} to
+ *                                     construct SAME Tones.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class EOBroadcastSettingsBuilder extends
@@ -134,14 +136,19 @@ public class EOBroadcastSettingsBuilder extends
      */
     private long longestDuration;
 
+    private final SAMEPaddingConfiguration samePaddingConfiguration;
+
     public EOBroadcastSettingsBuilder(final MessageType messageType,
             final Set<Transmitter> selectedTransmitters,
             Set<Transmitter> sameTransmitters, AreaSelectionSaveData areaData,
             final boolean playAlertTones, final int hoursDuration,
-            final int minutesDuration) throws Exception {
+            final int minutesDuration,
+            final SAMEPaddingConfiguration samePaddingConfiguration)
+            throws Exception {
         super(BROADCASTTYPE.EO);
         this.messageType = messageType;
         this.playAlertTones = playAlertTones;
+        this.samePaddingConfiguration = samePaddingConfiguration;
         this.initialize(selectedTransmitters, sameTransmitters, areaData,
                 hoursDuration, minutesDuration);
     }
@@ -256,7 +263,8 @@ public class EOBroadcastSettingsBuilder extends
         /*
          * Acquire the end tones.
          */
-        this.endTonesAudio = TonesGenerator.getEndOfMessageTones().array();
+        this.endTonesAudio = TonesGenerator.getEndOfMessageTones(
+                samePaddingConfiguration.getSameEOMPadding()).array();
     }
 
     private void calculateExpiration(final int hoursDuration,
@@ -299,7 +307,8 @@ public class EOBroadcastSettingsBuilder extends
 
         // build the SAME tone
         return new EOTones(TonesGenerator.getSAMEAlertTones(sameTone,
-                this.playAlertTones, true), sameTone);
+                this.playAlertTones, true,
+                samePaddingConfiguration.getSamePadding()), sameTone);
     }
 
     @Override

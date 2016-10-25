@@ -32,6 +32,7 @@ import org.apache.commons.cli.ParseException;
 import com.raytheon.bmh.dactransmit.dacsession.AbstractDacConfig;
 import com.raytheon.bmh.dactransmit.dacsession.DacCommonConfig;
 import com.raytheon.bmh.dactransmit.dacsession.DacMaintenanceConfig;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Defines and parses the arguments that should be present in a command when
@@ -47,11 +48,11 @@ import com.raytheon.bmh.dactransmit.dacsession.DacMaintenanceConfig;
  * Apr 09, 2015 4364       bkowal      Defined the {@link #MAINT_EXEC_TIMEOUT} argument.
  * Apr 24, 2015 4394       bkowal      Updated argument descriptions based on new usage.
  * Jul 13, 2015 4636       bkowal      Support separate 2.4K and 1.8K transfer tone types.
+ * Sep 30, 2016 5912       bkowal      Construction now requires {@link SAMEPaddingConfiguration}.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class DacMaintenanceArgParser extends AbstractDacArgParser {
@@ -76,8 +77,7 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.bmh.dactransmit.AbstractDacArgParser#getOptions()
+     * @see com.raytheon.bmh.dactransmit.AbstractDacArgParser#getOptions()
      */
     @SuppressWarnings("static-access")
     @Override
@@ -120,7 +120,9 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
 
     @Override
     protected AbstractDacConfig parseCommandLineInternal(final CommandLine cmd,
-            final DacCommonConfig commonConfig) throws ParseException {
+            final DacCommonConfig commonConfig,
+            final SAMEPaddingConfiguration samePaddingConfiguration)
+            throws ParseException {
 
         Path messageFilePath = Paths.get(cmd
                 .getOptionValue(INPUT_AUDIO_OPTION_KEY));
@@ -141,6 +143,6 @@ public class DacMaintenanceArgParser extends AbstractDacArgParser {
         }
 
         return new DacMaintenanceConfig(commonConfig, messageFilePath,
-                duration, timeout, transferAmplitude);
+                duration, timeout, transferAmplitude, samePaddingConfiguration);
     }
 }

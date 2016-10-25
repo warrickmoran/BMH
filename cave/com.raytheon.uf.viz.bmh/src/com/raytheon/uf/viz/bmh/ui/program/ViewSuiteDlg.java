@@ -66,6 +66,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Oct 13, 2014  3654      rjpeter     Updated to use MessageTypeSummary.
  * Mar 31, 2015  4248      rjpeter     Use ordered view of suite messages.
  * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
+ * Sep 29, 2016   5910     bkowal      Update for new {@link TableComp} constructor.
  * </pre>
  * 
  * @author lvenable
@@ -185,7 +186,7 @@ public class ViewSuiteDlg extends CaveSWTDialog {
         nameLbl.setText("Associated Programs:");
         nameLbl.setLayoutData(gd);
 
-        programTable = new GenericTable(controlComp, 500, 100);
+        programTable = new GenericTable(controlComp, 5);
     }
 
     /**

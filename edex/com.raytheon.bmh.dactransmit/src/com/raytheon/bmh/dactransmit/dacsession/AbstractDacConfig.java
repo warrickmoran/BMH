@@ -23,6 +23,7 @@ import java.net.InetAddress;
 import java.util.Collection;
 
 import com.raytheon.bmh.dactransmit.DAC_MODE;
+import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 
 /**
  * Configuration parameters that will be used by a dac session regardless of the
@@ -39,10 +40,10 @@ import com.raytheon.bmh.dactransmit.DAC_MODE;
  *                                     {@link Exception}.
  * Apr 29, 2015 4394       bkowal      Added {@link #getManagerPort()}.
  * Oct 14, 2015 4984       rjpeter     Added {@link #setAudioAmplitude(double)} and {@link #setTransmitters(Collection)}
+ * Sep 30, 2016 5912       bkowal      Added {@link #samePaddingConfiguration}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public abstract class AbstractDacConfig {
@@ -51,13 +52,17 @@ public abstract class AbstractDacConfig {
 
     private final DacCommonConfig commonConfig;
 
+    private final SAMEPaddingConfiguration samePaddingConfiguration;
+
     /**
      * 
      */
     public AbstractDacConfig(final DAC_MODE mode,
-            final DacCommonConfig commonConfig) {
+            final DacCommonConfig commonConfig,
+            final SAMEPaddingConfiguration samePaddingConfiguration) {
         this.mode = mode;
         this.commonConfig = commonConfig;
+        this.samePaddingConfiguration = samePaddingConfiguration;
     }
 
     public abstract IDacSession buildDacSession() throws Exception;
@@ -119,6 +124,10 @@ public abstract class AbstractDacConfig {
 
     public int getManagerPort() {
         return this.commonConfig.getManagerPort();
+    }
+
+    public SAMEPaddingConfiguration getSamePaddingConfiguration() {
+        return samePaddingConfiguration;
     }
 
     @Override
