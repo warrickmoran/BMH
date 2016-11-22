@@ -127,23 +127,20 @@ if [ "${BMH_DB_EXISTS}" = "false" ]; then
    hba_conf_=/awips2/data/pg_hba.conf
 
    # Update pg_hba.conf with the default information for the bmh database.
-   echo "" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "# TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "# ===== BMH Configuration (Operational) =====" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "local   bmh         all                               trust" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh         all         127.0.0.1/32          md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi 
-   echo "host    bmh         all         147.18.136.0/24       md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh         all         147.18.139.0/24       md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh         all         162.0.0.0/8           md5" >> ${hba_conf_}
+   cat >> "${hba_conf}" <<EOF
+
+# TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD
+# ===== BMH Configuration (Operational) =====
+local   bmh         all                               trust
+
+# hostnossl    bmh         all         127.0.0.1/32          md5
+# hostnossl    bmh         all         147.18.136.0/24       md5
+# hostnossl    bmh         all         147.18.139.0/24       md5
+# hostnossl    bmh         all         162.0.0.0/8           md5
+hostssl      bmh         all         147.18.136.0/24       cert clientcert=1
+hostssl      bmh         all         147.18.139.0/24       cert clientcert=1
+hostssl      bmh         all         162.0.0.0/8           cert clientcert=1
+EOF
    if [ $? -ne 0 ]; then exit 1; fi
 
    # trigger a reload of the configuration in PostgreSQL
@@ -173,21 +170,22 @@ if [ "${BMH_PRAC_DB_EXISTS}" = "false" ]; then
 
    hba_conf_=/awips2/data/pg_hba.conf
 
-   echo "" >> ${hba_conf_}
+   cat >> "${hba_conf}" <<EOF
+
+# TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD
+# ===== BMH Configuration (Practice) =====
+
+local   bmh         all                               trust
+
+# hostnossl    bmh_practice all         127.0.0.1/32          md5
+# hostnossl    bmh_practice all         147.18.136.0/24       md5
+# hostnossl    bmh_practice all         147.18.139.0/24       md5
+# hostnossl    bmh_practice all         162.0.0.0/8           md5
+hostssl      bmh_practice all         147.18.136.0/24       cert clientcert=1
+hostssl      bmh_practice all         147.18.139.0/24       cert clientcert=1
+hostssl      bmh_practice all         162.0.0.0/8           cert clientcert=1
+EOF
    if [ $? -ne 0 ]; then exit 1; fi
-   echo "# ===== BMH Configuration (Practice) =====" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "local   bmh_practice         all                               trust" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh_practice         all         127.0.0.1/32          md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi 
-   echo "host    bmh_practice         all         147.18.136.0/24       md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh_practice         all         147.18.139.0/24       md5" >> ${hba_conf_}
-   if [ $? -ne 0 ]; then exit 1; fi
-   echo "host    bmh_practice         all         162.0.0.0/8           md5" >> ${hba_conf_}
 
    # trigger a reload of the configuration in PostgreSQL
    su ${DB_OWNER} -c \
