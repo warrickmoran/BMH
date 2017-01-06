@@ -84,7 +84,6 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %files
 %defattr(644,awips,fxalpha,755)
-%dir /awips2
 %dir /awips2/bmh
 /awips2/bmh/*
 %dir /awips2/bmh/conf
