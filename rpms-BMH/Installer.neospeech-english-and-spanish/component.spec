@@ -67,9 +67,6 @@ cp -v ${_all_license} %{_build_root}/awips2/bmh/neospeech/verify/verification.tx
 rm -rf ${RPM_BUILD_ROOT}
 
 %files
-%defattr(644,awips,fxalpha,755)
-%dir /awips2
-%dir /awips2/bmh
 %defattr(774,root,root,775)
 %dir /awips2/bmh/neospeech
 /awips2/bmh/neospeech/*
