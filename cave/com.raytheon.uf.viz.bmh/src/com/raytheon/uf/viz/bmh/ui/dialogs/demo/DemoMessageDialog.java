@@ -31,10 +31,12 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.jobs.Job;
+import org.eclipse.jface.resource.FontDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.StyledText;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -42,6 +44,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Shell;
@@ -96,6 +99,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Nov 16, 2015  5127     rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Jan 04, 2016  4997     bkowal      Correctly label transmitter groups.
  * Apr 05, 2016  5504     bkowal      Fix GUI sizing issues.
+ * Jan 18, 2016  6077     bkowal      Added {@link #createFIPSCodeLabel(Composite)}.
  * </pre>
  * 
  * @author bsteffen
@@ -118,7 +122,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
     /**
      * Current messages for a given language.
      */
-    private final Map<Language, String> messages = new EnumMap<>(Language.class);
+    private final Map<Language, String> messages = new EnumMap<>(
+            Language.class);
 
     private org.eclipse.swt.widgets.List transmitterSelectionList;
 
@@ -147,12 +152,10 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         super(parentShell, SWT.DIALOG_TRIM | SWT.MIN | SWT.RESIZE,
                 CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         this.setText(DlgInfo.DEMO_MESSAGE.getTitle());
-        defaultMessages
-                .put(Language.ENGLISH,
-                        "Interrupting broadcast for a demonstration of the national weather radio system.");
-        defaultMessages
-                .put(Language.SPANISH,
-                        "La interrupción de transmisión para una demostración del sistema de radio nacional de meteorología.");
+        defaultMessages.put(Language.ENGLISH,
+                "Interrupting broadcast for a demonstration of the national weather radio system.");
+        defaultMessages.put(Language.SPANISH,
+                "La interrupción de transmisión para una demostración del sistema de radio nacional de meteorología.");
 
         for (Language key : defaultMessages.keySet()) {
             messages.put(key, defaultMessages.get(key));
@@ -179,6 +182,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         transmitterAndVoiceComp.setLayout(new GridLayout(1, false));
         this.createTransmitterSelection(transmitterAndVoiceComp);
         this.createVoiceSelection(transmitterAndVoiceComp);
+        createFIPSCodeLabel(transmitterAndVoiceComp);
         this.createMessageEntry();
         this.createButtons();
         this.configureListeners();
@@ -205,10 +209,35 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         GridData gd = new GridData(SWT.FILL, SWT.NONE, true, false);
         voiceGroup.setLayoutData(gd);
         voiceGroup.setText("Voice:");
-        voiceSelectionCombo = new Combo(voiceGroup, SWT.BORDER | SWT.DROP_DOWN
-                | SWT.READ_ONLY);
+        voiceSelectionCombo = new Combo(voiceGroup,
+                SWT.BORDER | SWT.DROP_DOWN | SWT.READ_ONLY);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         voiceSelectionCombo.setLayoutData(gd);
+    }
+
+    /**
+     * Creates a {@link Group} containing the read-only FIPS code that will be
+     * used when transmitting a message.
+     * 
+     * @param parent
+     *            the {@link Composite} that the {@link Group} should be
+     *            rendered in.
+     */
+    protected void createFIPSCodeLabel(final Composite parent) {
+        Group fipsCodeGroup = new Group(parent, SWT.SHADOW_OUT);
+        fipsCodeGroup.setLayout(new GridLayout(1, false));
+        GridData gd = new GridData(SWT.FILL, SWT.NONE, true, false);
+        fipsCodeGroup.setLayoutData(gd);
+        fipsCodeGroup.setText("FIPS Code:");
+        final Label fipsCodeLbl = new Label(fipsCodeGroup, SWT.NONE);
+        FontDescriptor boldFontDescriptor = FontDescriptor
+                .createFrom(fipsCodeLbl.getFont()).setStyle(SWT.BOLD);
+        Font boldFont = boldFontDescriptor.createFont(fipsCodeLbl.getDisplay());
+        fipsCodeLbl.setFont(boldFont);
+        fipsCodeLbl.setText("999000");
+        gd = new GridData(SWT.CENTER, SWT.FILL, true, true);
+        fipsCodeLbl.setLayoutData(gd);
+        boldFont.dispose();
     }
 
     protected void createMessageEntry() {
@@ -218,8 +247,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         messagesGroup.setLayoutData(gd);
         messagesGroup.setText("Message:");
 
-        messageText = new StyledText(messagesGroup, SWT.BORDER | SWT.MULTI
-                | SWT.V_SCROLL);
+        messageText = new StyledText(messagesGroup,
+                SWT.BORDER | SWT.MULTI | SWT.V_SCROLL);
         gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         GC gc = new GC(messageText);
         gd.widthHint = gc.getFontMetrics().getAverageCharWidth() * 80;
@@ -273,8 +302,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         voiceSelectionCombo.select(0);
         if (previousSelection != null) {
             for (int index = 0; index < availableVoices.size(); index += 1) {
-                if (availableVoices.get(index).getLanguage() == previousSelection
-                        .getLanguage()) {
+                if (availableVoices.get(index)
+                        .getLanguage() == previousSelection.getLanguage()) {
                     voiceSelectionCombo.select(index);
                 }
             }
@@ -408,7 +437,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
                     "Failed to submit the demo message.", e);
             MessageBox mb = new MessageBox(shell, SWT.ICON_ERROR | SWT.OK);
             mb.setText("Demo message Failure.");
-            mb.setMessage("Unable to send demo message. Failed to find or create message type.");
+            mb.setMessage(
+                    "Unable to send demo message. Failed to find or create message type.");
             mb.open();
             return;
         }
@@ -472,8 +502,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
             mType.setVoice(getSelectedVoice());
 
             mType.setSameTransmitters(transmitterGroup.getTransmitters());
-            mType.setDefaultTransmitterGroups(Collections
-                    .singleton(transmitterGroup));
+            mType.setDefaultTransmitterGroups(
+                    Collections.singleton(transmitterGroup));
             dataManager.saveMessageType(mType);
         } else if (mType.getVoice() != getSelectedVoice()) {
             mType.setVoice(getSelectedVoice());
@@ -527,8 +557,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
                 TransmitterDataManager tdm = new TransmitterDataManager();
                 List<TransmitterGroup> groups = tdm
                         .getTransmitterGroups(new PositionComparator());
-                getDisplay().asyncExec(
-                        new PopulateTransmitterGroupsTask(groups));
+                getDisplay()
+                        .asyncExec(new PopulateTransmitterGroupsTask(groups));
             } catch (Throwable e) {
                 statusHandler.error("Unable to retrieve list of transmitters.",
                         e);
@@ -570,8 +600,8 @@ public class DemoMessageDialog extends AbstractBMHDialog {
                     getDisplay().asyncExec(
                             new PopulateVoicesTask(vdm.getAllVoices()));
                 } catch (Throwable e) {
-                    statusHandler.error(
-                            "Unable to retrieve list of voices for transmitter group: "
+                    statusHandler
+                            .error("Unable to retrieve list of voices for transmitter group: "
                                     + this.transmitterGroup.getName() + ".", e);
                 }
             }
