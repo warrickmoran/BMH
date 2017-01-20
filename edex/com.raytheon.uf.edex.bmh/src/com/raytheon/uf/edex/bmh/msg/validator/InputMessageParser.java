@@ -34,10 +34,12 @@ import java.util.regex.Pattern;
 
 import org.apache.camel.Body;
 import org.apache.camel.Headers;
+import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.Origin;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -86,6 +88,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
  *                                    requirements when the same tone flag is set.
  * Nov 16, 2015  5127     rjpeter     Added logging of headers and archiving of original file.
  * Aug 04, 2016  5766     bkowal      Eliminate deprecated use of FileUtil.
+ * Jan 19, 2017  6078     bkowal      Set origin on the {@link InputMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -144,9 +147,8 @@ public class InputMessageParser {
         this.archiveFileManager = archiveFileManager;
     }
 
-    public InputMessage parse(@Body
-    File file, @Headers
-    Map<String, Object> headers) {
+    public InputMessage parse(@Body File file,
+            @Headers Map<String, Object> headers) {
         InputMessage message = new InputMessage();
 
         String fileName = headers.get("CamelFileNameOnly").toString();
@@ -161,7 +163,7 @@ public class InputMessageParser {
             int index = findStart(text);
             Matcher header = headerPattern.matcher(text);
             header.region(index, text.length());
-            if (header.find() == false) {
+            if (!header.find()) {
                 throw new ParseException("Cannot find message header", index);
             }
 
@@ -192,6 +194,7 @@ public class InputMessageParser {
             message.setValidHeader(false);
         }
 
+        message.setOrigin(Origin.EXTERNAL);
         return message;
     }
 
@@ -215,7 +218,7 @@ public class InputMessageParser {
 
     private int findStart(CharSequence text) throws ParseException {
         Matcher start = startPattern.matcher(text);
-        if (start.find() == false) {
+        if (!start.find()) {
             throw new ParseException("No Start Message Indicator.", 0);
         }
         return start.end();
@@ -225,10 +228,10 @@ public class InputMessageParser {
             int index) throws ParseException {
         Matcher format = formatPattern.matcher(text);
         format.region(index, text.length());
-        if (format.find() == false) {
+        if (!format.find()) {
             throw new ParseException("Invalid Message Format.", index);
         }
-        if ("T".equals(format.group(1)) == false) {
+        if (!("T".equals(format.group(1)))) {
             throw new ParseException("Unhandled format:" + format.group(1),
                     format.start(1));
         }
@@ -248,7 +251,7 @@ public class InputMessageParser {
             throws ParseException {
         Matcher afosid = afosidPattern.matcher(text);
         afosid.region(index, text.length());
-        if (afosid.find() == false) {
+        if (!afosid.find()) {
             throw new ParseException("Invalid Afosid.", index);
         }
         message.setAfosid(afosid.group().trim());
@@ -259,7 +262,7 @@ public class InputMessageParser {
             int index) throws ParseException {
         Matcher date = datePattern.matcher(text);
         date.region(index, text.length());
-        if (date.find() == false) {
+        if (!date.find()) {
             throw new ParseException("Invalid Creation Date.", index);
         }
         message.setCreationTime(parseDate(date));
@@ -270,7 +273,7 @@ public class InputMessageParser {
             int index) throws ParseException {
         Matcher date = datePattern.matcher(text);
         date.region(index, text.length());
-        if (date.find() == false) {
+        if (!date.find()) {
             throw new ParseException("Invalid Effective Date.", index);
         }
         message.setEffectiveTime(parseDate(date));
@@ -281,7 +284,7 @@ public class InputMessageParser {
             int index) throws ParseException {
         Matcher periodicity = periodicityPattern.matcher(text);
         periodicity.region(index, text.length());
-        if (periodicity.find() == false) {
+        if (!periodicity.find()) {
             throw new ParseException("Invalid Periodicity.", index);
         }
         if (!periodicity.group().trim().isEmpty()) {
@@ -302,7 +305,8 @@ public class InputMessageParser {
             if (mrdStr.contains("F")) {
                 throw new ParseException(
                         "MRD Follows is no longer supported; discovered in mrd: "
-                                + mrdStr, index);
+                                + mrdStr,
+                        index);
             }
             message.setMrd(mrdStr);
             return mrd.end();
@@ -324,8 +328,8 @@ public class InputMessageParser {
             message.setActive(false);
             break;
         default:
-            throw new ParseException("Unrecognized Active/Inactive Character: "
-                    + active, index);
+            throw new ParseException(
+                    "Unrecognized Active/Inactive Character: " + active, index);
         }
         return index + 1;
     }
@@ -346,8 +350,8 @@ public class InputMessageParser {
             message.setConfirm(false);
             break;
         default:
-            throw new ParseException("Unrecognized Confirmation Character: "
-                    + active, index);
+            throw new ParseException(
+                    "Unrecognized Confirmation Character: " + active, index);
         }
         return index + 1;
     }
@@ -363,8 +367,8 @@ public class InputMessageParser {
             message.setInterrupt(false);
             break;
         default:
-            throw new ParseException("Unrecognized Interrupt Flag Character: "
-                    + active, index);
+            throw new ParseException(
+                    "Unrecognized Interrupt Flag Character: " + active, index);
         }
         return index + 1;
     }
@@ -386,8 +390,8 @@ public class InputMessageParser {
             message.setNwrsameTone(false);
             break;
         default:
-            throw new ParseException("Unrecognized Alert Tone Character: "
-                    + active, index);
+            throw new ParseException(
+                    "Unrecognized Alert Tone Character: " + active, index);
         }
 
         if (message.getNwrsameTone() && message.getAfosid().length() < 7) {
@@ -399,7 +403,8 @@ public class InputMessageParser {
         return index + 1;
     }
 
-    private int parsePolygon(InputMessage message, CharSequence text, int index) {
+    private int parsePolygon(InputMessage message, CharSequence text,
+            int index) {
         Matcher polygon = polygonPattern.matcher(text);
         polygon.region(index, text.length());
         StringBuilder polygonText = new StringBuilder();
@@ -449,8 +454,8 @@ public class InputMessageParser {
         Matcher ugc = ugcPattern.matcher(text);
         ugc.region(index, text.length());
         if (ugc.find()) {
-            message.setAreaCodes(this.parseUGCs(ugc.group(1), index,
-                    message.getName()));
+            message.setAreaCodes(
+                    this.parseUGCs(ugc.group(1), index, message.getName()));
             return ugc.end();
         }
         throw new ParseException("Invalid Listening Area Codes.", index);
@@ -499,9 +504,9 @@ public class InputMessageParser {
                 String[] consecutiveComponents = ugcComponent
                         .split(UGC_CONSECUTIVE);
                 if (consecutiveComponents.length != 2) {
-                    throw new ParseException("UGC consecutive sequence: "
-                            + ugcComponent
-                            + " was not in the expected [SSF]NNN>NNN format.",
+                    throw new ParseException(
+                            "UGC consecutive sequence: " + ugcComponent
+                                    + " was not in the expected [SSF]NNN>NNN format.",
                             index);
                 }
                 String consecutive0 = consecutiveComponents[0];
@@ -510,8 +515,10 @@ public class InputMessageParser {
                     /*
                      * This component MUST contain a SSF.
                      */
-                    throw new ParseException("First ugc: " + ugcComponent
-                            + " was not in the expected SSFNNN format.", index);
+                    throw new ParseException(
+                            "First ugc: " + ugcComponent
+                                    + " was not in the expected SSFNNN format.",
+                            index);
                 }
 
                 if (consecutive0.length() == 6) {
@@ -539,9 +546,10 @@ public class InputMessageParser {
                     sequenceStart = Integer.parseInt(consecutive0);
                     sequenceEnd = Integer.parseInt(consecutive1);
                 } catch (NumberFormatException e) {
-                    throw new ParseException("UGC consecutive sequence: "
-                            + ugcComponent
-                            + " contains invalid numeric reference.", index);
+                    throw new ParseException(
+                            "UGC consecutive sequence: " + ugcComponent
+                                    + " contains invalid numeric reference.",
+                            index);
                 }
 
                 if (sequenceStart > sequenceEnd) {
@@ -561,13 +569,11 @@ public class InputMessageParser {
                         sb.append(UGC_SEPARATOR);
                     }
 
-                    String sequenceNum = Integer.toString(j);
-                    while (sequenceNum.length() < 3) {
-                        /*
-                         * 0-Padding.
-                         */
-                        sequenceNum = "0" + sequenceNum;
-                    }
+                    /*
+                     * 0-Padding.
+                     */
+                    String sequenceNum = StringUtils
+                            .leftPad(Integer.toString(j), 3, "0");
                     sb.append(lastSSF).append(sequenceNum);
                 }
             } else {
@@ -575,8 +581,10 @@ public class InputMessageParser {
                     /*
                      * This component MUST contain a SSF.
                      */
-                    throw new ParseException("First ugc: " + ugcComponent
-                            + " was not in the expected SSFNNN format.", index);
+                    throw new ParseException(
+                            "First ugc: " + ugcComponent
+                                    + " was not in the expected SSFNNN format.",
+                            index);
                 }
 
                 if (ugcComponent.length() == 6) {
@@ -587,9 +595,10 @@ public class InputMessageParser {
                     sb.append(ugcComponent);
                 } else {
                     if (ugcComponent.length() != 3) {
-                        throw new ParseException("UGC component: "
-                                + ugcComponent
-                                + " was not in the expected NNN format.", index);
+                        throw new ParseException(
+                                "UGC component: " + ugcComponent
+                                        + " was not in the expected NNN format.",
+                                index);
                     }
 
                     /*
@@ -616,10 +625,10 @@ public class InputMessageParser {
             int index) throws ParseException {
         Matcher date = datePattern.matcher(text);
         date.region(index, text.length());
-        if (date.find() == false) {
+        if (!date.find()) {
             throw new ParseException("Invalid Expiration Date.", index);
         }
-        if (date.group().equals("9999999999")) {
+        if ("9999999999".equals(date.group())) {
             /*
              * The message never expires.
              */
@@ -634,7 +643,7 @@ public class InputMessageParser {
             throws ParseException {
         Matcher end = endPattern.matcher(text);
         end.region(index, text.length());
-        if (end.find() == false) {
+        if (!end.find()) {
             throw new ParseException("No End Message indicator", index);
         }
         message.setContent(end.group(1).trim());

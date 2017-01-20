@@ -39,10 +39,10 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.IInputTextValidator;
  * Aug 22, 2014 3490       lvenable    Initial creation
  * Oct 27, 2014 3764       mpduff      Fix validation
  * Jan 27, 2015 5160       rjpeter     Reserve DMO message from renames.
+ * Jan 19, 2017 6078       bkowal      Removed the DMO message rename restriction.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 
 public class MessageTypeAfosValidator implements IInputTextValidator {
@@ -71,14 +71,14 @@ public class MessageTypeAfosValidator implements IInputTextValidator {
 
     @Override
     public boolean validateInputText(Shell parentShell, String text) {
-        if ((text.matches("[A-Z0-9]+") == false) || (text.length() < 7)
-                || (text.length() > 9)) {
+        if (!(text.matches("[A-Z0-9]{7,9}"))) {
             StringBuilder sb = new StringBuilder();
 
-            sb.append("The Message Type name must be 7-9 characters, capital letters or numbers.");
+            sb.append(
+                    "The Message Type name must be 7-9 characters, capital letters or numbers.");
 
-            DialogUtility.showMessageBox(parentShell,
-                    SWT.ICON_WARNING | SWT.OK, "Invalid Name", sb.toString());
+            DialogUtility.showMessageBox(parentShell, SWT.ICON_WARNING | SWT.OK,
+                    "Invalid Name", sb.toString());
 
             return false;
         }
@@ -86,18 +86,12 @@ public class MessageTypeAfosValidator implements IInputTextValidator {
         if ((existingNames != null) && existingNames.contains(text)) {
             StringBuilder sb = new StringBuilder();
 
-            sb.append("The Message Type name already exists.  Please enter another name.");
+            sb.append(
+                    "The Message Type name already exists.  Please enter another name.");
 
-            DialogUtility.showMessageBox(parentShell,
-                    SWT.ICON_WARNING | SWT.OK, "Existing Name", sb.toString());
+            DialogUtility.showMessageBox(parentShell, SWT.ICON_WARNING | SWT.OK,
+                    "Existing Name", sb.toString());
 
-            return false;
-        }
-
-        if ("DMO".equals(text.subSequence(3, 6))) {
-            String message = "Invalid Message Type.\n\nDMO messages are reserved for use by Send Demo Message.";
-            DialogUtility.showMessageBox(parentShell, SWT.ICON_WARNING,
-                    "Invalid Message Type", message);
             return false;
         }
 

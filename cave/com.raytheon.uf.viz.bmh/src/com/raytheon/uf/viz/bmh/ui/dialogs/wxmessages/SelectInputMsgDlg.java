@@ -40,10 +40,10 @@ import org.eclipse.swt.widgets.Layout;
 import org.eclipse.swt.widgets.Shell;
 
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.Origin;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest;
 import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
 import com.raytheon.uf.common.bmh.request.InputMessageResponse;
-import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.time.util.TimeUtil;
@@ -92,10 +92,10 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 12, 2015   4482      rjpeter     Fixed NPE.
  * Jul 14, 2015   4162      rferrel     The filterAction combines text and time filtering.
  * Apr 04, 2016   5504      bkowal      Fix GUI sizing issues.
+ * Jan 19, 2017   6078      bkowal      Only exclude DMO messages created using the Demo Message dialog.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
@@ -189,7 +189,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (allInputMsgsChk.getSelection() == true) {
+                if (allInputMsgsChk.getSelection()) {
                     retrieveAllInputMessages();
                 } else {
                     retrieveUnexpiredInputMessages();
@@ -223,8 +223,8 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
     private void createOkCancelButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        buttonComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         int buttonWidth = 80;
         GridData gd = new GridData(SWT.RIGHT, SWT.DEFAULT, true, false);
@@ -283,8 +283,8 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
      * Populate the message type table.
      */
     private void populateInputMsgTable() {
-        if (inputMsgTable.hasSelectedItems() == false) {
-            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+        if (!inputMsgTable.hasSelectedItems()) {
+            List<TableColumnData> columnNames = new ArrayList<>();
             TableColumnData tcd = new TableColumnData("Name", 250);
             columnNames.add(tcd);
             tcd = new TableColumnData("AFOS ID", 100);
@@ -335,15 +335,15 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             if (im.getActive() == null) {
                 trd.addTableCellData(new TableCellData("???"));
             } else {
-                trd.addTableCellData(new TableCellData((im.getActive()) ? "Yes"
-                        : "No"));
+                trd.addTableCellData(
+                        new TableCellData((im.getActive()) ? "Yes" : "No"));
             }
 
             if (im.getCreationTime() == null) {
                 trd.addTableCellData(new TableCellData("??????"));
             } else {
-                trd.addTableCellData(new TableCellData(dateFmt.format(im
-                        .getCreationTime().getTime())));
+                trd.addTableCellData(new TableCellData(
+                        dateFmt.format(im.getCreationTime().getTime())));
             }
 
             inputMsgTableData.addDataRow(trd);
@@ -405,9 +405,9 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             }
 
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving unexpired input messages from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving unexpired input messages from the database: ",
+                    e);
             allInputMessages = Collections.emptyList();
             filteredInputMessages = Collections.emptyList();
             return;
@@ -429,27 +429,27 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
         try {
             staticAfosIds = mtdm.getStaticMessageAfosIds();
         } catch (Exception e) {
-            statusHandler
-                    .error("Failed to retrieve the afos ids associated with static message types.",
-                            e);
+            statusHandler.error(
+                    "Failed to retrieve the afos ids associated with static message types.",
+                    e);
             return;
         }
 
         Iterator<InputMessage> it = tmpInputMsgList.iterator();
         while (it.hasNext()) {
-            final String afosId = it.next().getAfosid();
+            final InputMessage im = it.next();
+            final String afosId = im.getAfosid();
             /*
              * Also filter demo messages. They do not have a unique designation,
              * so they must be filtered using inspection of the afos id.
              */
             if (staticAfosIds.contains(afosId)
-                    || (afosId != null && afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT
-                            .equals(afosId.substring(3, 6)))) {
+                    || im.getOrigin() == Origin.DMOMSG) {
                 it.remove();
             }
         }
 
-        allInputMessages = new ArrayList<InputMessage>(tmpInputMsgList);
+        allInputMessages = new ArrayList<>(tmpInputMsgList);
 
         filteredInputMessages.clear();
         filteredInputMessages.addAll(allInputMessages);
@@ -471,8 +471,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
          * all of the items. Usually this can't happen but this is more of a
          * safety check.
          */
-        if (filterData.filterOnText() == false
-                && filterData.filterOnDate() == false) {
+        if (!filterData.filterOnText() && !filterData.filterOnDate()) {
             filteredInputMessages.clear();
             filteredInputMessages.addAll(allInputMessages);
 
@@ -486,7 +485,7 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
 
         for (int i = 0; i < allInputMessages.size(); i++) {
             im = allInputMessages.get(i);
-            if (filterData.filterOnText() == true) {
+            if (filterData.filterOnText()) {
                 if (matchesTextFilter(filterData, im.getName())
                         && matchesDateFilter(filterData, im)) {
                     matchingIndexes.add(i);
@@ -534,30 +533,32 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
                     return true;
                 }
             } else {
-                if (text.toLowerCase().startsWith(
-                        filterData.getFilterText().toLowerCase())) {
+                if (text.toLowerCase()
+                        .startsWith(filterData.getFilterText().toLowerCase())) {
                     return true;
                 }
             }
-        } else if (filterData.getTextFilterChoice() == TextFilterChoice.ENDS_WITH) {
+        } else if (filterData
+                .getTextFilterChoice() == TextFilterChoice.ENDS_WITH) {
             if (filterData.isCaseSensitive()) {
                 if (text.endsWith(filterData.getFilterText())) {
                     return true;
                 }
             } else {
-                if (text.toLowerCase().endsWith(
-                        filterData.getFilterText().toLowerCase())) {
+                if (text.toLowerCase()
+                        .endsWith(filterData.getFilterText().toLowerCase())) {
                     return true;
                 }
             }
-        } else if (filterData.getTextFilterChoice() == TextFilterChoice.CONTAINS) {
+        } else if (filterData
+                .getTextFilterChoice() == TextFilterChoice.CONTAINS) {
             if (filterData.isCaseSensitive()) {
                 if (text.contains(filterData.getFilterText())) {
                     return true;
                 }
             } else {
-                if (text.toLowerCase().contains(
-                        filterData.getFilterText().toLowerCase())) {
+                if (text.toLowerCase()
+                        .contains(filterData.getFilterText().toLowerCase())) {
                     return true;
                 }
             }
@@ -591,7 +592,8 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             if (date.after(filterData.getStartDate())) {
                 return true;
             }
-        } else if (filterData.getDateFilterChoice() == DateFilterChoice.BEFORE) {
+        } else if (filterData
+                .getDateFilterChoice() == DateFilterChoice.BEFORE) {
             if (date.before(filterData.getStartDate())) {
                 return true;
             }

@@ -52,6 +52,7 @@ import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
 import com.raytheon.uf.common.bmh.audio.SAMEPaddingConfiguration;
 import com.raytheon.uf.common.bmh.broadcast.NewBroadcastMsgRequest;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.Origin;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.Suite;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
@@ -120,6 +121,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 11, 2016  5504      bkowal      Adjust size of image-based EO buttons.
  * Aug 04, 2016  5766      bkowal      Set cycles on the {@link InputMessage} that is constructed.
  * Sep 30, 2016  5912      bkowal      Use the {@link SAMEPaddingConfiguration} to construct SAME Tones.
+ * Jan 19, 2017  6078      bkowal      Set origin on the {@link InputMessage}.
  * </pre>
  * 
  * @author lvenable
@@ -139,9 +141,6 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Emergency Message Type table data. */
     private TableData msgTypeTableData = null;
 
-    /** List of emergency override messages. */
-    private List<MessageType> emerOverrideMsgTypes;
-
     /** List of SAME transmitters. */
     /*
      * Currently all selections will be overwritten whenever the user changes
@@ -154,20 +153,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     /** Selected message type. */
     private MessageType selectedMsgType = null;
 
-    /** Area selection button. */
-    private Button areaSelectionBtn;
-
-    /** Transmit button. */
-    private Button transmitBtn;
-
     /** Alert check box. */
     private Button alertChk;
 
     /** Auto schedule check box. */
     private Button autoScheduleChk;
-
-    /** Duration label. */
-    private Label durationLbl;
 
     /** Duration hour spinner. */
     private Spinner durHourSpnr;
@@ -176,7 +166,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private Spinner durMinuteSpnr;
 
     /** Maximum number of hours for the duration. */
-    private final int hourMax = 6;
+    private static final int HOUR_MAX = 6;
 
     /** Area Data for a given message type. */
     private final Map<MessageType, AreaSelectionSaveData> areaDataMap = new HashMap<>();
@@ -188,8 +178,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      *            Parent shell.
      */
     public EmergencyOverrideDlg(Shell parentShell) {
-        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN, CAVE.DO_NOT_BLOCK
-                | CAVE.PERSPECTIVE_INDEPENDENT);
+        super(parentShell, SWT.DIALOG_TRIM | SWT.MIN,
+                CAVE.DO_NOT_BLOCK | CAVE.PERSPECTIVE_INDEPENDENT);
         setText(DlgInfo.EMERGENCY_OVERRIDE.getTitle());
     }
 
@@ -237,8 +227,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         Composite mainControlComp = new Composite(shell, SWT.NONE);
         GridLayout gl = new GridLayout(3, false);
         mainControlComp.setLayout(gl);
-        mainControlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        mainControlComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         createMessageTypeTable(mainControlComp);
         createMiddleActionControls(mainControlComp);
@@ -284,8 +274,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private void createMiddleActionControls(Composite mainComp) {
         ButtonImageCreator bic = new ButtonImageCreator(shell);
 
-        Composite controlComp = new Composite(mainComp, SWT.BORDER
-                | SWT.SHADOW_OUT);
+        Composite controlComp = new Composite(mainComp,
+                SWT.BORDER | SWT.SHADOW_OUT);
         GridLayout gl = new GridLayout(1, false);
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         controlComp.setLayout(gl);
@@ -297,7 +287,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         gd.minimumWidth = minimumWidth;
-        areaSelectionBtn = new Button(controlComp, SWT.PUSH);
+        Button areaSelectionBtn = new Button(controlComp, SWT.PUSH);
         areaSelectionBtn.setLayoutData(gd);
 
         // Setup the Font data.
@@ -353,7 +343,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         autoSchedComp.setLayoutData(gd);
 
         gd = new GridData();
-        durationLbl = new Label(autoSchedComp, SWT.CENTER);
+        Label durationLbl = new Label(autoSchedComp, SWT.CENTER);
         durationLbl.setText("Duration\n(HHMM)");
         durationLbl.setLayoutData(gd);
 
@@ -362,11 +352,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         durHourSpnr.setLayoutData(gd);
         durHourSpnr.setTextLimit(2);
         durHourSpnr.setMinimum(0);
-        durHourSpnr.setMaximum(hourMax);
+        durHourSpnr.setMaximum(HOUR_MAX);
         durHourSpnr.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if (durHourSpnr.getSelection() == hourMax) {
+                if (durHourSpnr.getSelection() == HOUR_MAX) {
                     durMinuteSpnr.setSelection(0);
                     durMinuteSpnr.setEnabled(false);
                 } else {
@@ -387,7 +377,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
          */
         gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
         gd.minimumWidth = minimumWidth;
-        transmitBtn = new Button(controlComp, SWT.PUSH);
+        Button transmitBtn = new Button(controlComp, SWT.PUSH);
         transmitBtn.setLayoutData(gd);
 
         Image transmitImg = bic.generateImage(imageWidthHeight.x,
@@ -417,7 +407,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
      * Populate the Emergency message type table.
      */
     private void populateEmergencyMsgTypeTable() {
-        List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+        List<TableColumnData> columnNames = new ArrayList<>();
         TableColumnData tcd = new TableColumnData("Message Type", 120);
         columnNames.add(tcd);
         tcd = new TableColumnData("Message Title");
@@ -435,13 +425,14 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     private void populateMsgTypeTableData() {
         MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
+        List<MessageType> emerOverrideMsgTypes;
         try {
             emerOverrideMsgTypes = msgTypeDataMgr
                     .getEmergencyOverrideMsgTypes(new MsgTypeAfosComparator());
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving emergency override message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving emergency override message type data from the database: ",
+                    e);
             return;
         }
 
@@ -463,11 +454,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
 
         // Update the duration
         Map<DateFieldType, Integer> timeMap = BmhUtils
-                .generateDayHourMinuteSecondMap(this.selectedMsgType
-                        .getDuration());
+                .generateDayHourMinuteSecondMap(
+                        this.selectedMsgType.getDuration());
         final int durationHour = timeMap.get(DateFieldType.HOUR);
-        if (durationHour > hourMax) {
-            this.durHourSpnr.setSelection(hourMax);
+        if (durationHour > HOUR_MAX) {
+            this.durHourSpnr.setSelection(HOUR_MAX);
             this.durMinuteSpnr.setSelection(0);
             this.durMinuteSpnr.setEnabled(false);
         } else {
@@ -514,7 +505,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     }
 
     private void handleTransmitAction() {
-        if (this.validateSelections() == false) {
+        if (!this.validateSelections()) {
             return;
         }
 
@@ -555,13 +546,11 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         }
 
         // alert the user that they are about to play same tones.
-        int option = DialogUtility
-                .showMessageBox(
-                        this.shell,
-                        SWT.ICON_WARNING | SWT.YES | SWT.NO,
-                        "Emergency Override - Tone Playback",
-                        this.selectedMsgType.getTitle()
-                                + " will activate SAME and/or Alert Tones! Would you like to continue?");
+        int option = DialogUtility.showMessageBox(this.shell,
+                SWT.ICON_WARNING | SWT.YES | SWT.NO,
+                "Emergency Override - Tone Playback",
+                this.selectedMsgType.getTitle()
+                        + " will activate SAME and/or Alert Tones! Would you like to continue?");
         if (option != SWT.YES) {
             return;
         }
@@ -582,7 +571,7 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
                     return;
                 }
 
-                if (returnValue instanceof ByteBuffer == false) {
+                if (!(returnValue instanceof ByteBuffer)) {
                     return;
                 }
 
@@ -637,8 +626,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         StringBuilder sb = new StringBuilder("A message with type: ");
         sb.append(this.selectedMsgType.getAfosid());
         sb.append(" cannot be scheduled for re-broadcast on the following ");
-        final String transmitterText = (excludedTransmitters.size() > 1) ? "transmitters"
-                : "transmitter";
+        final String transmitterText = (excludedTransmitters.size() > 1)
+                ? "transmitters" : "transmitter";
         sb.append(transmitterText).append(": ");
         boolean first = true;
         for (Transmitter transmitter : excludedTransmitters) {
@@ -649,7 +638,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             }
             sb.append(transmitter.getMnemonic());
         }
-        sb.append(" because the message type does not belong to a Suite associated with the ");
+        sb.append(
+                " because the message type does not belong to a Suite associated with the ");
         sb.append(transmitterText).append(".");
         /**
          * Are there any {@link Transmitter}s that the message can be scheduled
@@ -666,7 +656,8 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
              * Identify the {@link Transmitter}s the message will be scheduled
              * for rebroadcast on.
              */
-            sb.append(" The message will be scheduled for rebroadcast on transmitter");
+            sb.append(
+                    " The message will be scheduled for rebroadcast on transmitter");
             if (rescheduleCandidates.size() > 1) {
                 sb.append("s");
             }
@@ -692,7 +683,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
     }
 
     private boolean validateSelections() {
-        /* Message Type always has to be selected based on how the table works. */
+        /*
+         * Message Type always has to be selected based on how the table works.
+         */
 
         /*
          * In legacy code, an entire day was added for a duration of 0 hours 0
@@ -743,13 +736,13 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
             public void dialogClosed(Object returnValue) {
                 if (returnValue == null) {
                     // indicates Cancel was clicked.
-                    statusHandler
-                            .info("The scheduling process has been cancelled. The live broadcast will not be rebroadcasted.");
+                    statusHandler.info(
+                            "The scheduling process has been cancelled. The live broadcast will not be rebroadcasted.");
 
                     return;
                 }
 
-                if (returnValue instanceof InputMessage == false) {
+                if (!(returnValue instanceof InputMessage)) {
                     // unlikely (impossible?) scenario
                     return;
                 }
@@ -815,9 +808,10 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         inputMsg.setNwrsameTone(false);
         inputMsg.setAreaCodes(settingsBuilder.getAreaCodeString());
         inputMsg.setExpirationTime(settingsBuilder.getExpireTime());
-        inputMsg.setContent(RecordedByUtils.getMessage(VizApp.getWsId()
-                .getUserName()));
+        inputMsg.setContent(
+                RecordedByUtils.getMessage(VizApp.getWsId().getUserName()));
         inputMsg.setValidHeader(true);
+        inputMsg.setOrigin(Origin.EOMSG);
 
         return inputMsg;
     }

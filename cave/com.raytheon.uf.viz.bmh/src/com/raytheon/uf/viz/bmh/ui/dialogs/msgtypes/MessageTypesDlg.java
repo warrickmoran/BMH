@@ -21,10 +21,10 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -87,10 +87,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Jun 05, 2015   4490     rjpeter     Updated constructor.
  * Jan 27, 2016   5160     rjpeter     Prevent editing of DMO messages.
  * Apr 04, 2016   5504     bkowal      Fix GUI sizing issues.
+ * Jan 19, 2016   6078     bkowal      Allow editing of DMO messages.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class MessageTypesDlg extends AbstractBMHDialog {
 
@@ -111,13 +111,13 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private TableData messageTypeTableData;
 
     /** Array of Message Type controls.. */
-    private final List<Control> msgTypeControls = new ArrayList<Control>();
+    private final List<Control> msgTypeControls = new ArrayList<>();
 
     /** Message Data Type Manager */
     private final MessageTypeDataManager msgTypeDataMgr = new MessageTypeDataManager();
 
     /** Set of existing AFOS Ids. */
-    private final Set<String> existingAfosIds = new HashSet<String>();
+    private final Set<String> existingAfosIds = new HashSet<>();
 
     /** Selected AFOS Id from the selected message type in the table. */
     private String selectedAfosId = null;
@@ -297,8 +297,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private void createBottomActionButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(1, false));
-        buttonComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        buttonComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         int buttonWidth = 70;
 
@@ -352,26 +352,15 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             messageTypeList = msgTypeDataMgr
                     .getMsgTypesAfosIdTitle(new MsgTypeAfosComparator());
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving message type data from the database: ",
+                    e);
         }
 
         existingAfosIds.clear();
-
-        if (messageTypeList != null) {
-            for (Iterator<MessageType> iter = messageTypeList.iterator(); iter
-                    .hasNext();) {
-                MessageType mt = iter.next();
-                String afosId = mt.getAfosid();
-
-                if ((afosId.length() >= 6)
-                        && "DMO".equals(afosId.substring(3, 6))) {
-                    iter.remove();
-                } else {
-                    existingAfosIds.add(mt.getAfosid());
-                }
-            }
+        if (CollectionUtils.isNotEmpty(messageTypeList)) {
+            messageTypeList
+                    .forEach((mt) -> existingAfosIds.add(mt.getAfosid()));
         }
     }
 
@@ -383,20 +372,20 @@ public class MessageTypesDlg extends AbstractBMHDialog {
     private MessageType getSelectedMessageType() {
         MessageType selectedMessageType = null;
         if (msgAvailTableComp.getSelectedIndex() >= 0) {
-            selectedMessageType = messageTypeList.get(msgAvailTableComp
-                    .getSelectedIndex());
+            selectedMessageType = messageTypeList
+                    .get(msgAvailTableComp.getSelectedIndex());
         } else {
             return null;
         }
 
         MessageType fullMessageType = null;
         try {
-            fullMessageType = msgTypeDataMgr.getMessageType(selectedMessageType
-                    .getAfosid());
+            fullMessageType = msgTypeDataMgr
+                    .getMessageType(selectedMessageType.getAfosid());
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving message type data from the database: ",
+                    e);
             return null;
         }
 
@@ -410,8 +399,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      */
     private void updateSelectedMessageTypeAfosId() {
         if (msgAvailTableComp.getSelectedIndex() >= 0) {
-            selectedAfosId = messageTypeList.get(
-                    msgAvailTableComp.getSelectedIndex()).getAfosid();
+            selectedAfosId = messageTypeList
+                    .get(msgAvailTableComp.getSelectedIndex()).getAfosid();
         } else {
             selectedAfosId = null;
         }
@@ -474,16 +463,16 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             try {
                 mt = mtdm.getMessageType(mt.getAfosid());
             } catch (Exception ex) {
-                statusHandler
-                        .error("Error retrieving message type data from the database: ",
-                                ex);
+                statusHandler.error(
+                        "Error retrieving message type data from the database: ",
+                        ex);
                 error = true;
 
             }
             if (error || (mt == null)) {
                 String message = "Error retrieving message type from the database.  Cannot edit message type.";
-                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING
-                        | SWT.OK, "Retrieve Error", message);
+                DialogUtility.showMessageBox(getShell(),
+                        SWT.ICON_WARNING | SWT.OK, "Retrieve Error", message);
                 return;
             }
         }
@@ -546,7 +535,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         } else {
             StringBuilder sb = new StringBuilder("Message Type ");
             sb.append(mt.getAfosid());
-            sb.append(" is currently a Trigger for the following programs:\n\n");
+            sb.append(
+                    " is currently a Trigger for the following programs:\n\n");
             for (Program triggeredProgram : triggeredPrograms) {
                 sb.append(triggeredProgram.getName());
                 sb.append("\n");
@@ -555,8 +545,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             sb.append(mt.getAfosid());
             sb.append("?");
 
-            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
-                    | SWT.YES | SWT.NO, "Remove Message Type", sb.toString());
+            int result = DialogUtility.showMessageBox(shell,
+                    SWT.ICON_WARNING | SWT.YES | SWT.NO, "Remove Message Type",
+                    sb.toString());
             if (result == SWT.NO) {
                 /*
                  * Do not remove anything.
@@ -585,9 +576,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             }
 
         } catch (Exception e) {
-            statusHandler.error(
-                    "Failed to remove message type " + mt.getAfosid()
-                            + " from the database!", e);
+            statusHandler.error("Failed to remove message type "
+                    + mt.getAfosid() + " from the database!", e);
             return;
         }
 
@@ -626,9 +616,9 @@ public class MessageTypesDlg extends AbstractBMHDialog {
             MessageType savedMessageType = msgTypeDataMgr.saveMessageType(mt);
             selectedAfosId = savedMessageType.getAfosid();
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving message type data from the database: ",
+                    e);
             return;
         }
 
@@ -644,8 +634,8 @@ public class MessageTypesDlg extends AbstractBMHDialog {
      *            completely rebuild the table.
      */
     private void populateMessageTypeTable(boolean replaceTableItems) {
-        if (msgAvailTableComp.hasTableData() == false) {
-            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+        if (!msgAvailTableComp.hasTableData()) {
+            List<TableColumnData> columnNames = new ArrayList<>();
             TableColumnData tcd = new TableColumnData("Message Type", 150);
             columnNames.add(tcd);
             tcd = new TableColumnData("Message Title");
@@ -693,7 +683,7 @@ public class MessageTypesDlg extends AbstractBMHDialog {
         // If the selected message type is null then select the first item in
         // the table and then set the selected message type to that item.
         if ((selectedAfosId == null) && (msgAvailTableComp.getItemCount() > 0)
-                && (messageTypeList.size() > 0)) {
+                && (!messageTypeList.isEmpty())) {
             msgAvailTableComp.select(0);
             selectedAfosId = messageTypeList.get(0).getAfosid();
             return;

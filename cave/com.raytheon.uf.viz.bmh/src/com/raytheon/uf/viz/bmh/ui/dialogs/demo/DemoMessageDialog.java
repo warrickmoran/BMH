@@ -54,11 +54,13 @@ import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.Origin;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType;
 import com.raytheon.uf.common.bmh.datamodel.msg.MessageType.Designation;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterLanguage;
+import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -100,6 +102,7 @@ import com.raytheon.uf.viz.core.localization.LocalizationManager;
  * Jan 04, 2016  4997     bkowal      Correctly label transmitter groups.
  * Apr 05, 2016  5504     bkowal      Fix GUI sizing issues.
  * Jan 18, 2016  6077     bkowal      Added {@link #createFIPSCodeLabel(Composite)}.
+ * Jan 19, 2017  6078     bkowal      Set origin on the {@link InputMessage}.
  * </pre>
  * 
  * @author bsteffen
@@ -234,7 +237,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
                 .createFrom(fipsCodeLbl.getFont()).setStyle(SWT.BOLD);
         Font boldFont = boldFontDescriptor.createFont(fipsCodeLbl.getDisplay());
         fipsCodeLbl.setFont(boldFont);
-        fipsCodeLbl.setText("999000");
+        fipsCodeLbl.setText(SAMEToneTextBuilder.DEMO_AREA_CODE);
         gd = new GridData(SWT.CENTER, SWT.FILL, true, true);
         fipsCodeLbl.setLayoutData(gd);
         boldFont.dispose();
@@ -463,6 +466,7 @@ public class DemoMessageDialog extends AbstractBMHDialog {
         expire.add(Calendar.HOUR, 1);
         inputMessage.setExpirationTime(expire);
         inputMessage.setContent(getMessage());
+        inputMessage.setOrigin(Origin.DMOMSG);
         request.setInputMessage(inputMessage);
         try {
             BmhUtils.sendRequest(request);

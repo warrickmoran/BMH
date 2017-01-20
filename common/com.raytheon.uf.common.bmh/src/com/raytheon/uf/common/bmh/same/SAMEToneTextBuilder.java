@@ -55,8 +55,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * </ol>
  * 
  * <p>
- * More information about the SAME format can be found on the <a
- * href="http://www.nws.noaa.gov/directives/sym/pd01017012curr.pdf">NWS
+ * More information about the SAME format can be found on the
+ * <a href="http://www.nws.noaa.gov/directives/sym/pd01017012curr.pdf">NWS
  * documentation page</a>.
  * </p>
  * 
@@ -77,11 +77,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 06, 2015  4471     bkowal      Made {@link #DEMO_EVENT} public.
  * Jun 01, 2015  4490     bkowal      Defined {@link #AREA_COUNT_LIMIT}.
  * Feb 09, 2016  5082     bkowal      Updates for Apache commons lang 3.
+ * Jan 19, 2017  6078     bkowal      Added {@link #overrideAreaCode}.
  * 
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class SAMEToneTextBuilder {
 
@@ -91,7 +91,7 @@ public class SAMEToneTextBuilder {
 
     public static final String DEMO_EVENT = "DMO";
 
-    private static final String DEMO_AREA_CODE = "999000";
+    public static final String DEMO_AREA_CODE = "999000";
 
     public static final String CIVIL_ORIGINATOR = "CIV";
 
@@ -124,6 +124,8 @@ public class SAMEToneTextBuilder {
     private final List<String> overLimitAreas = new ArrayList<>();
 
     private final Map<String, String> invalidAreas = new HashMap<>();
+
+    private String overrideAreaCode;
 
     /**
      * The Originator header code block indicates who initiated the message. The
@@ -253,13 +255,13 @@ public class SAMEToneTextBuilder {
         } else if (p == 'Z') {
             throw new IllegalArgumentException("Zones are not supported");
         } else {
-            throw new IllegalArgumentException("Unrecognized county portion: "
-                    + p);
+            throw new IllegalArgumentException(
+                    "Unrecognized county portion: " + p);
         }
         Integer stateCode = stateCodes.getStateCode(ugc.substring(0, 2));
         if (stateCode == null) {
-            throw new IllegalArgumentException("Unrecognized state: "
-                    + ugc.substring(0, 2));
+            throw new IllegalArgumentException(
+                    "Unrecognized state: " + ugc.substring(0, 2));
         }
         area.append(String.format("%02d", stateCode));
         area.append(ugc.substring(3));
@@ -278,7 +280,7 @@ public class SAMEToneTextBuilder {
     public void addAreasFromUGC(List<String> ugcs) {
         boolean limitReached = false;
         for (String ugc : ugcs) {
-            if (limitReached == false) {
+            if (!limitReached) {
                 try {
                     this.addAreaFromUGC(ugc);
                 } catch (SAMETruncationException e) {
@@ -418,8 +420,8 @@ public class SAMEToneTextBuilder {
         text.append(START_CODE);
         text.append(SEP).append(originator);
         text.append(SEP).append(event);
-        if (event.equals(DEMO_EVENT)) {
-            text.append(SEP).append(DEMO_AREA_CODE);
+        if (overrideAreaCode != null) {
+            text.append(SEP).append(overrideAreaCode);
         } else {
             for (CharSequence code : area) {
                 text.append(SEP).append(code);
@@ -446,7 +448,7 @@ public class SAMEToneTextBuilder {
                 originator = originatorMapper.getOriginator(event);
             }
         }
-        if (area.isEmpty() && (event.equals(DEMO_EVENT) == false)) {
+        if (area.isEmpty() && !(DEMO_EVENT.equals(event))) {
             throw new IllegalStateException("Must specify at least one area.");
         }
         if (effectiveTime == null) {
@@ -459,10 +461,11 @@ public class SAMEToneTextBuilder {
             } else {
                 long diffMillis = expireTime.getTimeInMillis()
                         - effectiveTime.getTimeInMillis();
-                int diffMinutes = (int) (diffMillis / TimeUtil.MILLIS_PER_MINUTE);
+                int diffMinutes = (int) (diffMillis
+                        / TimeUtil.MILLIS_PER_MINUTE);
                 purgeHours = diffMinutes / TimeUtil.MINUTES_PER_HOUR;
-                purgeMinutes = diffMinutes - purgeHours
-                        * TimeUtil.MINUTES_PER_HOUR;
+                purgeMinutes = diffMinutes
+                        - purgeHours * TimeUtil.MINUTES_PER_HOUR;
                 if (purgeHours >= 6) {
                     purgeHours = 6;
                     purgeMinutes = 0;
@@ -540,5 +543,13 @@ public class SAMEToneTextBuilder {
      */
     public Map<String, String> getInvalidAreas() {
         return invalidAreas;
+    }
+
+    public String getOverrideAreaCode() {
+        return overrideAreaCode;
+    }
+
+    public void setOverrideAreaCode(String overrideAreaCode) {
+        this.overrideAreaCode = overrideAreaCode;
     }
 }
