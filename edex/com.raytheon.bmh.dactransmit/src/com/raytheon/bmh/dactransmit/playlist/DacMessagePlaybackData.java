@@ -68,6 +68,8 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * May 22, 2015  #4481     bkowal       Added {@link #dynamicAudio}.
  * Mar 01, 2016  #5382     bkowal       Added {@link #positionFileExpired(Path, AtomicReference)}.
  * Aug 04, 2016  #5766     bkowal       Utilize {@link UpdatePlaylistMsgTask}.
+ * Jan 20, 2017  #6078     bkowal       Fix ordering of arguments passed to
+ *                                      {@link MessagePlaybackStatusNotification}.
  * 
  * </pre>
  * 
@@ -213,7 +215,7 @@ public final class DacMessagePlaybackData {
         message.setPlayedSameTone(playedSameTone);
         MessagePlaybackStatusNotification playbackStatus = new MessagePlaybackStatusNotification(
                 message.getBroadcastId(), transmitTime, playCount,
-                playedSameTone, playedAlertTone, null);
+                playedAlertTone, playedSameTone, null);
         playbackStatus.setDynamic(this.dynamicAudio);
         firstCallToGet = false;
         if (!resume || !resumePlayback()) {
@@ -252,9 +254,8 @@ public final class DacMessagePlaybackData {
             positionStream = null;
         } else {
             try {
-                Files.write(message.getPositionPath(),
-                        new byte[audio.position()
-                                / DacSessionConstants.SINGLE_PAYLOAD_SIZE]);
+                Files.write(message.getPositionPath(), new byte[audio.position()
+                        / DacSessionConstants.SINGLE_PAYLOAD_SIZE]);
             } catch (IOException e) {
                 logger.error("Unable to open position file.", e);
             }
