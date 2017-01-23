@@ -127,11 +127,11 @@ if [ "${BMH_DB_EXISTS}" = "false" ]; then
    hba_conf_=/awips2/data/pg_hba.conf
 
    # Update pg_hba.conf with the default information for the bmh database.
-   cat >> "${hba_conf}" <<EOF
+   cat >> "${hba_conf_}" <<EOF
 
 # TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD
 # ===== BMH Configuration (Operational) =====
-local   bmh         all                               trust
+local        bmh         all                               trust
 
 # hostnossl    bmh         all         127.0.0.1/32          md5
 # hostnossl    bmh         all         147.18.136.0/24       md5
@@ -170,12 +170,12 @@ if [ "${BMH_PRAC_DB_EXISTS}" = "false" ]; then
 
    hba_conf_=/awips2/data/pg_hba.conf
 
-   cat >> "${hba_conf}" <<EOF
+   cat >> "${hba_conf_}" <<EOF
 
 # TYPE  DATABASE    USER        CIDR-ADDRESS          METHOD
 # ===== BMH Configuration (Practice) =====
 
-local   bmh         all                               trust
+local        bmh_practice all                               trust
 
 # hostnossl    bmh_practice all         127.0.0.1/32          md5
 # hostnossl    bmh_practice all         147.18.136.0/24       md5
