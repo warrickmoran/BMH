@@ -43,12 +43,12 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Dec 12, 2014 3603       bsteffen    Added MAINTENANCE_DATA_DIRECTORY
  * Aug 10, 2015 4424       bkowal      Added {@link #PLAYLIST_DIRECTORY}.
  * Aug 24, 2015 4770       bkowal      Added {@link #getBmhConfDirectory()}.
+ * Feb 02, 2017 6085       bsteffen    Enable ssl in the JMS connection.
+ *
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
-
 /*
  * TODO: not sure if BMH_DATA will actually be an environment variable in the
  * final version. However, just adding this as a placeholder because it mimics
@@ -84,21 +84,21 @@ public final class BMHConstants {
 
     public static final String MAINTENANCE_DATA_DIRECTORY = "maintenance";
 
-    public static String getBmhHomeDirectory() {
+    public static synchronized String getBmhHomeDirectory() {
         if (BMH_HOME_DIRECTORY == null) {
             BMH_HOME_DIRECTORY = getHomeDirectory();
         }
         return BMH_HOME_DIRECTORY;
     }
 
-    public static String getBmhDataDirectory() {
+    public static synchronized String getBmhDataDirectory() {
         if (BMH_DATA_DIRECTORY == null) {
             BMH_DATA_DIRECTORY = getDataDirectory();
         }
         return BMH_DATA_DIRECTORY;
     }
 
-    public static String getBmhConfDirectory() {
+    public static synchronized String getBmhConfDirectory() {
         if (BMH_CONF_DIRECTORY == null) {
             BMH_CONF_DIRECTORY = getBmhHomeDirectory() + File.separatorChar
                     + CONF_DIRECTORY;
@@ -121,9 +121,11 @@ public final class BMHConstants {
         stringBuilder.append(System.getenv("JMS_VIRTUALHOST"));
         stringBuilder.append("?brokerlist='");
         stringBuilder.append(System.getenv("JMS_SERVER"));
-        stringBuilder
-                .append("?connecttimeout='5000'&heartbeat='0''&maxprefetch='10'&sync_publish='all'&failover='nofailover'&sync_ack='true'");
-
+        stringBuilder.append(
+                "?connecttimeout='5000'&heartbeat='0''&maxprefetch='10'&sync_publish='all'&failover='nofailover'&sync_ack='true'");
+        if (Boolean.getBoolean("JMS_SSL_ENABLED")) {
+            stringBuilder.append("&ssl='true'");
+        }
         return stringBuilder.toString();
     }
 
@@ -158,8 +160,7 @@ public final class BMHConstants {
         }
 
         File verifyExistence = new File(bmhDataDirectory);
-        if (verifyExistence.exists() == false
-                && verifyExistence.mkdirs() == false) {
+        if (!verifyExistence.exists() && !verifyExistence.mkdirs()) {
             final String exceptionText = "Failed to create the BMH DATA directory: "
                     + bmhDataDirectory + "!";
 

@@ -34,6 +34,8 @@ import javax.jms.Session;
 import javax.jms.Topic;
 
 import org.apache.qpid.client.AMQConnectionFactory;
+import org.apache.qpid.client.AMQConnectionURL;
+import org.apache.qpid.jms.ConnectionURL;
 import org.apache.qpid.url.URLSyntaxException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,7 @@ import com.raytheon.bmh.comms.CommsManager;
 import com.raytheon.bmh.comms.dactransmit.DacTransmitServer;
 import com.raytheon.bmh.comms.logging.JmsStatusMessageAppender;
 import com.raytheon.uf.common.bmh.datamodel.playlist.PlaylistUpdateNotification;
+import com.raytheon.uf.common.jms.JmsSslConfiguration;
 import com.raytheon.uf.common.jms.notification.JmsNotificationManager;
 import com.raytheon.uf.common.message.StatusMessage;
 import com.raytheon.uf.common.serialization.SerializationException;
@@ -72,10 +75,11 @@ import com.raytheon.uf.edex.bmh.comms.CommsConfig;
  * Aug 12, 2015  4424     bkowal      Eliminate Dac Transmit Key.
  * Dec 21, 2015  5218     rjpeter     Added SendThread.
  * Jan 21, 2015  5276     rjpeter     Reconnect to QPID after disconnect.
+ * Feb 02, 2017  6085     bsteffen    Enable ssl in the JMS connection.
+ *
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class JmsCommunicator extends JmsNotificationManager {
 
@@ -100,7 +104,7 @@ public class JmsCommunicator extends JmsNotificationManager {
 
     public JmsCommunicator(CommsConfig config, boolean operational)
             throws URLSyntaxException {
-        super(new AMQConnectionFactory(config.getJmsConnection()));
+        super(new AMQConnectionFactory(getConnectionUrl(config)));
         this.operational = operational;
         if (operational) {
             bmhStatusTopic = "BMH.Status";
@@ -117,12 +121,19 @@ public class JmsCommunicator extends JmsNotificationManager {
         JmsStatusMessageAppender.setJmsCommunicator(this);
     }
 
+    private static ConnectionURL getConnectionUrl(CommsConfig config)
+            throws URLSyntaxException {
+        ConnectionURL url = new AMQConnectionURL(config.getJmsConnection());
+        JmsSslConfiguration.configureURL(url);
+        return url;
+    }
+
     public void sendBmhStatus(Object notification) {
         sendThread.enqueue(bmhStatusTopic, notification);
     }
 
     public void sendBmhStat(StatisticsEvent event) {
-        if (this.operational == false) {
+        if (!this.operational) {
             return;
         }
         sendThread.enqueue(bmhStatisticTopic, event);
@@ -164,7 +175,8 @@ public class JmsCommunicator extends JmsNotificationManager {
         sendThread.disconnect();
     }
 
-    public void listenForPlaylistChanges(String group, DacTransmitServer server) {
+    public void listenForPlaylistChanges(String group,
+            DacTransmitServer server) {
         String topic = PlaylistUpdateNotification.getTopicName(operational);
         PlaylistNotificationObserver observer = new PlaylistNotificationObserver(
                 server, group);
@@ -230,7 +242,7 @@ public class JmsCommunicator extends JmsNotificationManager {
 
         private boolean continueRunning = true;
 
-        private final Map<String, MessageProducer> producers = new HashMap<String, MessageProducer>();
+        private final Map<String, MessageProducer> producers = new HashMap<>();
 
         private final Object connectionLock = new Object();
 
@@ -244,7 +256,9 @@ public class JmsCommunicator extends JmsNotificationManager {
                 MessageWrapper message = new MessageWrapper(topic,
                         SerializationUtil.transformToThrift(obj));
 
-                /* If too many messages are queued up drop the oldest message. */
+                /*
+                 * If too many messages are queued up drop the oldest message.
+                 */
                 while (!unsent.offerLast(message)) {
                     unsent.pollFirst();
                 }
@@ -271,7 +285,7 @@ public class JmsCommunicator extends JmsNotificationManager {
                         }
 
                         if (session == null) {
-                            connectionLock.wait(10000);
+                            connectionLock.wait(10_000);
                             continue;
                         }
 
@@ -311,13 +325,14 @@ public class JmsCommunicator extends JmsNotificationManager {
                                 e);
                     }
                 } finally {
-                    if ((messageProcessed == false) && (message != null)) {
+                    if ((!messageProcessed) && (message != null)) {
                         if (message.attempts >= RETRY_LIMIT) {
                             logger.warn(
                                     "Message for topic {} failed to deliver {} times, dropping message",
                                     message.topicName, message.attempts);
-                        } else if (unsent.offerFirst(message) == false) {
-                            logger.warn("Internal message queue is full, dropping message");
+                        } else if (!unsent.offerFirst(message)) {
+                            logger.warn(
+                                    "Internal message queue is full, dropping message");
                         }
                     }
 
