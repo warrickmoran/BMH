@@ -123,7 +123,7 @@ public final class BMHConstants {
         stringBuilder.append(System.getenv("JMS_SERVER"));
         stringBuilder.append(
                 "?connecttimeout='5000'&heartbeat='0''&maxprefetch='10'&sync_publish='all'&failover='nofailover'&sync_ack='true'");
-        if (Boolean.getBoolean("JMS_SSL_ENABLED")) {
+        if (Boolean.parseBoolean(System.getenv("JMS_SSL_ENABLED"))) {
             stringBuilder.append("&ssl='true'");
         }
         return stringBuilder.toString();
