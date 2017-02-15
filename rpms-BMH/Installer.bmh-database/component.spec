@@ -205,7 +205,7 @@ EOF
 fi
 
 # Stop PostgreSQL if we started it.
-if [ "${I_STARTED_POSTGRESQL}" = "YES" ]; then
+if [ "${I_STARTED_POSTGRESQL}" == "YES" ]; then
    su ${DB_OWNER} -c \
       "${PG_CTL} stop -D /awips2/data"
    if [ $? -ne 0 ]; then
@@ -290,7 +290,7 @@ if [ ! "${BMH_DIR}" = "" ]; then
 fi
 
 # stop PostgreSQL if we started it
-if [ "${I_STARTED_POSTGRESQL}" = "YES" ]; then
+if [ "${I_STARTED_POSTGRESQL}" == "YES" ]; then
    su ${DB_OWNER} -c \
       "${PG_CTL} stop -D /awips2/data"
    sleep 2
