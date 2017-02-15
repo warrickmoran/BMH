@@ -35,5 +35,6 @@
     </mode>
     <mode name="request">
         <include>^bmh-request.xml</include>
+        <exclude>bmh-utility-request.xml</exclude>
     </mode>
 </edexModes>
