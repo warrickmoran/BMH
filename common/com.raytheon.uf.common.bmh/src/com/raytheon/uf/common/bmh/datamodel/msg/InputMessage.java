@@ -104,6 +104,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
  * Jul 29, 2016 5766      bkowal      Added {@link #cycles}.
  * Aug 04, 2016  5766     bkowal      Include {@link #cycles} in {@link #hashCode()} and {@link #equals(Object)}.
+ * Feb 24, 2017  6030     bkowal      Added {@link #MESSAGE_NAME_LENGTH}.
  * </pre>
  * 
  * @author bsteffen
@@ -192,6 +193,8 @@ public class InputMessage {
 
     protected static final String ALL_WITH_NAME_AND_AFOSID_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid AND m.name = :name";
 
+    public static final int MESSAGE_NAME_LENGTH = 40;
+
     private static final int AREA_CODE_LENGTH = 4096;
 
     @Id
@@ -202,7 +205,7 @@ public class InputMessage {
     /**
      * Name for the input message.
      */
-    @Column(length = 40, nullable = false)
+    @Column(length = MESSAGE_NAME_LENGTH, nullable = false)
     @DynamicSerializeElement
     private String name = "";
 
@@ -317,7 +320,7 @@ public class InputMessage {
      * used for user-generated Weather Messages.
      */
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id") , inverseJoinColumns = @JoinColumn(name = "transmitter_id") )
     @ForeignKey(name = "fk_selected_tx_to_input_msg", inverseName = "fk_selected_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
@@ -598,8 +601,8 @@ public class InputMessage {
         if (sameTransmitters == null) {
             return Collections.emptySet();
         } else {
-            return new HashSet<String>(Arrays.asList(sameTransmitters
-                    .split("-")));
+            return new HashSet<String>(
+                    Arrays.asList(sameTransmitters.split("-")));
         }
     }
 
@@ -815,11 +818,10 @@ public class InputMessage {
         result = (prime * result)
                 + ((periodicity == null) ? 0 : periodicity.hashCode());
         result = (prime * result) + ((cycles == null) ? 0 : cycles.hashCode());
-        result = (prime * result)
-                + ((sameTransmitters == null) ? 0 : sameTransmitters.hashCode());
-        result = (prime * result)
-                + ((selectedTransmitters == null) ? 0 : selectedTransmitters
-                        .hashCode());
+        result = (prime * result) + ((sameTransmitters == null) ? 0
+                : sameTransmitters.hashCode());
+        result = (prime * result) + ((selectedTransmitters == null) ? 0
+                : selectedTransmitters.hashCode());
         result = (prime * result) + (validHeader ? 1231 : 1237);
         result = (prime * result)
                 + ((replacementType == null) ? 0 : replacementType.hashCode());
