@@ -1,19 +1,19 @@
 /**
  * This software was developed and / or modified by Raytheon Company,
  * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
- * 
+ *
  * U.S. EXPORT CONTROLLED TECHNICAL DATA
  * This software product contains export-restricted data whose
  * export/transfer/disclosure is restricted by U.S. law. Dissemination
  * to non-U.S. persons whether in the United States or abroad requires
  * an export license or other authorization.
- * 
+ *
  * Contractor Name:        Raytheon Company
  * Contractor Address:     6825 Pine Street, Suite 340
  *                         Mail Stop B8
  *                         Omaha, NE 68106
  *                         402.291.0100
- * 
+ *
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
@@ -47,23 +47,24 @@ import com.raytheon.viz.ui.widgets.duallist.IUpdate;
 
 /**
  * Create/Edit Listening Area dialog.
- * 
+ *
  * <pre>
- * 
+ *
  * SOFTWARE HISTORY
- * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Jul 17, 2014    3406    mpduff      Initial creation
- * Feb 09, 2015    4095    bsteffen    Remove Transmitter Name.
- * Mar 09, 2015    4247    rferrel     Now use SAMEStateCodes to validate state abbreviation.
- * Apr 20, 2015    4413    rferrel     Order dual lists.
- * Jul 22, 2015    4676    bkowal      Updated invalid area format text.
- * 
+ *
+ * Date          Ticket#  Engineer  Description
+ * ------------- -------- --------- --------------------------------------------
+ * Jul 17, 2014  3406     mpduff    Initial creation
+ * Feb 09, 2015  4095     bsteffen  Remove Transmitter Name.
+ * Mar 09, 2015  4247     rferrel   Now use SAMEStateCodes to validate state
+ *                                  abbreviation.
+ * Apr 20, 2015  4413     rferrel   Order dual lists.
+ * Jul 22, 2015  4676     bkowal    Updated invalid area format text.
+ * Feb 28, 2017  6121     randerso  Update DualListConfig settings
+ *
  * </pre>
- * 
+ *
  * @author mpduff
- * @version 1.0
  */
 
 public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
@@ -87,7 +88,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
 
     /**
      * Constructor.
-     * 
+     *
      * @param parentShell
      *            Parent Shell
      * @param area
@@ -163,17 +164,17 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
         Label includedTransmitterLbl = new Label(shell, SWT.NONE);
         includedTransmitterLbl
                 .setText("Select the transmitters included in this area:");
-        includedTransmitterLbl.setLayoutData(new GridData(SWT.CENTER,
-                SWT.DEFAULT, false, false));
+        includedTransmitterLbl.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, false, false));
 
         DualListConfig dlc = getDualListConfig();
         if (area != null) {
             Set<Transmitter> transmitters = area.getTransmitters();
-            List<String> selectedTranmitters = new ArrayList<String>(
+            List<String> selectedTranmitters = new ArrayList<>(
                     transmitters.size());
             for (Transmitter t : transmitters) {
-                selectedTranmitters.add(t.getMnemonic() + " - "
-                        + t.getLocation());
+                selectedTranmitters
+                        .add(t.getMnemonic() + " - " + t.getLocation());
             }
             dlc.setSelectedList(selectedTranmitters);
         }
@@ -225,21 +226,22 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
 
     /**
      * Get the {@link DualList} configuration object
-     * 
+     *
      * @return The DualListconfig object
      */
     private DualListConfig getDualListConfig() {
         DualListConfig dlc = new DualListConfig();
         dlc.setSortList(true);
-        List<String> fullList = new ArrayList<String>(transmitterList.size());
+        List<String> fullList = new ArrayList<>(transmitterList.size());
         for (Transmitter t : transmitterList) {
-            fullList.add(t.getMnemonic().trim() + " - "
-                    + t.getLocation().trim());
+            fullList.add(
+                    t.getMnemonic().trim() + " - " + t.getLocation().trim());
         }
 
         dlc.setAvailableListLabel("Available Transmitters:");
         dlc.setSelectedListLabel("Selected Transmitters:");
-        dlc.setListWidth(150);
+        dlc.setVisibleItems(10);
+        dlc.setListWidthInChars(25);
         dlc.setFullList(fullList);
 
         return dlc;
@@ -247,7 +249,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
 
     /**
      * Get Area
-     * 
+     *
      * @return
      */
     private Area getArea() {
@@ -259,7 +261,7 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
         area.setAreaName(nameTxt.getText().trim());
 
         String[] selectedTransmitters = dualList.getSelectedListItems();
-        Set<Transmitter> transmitters = new HashSet<Transmitter>(
+        Set<Transmitter> transmitters = new HashSet<>(
                 selectedTransmitters.length);
         for (String s : selectedTransmitters) {
             String[] parts = s.split("-");
@@ -278,14 +280,15 @@ public class NewEditAreaDlg extends CaveSWTDialog implements IUpdate {
 
     /**
      * Validate the data
-     * 
+     *
      * <pre>
      * SSXNNN - 6 digit UGC area code
-     * 
+     *
      * SS - State
      * X - C for county code, and a numeral (i.e., 1 through 9) for a partial area code
      * NNN - county code number
-     * 
+     * </pre>
+     *
      * @return true if valid
      */
     private boolean valid() {
