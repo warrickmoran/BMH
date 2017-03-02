@@ -141,5 +141,3 @@ rm -rf ${RPM_BUILD_ROOT}
 %defattr(644,awips,fxalpha,755)
 /awips2/edex/*
 %config(noreplace) /awips2/edex/etc/bmh.sh
-
-%attr(744,root,root) /etc/init.d/*
