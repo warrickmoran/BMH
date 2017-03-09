@@ -24,9 +24,11 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -67,10 +69,11 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Mar 05, 2015   4214     rferrel     Method getCalDateTimeValues adds 0 value Calendar.SECOND to result
  *                                     map when there is no spinner for seconds.
  * Apr 05, 2016   5504     bkowal      Fix GUI sizing issues. Remove unused/not fully implemented feature.
+ * Feb 22, 2017   6030     bkowal      Adjust the width of the date/time spinners based on the
+ *                                     maximum allowed number of digits.
  * </pre>
  * 
  * @author mpduff
- * @version 1.0
  */
 
 public class DateTimeFields extends Composite {
@@ -132,8 +135,9 @@ public class DateTimeFields extends Composite {
          * then periodicity should not be true. This is a safety check to make
          * sure the controls operate correctly.
          */
-        if ((this.fieldValuesMap.containsKey(DateFieldType.MONTH) || this.fieldValuesMap
-                .containsKey(DateFieldType.MONTH)) && (displayAsPeriodicity)) {
+        if ((this.fieldValuesMap.containsKey(DateFieldType.MONTH)
+                || this.fieldValuesMap.containsKey(DateFieldType.MONTH))
+                && (displayAsPeriodicity)) {
             this.displayAsPeriodicity = false;
         } else {
             this.displayAsPeriodicity = displayAsPeriodicity;
@@ -190,6 +194,8 @@ public class DateTimeFields extends Composite {
 
             spinners.put(type, spnr);
 
+            int maximumLength = 2;
+
             switch (type) {
             case HOUR:
                 spnr.setMinimum(0);
@@ -202,13 +208,13 @@ public class DateTimeFields extends Composite {
                 break;
             case YEAR:
                 spnr.setMaximum(2200);
+                maximumLength = 4;
                 break;
             case MONTH:
                 spnr.setMaximum(12);
                 spnr.setMinimum(1);
                 break;
             case DAY:
-
                 if (displayAsPeriodicity) {
                     spnr.setMinimum(0);
                     spnr.setMaximum(99);
@@ -225,6 +231,13 @@ public class DateTimeFields extends Composite {
                     spinnerModifiedAction(src);
                 }
             });
+
+            GridData gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
+            GC gc = new GC(spnr);
+            gd.widthHint = gc
+                    .textExtent(StringUtils.repeat("9", maximumLength)).x;
+            gc.dispose();
+            spnr.setLayoutData(gd);
         }
     }
 
@@ -284,25 +297,26 @@ public class DateTimeFields extends Composite {
             case DAY:
                 if (this.displayAsPeriodicity
                         || !fieldValuesMap.containsKey(DateFieldType.MONTH)) {
-                    calendar.set(Calendar.DAY_OF_MONTH, spinners.get(type)
-                            .getSelection());
+                    calendar.set(Calendar.DAY_OF_MONTH,
+                            spinners.get(type).getSelection());
                 } else {
                     // This case handled under month
                 }
                 break;
             case HOUR:
-                calendar.set(Calendar.HOUR_OF_DAY, spinners.get(type)
-                        .getSelection());
+                calendar.set(Calendar.HOUR_OF_DAY,
+                        spinners.get(type).getSelection());
                 break;
             case MINUTE:
-                calendar.set(Calendar.MINUTE, spinners.get(type).getSelection());
+                calendar.set(Calendar.MINUTE,
+                        spinners.get(type).getSelection());
                 break;
             case MONTH:
-                calendar.set(Calendar.YEAR, spinners.get(DateFieldType.YEAR)
-                        .getSelection());
+                calendar.set(Calendar.YEAR,
+                        spinners.get(DateFieldType.YEAR).getSelection());
                 calendar.set(Calendar.DAY_OF_MONTH, 1);
-                calendar.set(Calendar.MONTH, spinners.get(DateFieldType.MONTH)
-                        .getSelection() - 1);
+                calendar.set(Calendar.MONTH,
+                        spinners.get(DateFieldType.MONTH).getSelection() - 1);
                 int daysInMonth = calendar
                         .getActualMaximum(Calendar.DAY_OF_MONTH);
 
@@ -318,7 +332,8 @@ public class DateTimeFields extends Composite {
                 }
                 break;
             case SECOND:
-                calendar.set(Calendar.SECOND, spinners.get(type).getSelection());
+                calendar.set(Calendar.SECOND,
+                        spinners.get(type).getSelection());
                 break;
             case YEAR:
                 calendar.set(Calendar.YEAR, spinners.get(type).getSelection());
