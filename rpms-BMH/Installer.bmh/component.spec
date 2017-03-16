@@ -87,7 +87,7 @@ rm -rf ${RPM_BUILD_ROOT}
 %dir /awips2
 %dir /awips2/bmh
 /awips2/bmh/*
-%dir /awips2/bmh/conf
+%dir %attr(0750,awips,fxalpha) /awips2/bmh/conf
 /awips2/bmh/conf/*
 %config(noreplace) /awips2/bmh/conf/comms.xml
 %config(noreplace) /awips2/bmh/conf/comms-practice.xml
