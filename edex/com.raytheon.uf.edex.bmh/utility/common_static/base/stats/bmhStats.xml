@@ -1,4 +1,10 @@
 <statisticsConfig>
+    <!--
+        This is an absolute override file, indicating that a higher priority
+        version of the file will completely replace a lower priority version
+        of the file.
+    -->
+
     <!-- Event Type should be fully qualified name of stat event -->
     <!-- raw and aggregate OfflineRetentionDays: Value less than zero disables saving of raw statistic, zero is never purge -->
     <statisticsEvent type="com.raytheon.uf.common.bmh.stats.DacStatisticEvent"
