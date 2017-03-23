@@ -17,6 +17,7 @@ License: N/A
 Distribution: N/A
 Vendor: Raytheon
 Packager: %{_build_site}
+Obsoletes: awips2-common-bmh
 
 BuildRequires: awips2-ant
 BuildRequires: awips2-java

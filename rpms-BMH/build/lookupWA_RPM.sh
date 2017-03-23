@@ -43,10 +43,6 @@ function lookupWA_RPM()
 		export RPM_SPECIFICATION="${2}/Installer.neospeech-english-and-spanish"
 		return 0
 	fi
-        if [ "${1}" = "awips2-common-bmh" ]; then
-                export RPM_SPECIFICATION="${2}/Installer.common-bmh"
-                return 0
-        fi
 	
 	return 1
 }
