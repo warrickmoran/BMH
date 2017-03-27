@@ -4,7 +4,6 @@
 %define __prelink_undo_cmd %{nil}
 # Turn off the brp-python-bytecompile script
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
-%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-java-repack-jars[[:space:]].*$!!g')
 
 Name: awips2-edex-request-bmh
 Summary: AWIPS II EDEX BMH Installation
@@ -27,7 +26,6 @@ requires: awips2-edex
 requires: awips2-python
 requires: awips2-java
 requires: awips2-psql
-requires: awips2-common-bmh
 
 %description
 AWIPS II Edex BMH - Installs AWIPS II BMH Edex Request Plugins and Configuration.
