@@ -17,6 +17,13 @@ Distribution: N/A
 Vendor: Raytheon
 Packager: %{_build_site}
 
+#######################################################
+# Added since lib/plugins are exported in OSGI format
+#  and lib/dependencies are not resulting in yum being
+#  unable to find FOSS ogsi(*) requirements.
+#######################################################
+AutoReq: no
+
 BuildRequires: awips2-ant
 BuildRequires: awips2-java
 provides: awips2-edex-request-bmh
@@ -82,6 +89,4 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %files
 %defattr(644,awips,fxalpha,755)
-%dir /awips2
-%dir /awips2/edex
 /awips2/edex/*

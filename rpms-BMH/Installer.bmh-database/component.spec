@@ -205,7 +205,7 @@ EOF
 fi
 
 # Stop PostgreSQL if we started it.
-if [ "${I_STARTED_POSTGRESQL}" = "YES" ]; then
+if [ "${I_STARTED_POSTGRESQL}" == "YES" ]; then
    su ${DB_OWNER} -c \
       "${PG_CTL} stop -D /awips2/data"
    if [ $? -ne 0 ]; then
@@ -290,7 +290,7 @@ if [ ! "${BMH_DIR}" = "" ]; then
 fi
 
 # stop PostgreSQL if we started it
-if [ "${I_STARTED_POSTGRESQL}" = "YES" ]; then
+if [ "${I_STARTED_POSTGRESQL}" == "YES" ]; then
    su ${DB_OWNER} -c \
       "${PG_CTL} stop -D /awips2/data"
    sleep 2
@@ -306,10 +306,6 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %files
 %defattr(666,awips,fxalpha,775)
-%dir /awips2/database
-%dir /awips2/database/sqlScripts
-%dir /awips2/database/sqlScripts/share
-%dir /awips2/database/sqlScripts/share/sql
 %dir /awips2/database/sqlScripts/share/sql/bmh
 /awips2/database/sqlScripts/share/sql/bmh/bmh.log
 

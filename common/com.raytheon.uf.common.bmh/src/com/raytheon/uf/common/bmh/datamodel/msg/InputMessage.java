@@ -106,6 +106,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Aug 04, 2016  5766     bkowal      Include {@link #cycles} in {@link #hashCode()} and {@link #equals(Object)}.
  * Jan 19, 2017  6078     bkowal      Updated {@link #GET_INPUT_MSGS_ID_NAME_AFOS_CREATION} and
  *                                    {@link #UNEXPIRED_QUERY_NAME} to retrieve the origin column.
+ * Feb 24, 2017  6030     bkowal      Added {@link #MESSAGE_NAME_LENGTH}.
  * </pre>
  * 
  * @author bsteffen
@@ -198,6 +199,8 @@ public class InputMessage {
 
     protected static final String ALL_WITH_NAME_AND_AFOSID_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid AND m.name = :name";
 
+    public static final int MESSAGE_NAME_LENGTH = 40;
+
     private static final int AREA_CODE_LENGTH = 4096;
 
     private static final int ORIGIN_LENGTH = 8;
@@ -210,7 +213,7 @@ public class InputMessage {
     /**
      * Name for the input message.
      */
-    @Column(length = 40, nullable = false)
+    @Column(length = MESSAGE_NAME_LENGTH, nullable = false)
     @DynamicSerializeElement
     private String name = "";
 
@@ -325,7 +328,7 @@ public class InputMessage {
      * used for user-generated Weather Messages.
      */
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id") , inverseJoinColumns = @JoinColumn(name = "transmitter_id") )
     @ForeignKey(name = "fk_selected_tx_to_input_msg", inverseName = "fk_selected_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement

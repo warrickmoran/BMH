@@ -1,19 +1,19 @@
 /**
  * This software was developed and / or modified by Raytheon Company,
  * pursuant to Contract DG133W-05-CQ-1067 with the US Government.
- * 
+ *
  * U.S. EXPORT CONTROLLED TECHNICAL DATA
  * This software product contains export-restricted data whose
  * export/transfer/disclosure is restricted by U.S. law. Dissemination
  * to non-U.S. persons whether in the United States or abroad requires
  * an export license or other authorization.
- * 
+ *
  * Contractor Name:        Raytheon Company
  * Contractor Address:     6825 Pine Street, Suite 340
  *                         Mail Stop B8
  *                         Omaha, NE 68106
  *                         402.291.0100
- * 
+ *
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
@@ -41,19 +41,19 @@ import com.raytheon.viz.ui.widgets.duallist.DualListConfig;
 
 /**
  * Dialog containing a {@link DualList} used for trigger message type selection.
- * 
+ *
  * <pre>
- * 
+ *
  * SOFTWARE HISTORY
- * 
- * Date         Ticket#    Engineer    Description
- * ------------ ---------- ----------- --------------------------
- * Apr 22, 2016 5562       bkowal      Initial creation
- * 
+ *
+ * Date          Ticket#  Engineer  Description
+ * ------------- -------- --------- -------------------------------
+ * Apr 22, 2016  5562     bkowal    Initial creation
+ * Feb 28, 2017  6121     randerso  Update DualListConfig settings
+ *
  * </pre>
- * 
+ *
  * @author bkowal
- * @version 1.0
  */
 
 public class TriggerSelectionDlg extends CaveSWTDialog {
@@ -92,14 +92,16 @@ public class TriggerSelectionDlg extends CaveSWTDialog {
         Composite mainControlComp = new Composite(shell, SWT.NONE);
         GridLayout gl = new GridLayout(1, false);
         mainControlComp.setLayout(gl);
-        mainControlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        mainControlComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         final DualListConfig dualListConfig = new DualListConfig();
         dualListConfig.setSelectedListLabel("Triggers:");
         dualListConfig.setAvailableListLabel("Avail Msg Types:");
         dualListConfig.setSelectedList(triggerAfosids);
         dualListConfig.setFullList(availableAfosids);
+        dualListConfig.setVisibleItems(10);
+        dualListConfig.setListWidthInChars(SWT.DEFAULT);
 
         triggerDualList = new DualList(mainControlComp, SWT.NONE,
                 dualListConfig);

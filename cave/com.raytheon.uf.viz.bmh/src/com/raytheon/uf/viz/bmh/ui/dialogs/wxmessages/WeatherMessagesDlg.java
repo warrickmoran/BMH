@@ -36,8 +36,8 @@ import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
@@ -191,6 +191,8 @@ import com.raytheon.viz.ui.widgets.DateTimeSpinner;
  * Jul 29, 2016 5766     bkowal      Updates to support periodic cycles.
  * Jan 19, 2017 6078     bkowal      No longer filter out DMO messages. Set origin on the 
  *                                   {@link InputMessage}.
+ * Feb 22, 2017 6030     bkowal      Removed use of resolution-dependent fixed widths/heights 
+ *                                   throughout the dialog.
  * </pre>
  * 
  * @author lvenable
@@ -357,10 +359,12 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
     private void createHeaderButtons() {
         Composite btnComp = new Composite(shell, SWT.NONE);
         btnComp.setLayout(new GridLayout(5, false));
-        btnComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
+        btnComp.setLayoutData(
+                new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false));
 
-        int buttonWidth = 70;
-        GridData gd = new GridData(buttonWidth, SWT.DEFAULT);
+        final int minimumButtonWidth = btnComp.getDisplay().getDPI().x;
+        GridData gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        gd.minimumWidth = minimumButtonWidth;
         Button newBtn = new Button(btnComp, SWT.PUSH);
         newBtn.setText("New");
         newBtn.setLayoutData(gd);
@@ -389,7 +393,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
             }
         });
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        gd.minimumWidth = minimumButtonWidth;
         Button editBtn = new Button(btnComp, SWT.PUSH);
         editBtn.setText("Edit...");
         editBtn.setLayoutData(gd);
@@ -427,7 +432,8 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
             }
         });
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        gd.minimumWidth = minimumButtonWidth;
         gd.horizontalIndent = 15;
         prevSequenceBtn = new Button(btnComp, SWT.PUSH);
         prevSequenceBtn.setText("< Prev");
@@ -441,11 +447,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         });
         prevSequenceBtn.addKeyListener(this);
 
-        gd = new GridData(95, SWT.DEFAULT);
         sequenceLbl = new Label(btnComp, SWT.CENTER);
+        gd = new GridData(SWT.DEFAULT, SWT.CENTER, true, false);
+        GC gc = new GC(sequenceLbl);
+        gd.minimumWidth = gc.textExtent("99999 of 99999").x;
+        gc.dispose();
         sequenceLbl.setLayoutData(gd);
 
-        gd = new GridData(buttonWidth, SWT.DEFAULT);
+        gd = new GridData(SWT.DEFAULT, SWT.DEFAULT);
+        gd.minimumWidth = minimumButtonWidth;
         nextSequenceBtn = new Button(btnComp, SWT.PUSH);
         nextSequenceBtn.setText("Next >");
         nextSequenceBtn.setLayoutData(gd);
@@ -462,7 +472,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
     }
 
     /**
-     * When set to true dilog is editing a message else dialog is creating a
+     * When set to true dialog is editing a message else dialog is creating a
      * message. Performs enabling/disabling of various components when status is
      * changed.
      * 
@@ -539,12 +549,15 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         msgNameLbl.setText("Message Name: ");
         msgNameLbl.setLayoutData(gd);
 
+        msgNameTF = new Text(controlComp, SWT.BORDER);
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.horizontalSpan = 2;
-        gd.widthHint = 175;
+        GC gc = new GC(msgNameTF);
+        gd.widthHint = gc.getFontMetrics().getAverageCharWidth()
+                * InputMessage.MESSAGE_NAME_LENGTH;
+        gc.dispose();
         gd.verticalIndent = 5;
-        msgNameTF = new Text(controlComp, SWT.BORDER);
-        msgNameTF.setTextLimit(40);
+        msgNameTF.setTextLimit(InputMessage.MESSAGE_NAME_LENGTH);
         msgNameTF.setLayoutData(gd);
 
         // Message Type
@@ -557,10 +570,14 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
         gd.verticalIndent = 5;
         msgTypeLbl = new Label(controlComp, SWT.BORDER);
+        gc = new GC(msgTypeLbl);
+        gd.widthHint = gc.textExtent(
+                StringUtils.repeat("W", MessageType.AFOS_ID_LENGTH)).x;
+        gc.dispose();
         msgTypeLbl.setLayoutData(gd);
 
         changeMsgTypeBtn = new Button(controlComp, SWT.PUSH);
-        changeMsgTypeBtn.setText(" Change... ");
+        changeMsgTypeBtn.setText("Change...");
         changeMsgTypeBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -821,15 +838,11 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         interruptChk = new Button(defaultsGrp, SWT.CHECK);
         interruptChk.setText("Interrupt");
         interruptChk.setLayoutData(gd);
-        interruptChk.addSelectionListener(new SelectionListener() {
+        interruptChk.addSelectionListener(new SelectionAdapter() {
 
             @Override
             public void widgetSelected(SelectionEvent e) {
                 sameTransmitters.setInterrupt(interruptChk.getSelection());
-            }
-
-            @Override
-            public void widgetDefaultSelected(SelectionEvent e) {
             }
 
         });
@@ -884,7 +897,7 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         fd.setHeight(24);
         bic.setFontData(fd);
 
-        Image img = bic.generateImage(250, 40, "Contents", new RGB(0, 235, 0));
+        Image img = bic.generateImage("Contents", new RGB(0, 235, 0), 40, 4);
         contentsBtn.setImage(img);
         contentsBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -931,13 +944,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
         submitMsgBtn.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                /*
-                 * TODO:
-                 * 
-                 * need to determine what to do once something is submitted. --
-                 * can we submit again? -- clear the dialog? -- what happens if
-                 * I record voice for microphone and load a file?
-                 */
                 handleSubmitAction();
             }
         });
@@ -1151,10 +1157,6 @@ public class WeatherMessagesDlg extends AbstractBMHDialog
             return;
         }
 
-        /*
-         * TODO: most likely temporary. Hopefully, we receive feedback about the
-         * dialog end state during the demo.
-         */
         DialogUtility.showMessageBox(this.shell, SWT.ICON_INFORMATION | SWT.OK,
                 "Weather Messages",
                 "The weather message has been successfully submitted.");

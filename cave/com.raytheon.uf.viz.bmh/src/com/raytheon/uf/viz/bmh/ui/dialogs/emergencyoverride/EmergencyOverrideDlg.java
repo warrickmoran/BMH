@@ -32,11 +32,9 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
-import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.Point;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
@@ -122,6 +120,8 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Aug 04, 2016  5766      bkowal      Set cycles on the {@link InputMessage} that is constructed.
  * Sep 30, 2016  5912      bkowal      Use the {@link SAMEPaddingConfiguration} to construct SAME Tones.
  * Jan 19, 2017  6078      bkowal      Set origin on the {@link InputMessage}.
+ * Feb 24, 2017  6030      bkowal      {@link ButtonImageCreator} is now capable of calculating optimal
+ *                                     resolution-independent height/width.
  * </pre>
  * 
  * @author lvenable
@@ -296,22 +296,9 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         fd.setHeight(20);
         bic.setFontData(fd);
 
-        Font tmpFont = new Font(getDisplay(), fd);
-        GC gc = new GC(areaSelectionBtn);
-        gc.setFont(tmpFont);
-        final int imageHeight = gc.getFontMetrics().getHeight();
-        /*
-         * Both buttons should be the same size. So, use the longer text to
-         * determine the button size.
-         */
-        final int imageWidth = gc.textExtent(AREA_SELECTION_TEXT).x;
-        gc.dispose();
-        tmpFont.dispose();
-
-        Point imageWidthHeight = new Point(imageWidth, imageHeight);
-
-        Image areaSelectionImg = bic.generateImage(imageWidthHeight.x,
-                imageWidthHeight.y, AREA_SELECTION_TEXT, new RGB(255, 255, 0));
+        Image areaSelectionImg = bic.generateImage(AREA_SELECTION_TEXT,
+                new RGB(255, 255, 0), 16, 4);
+        final ImageData imageData = areaSelectionImg.getImageData();
         areaSelectionBtn.setImage(areaSelectionImg);
         areaSelectionBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -380,8 +367,12 @@ public class EmergencyOverrideDlg extends AbstractBMHDialog {
         Button transmitBtn = new Button(controlComp, SWT.PUSH);
         transmitBtn.setLayoutData(gd);
 
-        Image transmitImg = bic.generateImage(imageWidthHeight.x,
-                imageWidthHeight.y, "Transmit", new RGB(0, 235, 0));
+        /*
+         * Both imagery buttons should be the same size. So, use the previously
+         * calculated size.
+         */
+        Image transmitImg = bic.generateImage(imageData.width, imageData.height,
+                "Transmit", new RGB(0, 235, 0));
         transmitBtn.setImage(transmitImg);
         transmitBtn.addSelectionListener(new SelectionAdapter() {
             @Override
