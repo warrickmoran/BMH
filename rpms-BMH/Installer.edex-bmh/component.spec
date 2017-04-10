@@ -91,7 +91,7 @@ fi
 %post
 
 #add services to the edex service list
-LIST_FILE=/awips2/etc/edexServiceList
+LIST_FILE=/etc/init.d/edexServiceList
 BMH_SERVICES=(bmh)
 
 if [ -f $LIST_FILE ]; then
