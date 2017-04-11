@@ -89,25 +89,27 @@ fi
 %pre
 %post
 
-#add services to the edex service list
-LIST_FILE=/awips2/etc/edexServiceList
-BMH_SERVICES=(bmh)
+if [ "${1}" = "1" ]; then
 
-if [ -f $LIST_FILE ]; then
-   source $LIST_FILE
+  #add services to the edex service list
+  LIST_FILE=/etc/init.d/edexServiceList
+  BMH_SERVICES=(bmh)
 
-   for service in ${BMH_SERVICES[*]}; do
-       if [[ ! ${SERVICES[@]} =~ $service ]]; then
-           SERVICES=(${SERVICES[@]} $service)
-       fi
-   done
+  if [ -f $LIST_FILE ]; then
+     source $LIST_FILE
 
-else
-   SERVICES=$BMH_SERVICES
+     for service in ${BMH_SERVICES[*]}; do
+         if [[ ! ${SERVICES[@]} =~ $service ]]; then
+             SERVICES=(${SERVICES[@]} $service)
+         fi
+     done
+  else
+     SERVICES=$BMH_SERVICES
+  fi
+
+  echo "#list generated on $(date)" > $LIST_FILE
+  echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 fi
-
-echo "#list generated on $(date)" > $LIST_FILE
-echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 
 %preun
 if [ "${1}" = "1" ]; then
