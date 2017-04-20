@@ -100,15 +100,22 @@ if [ "${1}" = "1" ]; then
      source $LIST_FILE
 
      for service in ${BMH_SERVICES[*]}; do
-         if [[ ! ${SERVICES[@]} =~ $service ]]; then
-             SERVICES=(${SERVICES[@]} $service)
-         fi
+        addService=true;
+        for index in ${!SERVICES[@]};
+        do
+           if [ ${SERVICES[$index]} = $service ]; then
+              addService=false;
+           fi
+        done
+        if $addService; then
+           SERVICES=(${SERVICES[@]} $service)
+        fi
      done
   else
      SERVICES=$BMH_SERVICES
   fi
 
-  echo "#list generated on $(date)" > $LIST_FILE
+  echo "#generated on $(date)" > $LIST_FILE
   echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 fi
 
@@ -118,19 +125,22 @@ if [ "${1}" = "1" ]; then
 fi
 
 #remove BMH services from the service list
-LIST_FILE=/awips2/etc/edexServiceList
+LIST_FILE=/etc/init.d/edexServiceList
 BMH_SERVICES=(bmh)
 
 if [ -f $LIST_FILE ]; then
    source $LIST_FILE
 
    for service in ${BMH_SERVICES[*]}; do
-       if [[ ${SERVICES[@]} =~ $service ]]; then
-           SERVICES=(${SERVICES[@]/$service})
-       fi
+       for index in ${!SERVICES[@]}
+       do
+           if [ ${SERVICES[$index]} = $service ]; then
+              unset SERVICES[$index]
+           fi
+       done
    done
 
-   echo "#list generated on $(date)" > $LIST_FILE
+   echo "#generated on $(date)" > $LIST_FILE
    echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 fi
 
