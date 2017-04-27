@@ -126,6 +126,7 @@ import com.raytheon.viz.core.mode.CAVEMode;
  * Nov 11, 2015   5114      rjpeter     Updated CommsManager to use a single port.
  * Sep 30, 2016   5912      bkowal      Added {@link #retrieveSAMEPaddingConfiguration()} and
  *                                      {@link #retrieveConfigFromCommsManager(Object)}.
+ * Apr 27, 2017  18954      snaples     Added format tag to say as tag in getSayAsSnippet
  * </pre>
  * 
  * @author mpduff
@@ -404,7 +405,9 @@ public class BmhUtils {
         StringBuilder sb = new StringBuilder(size);
         sb.append(BmhUtils.SAYAS_OPEN);
         sb.append(sayAsType);
-        sb.append("\"> ");
+        sb.append(BmhUtils.SAYAS_FORMAT);
+        sb.append(sayAsType);
+        sb.append("\">");
         sb.append(sayAsText);
         sb.append(BmhUtils.SAYAS_CLOSE);
 
@@ -803,5 +806,13 @@ public class BmhUtils {
                                 + resultClass.getClass().getName() + ".", e);
             }
         }
+    }
+    
+    public static void main(String[] args) {
+        String sayAsType = "characters";
+        String sayAsText = "123456";
+        String satag = BmhUtils.getSayAsSnippet(sayAsType, sayAsText);
+        System.out.println("Say as tag: " + satag);
+
     }
 }
