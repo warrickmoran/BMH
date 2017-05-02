@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.comms;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import javax.xml.bind.JAXB;
 import javax.xml.bind.JAXBException;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.Transmitter;
 import com.raytheon.uf.common.bmh.datamodel.transmitter.TransmitterGroup;
@@ -44,6 +46,7 @@ import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.serialization.JAXBManager;
 import com.raytheon.uf.common.serialization.SerializationException;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
@@ -90,10 +93,10 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  * Jul 23, 2015  4676     bkowal      Use {@link JAXBManager}.
  * Nov 04, 2015  5068     rjpeter     Switch audio units from dB to amplitude.
  * Nov 11, 2015  5114     rjpeter     Updated CommsManager to use a single port.
+ * May 02, 2017  6259     bkowal      Updated to use {@link IOPermissionsHelper}.
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class CommsConfigurator implements IContextStateProcessor {
 
@@ -130,8 +133,8 @@ public class CommsConfigurator implements IContextStateProcessor {
         ClusterTask ct = null;
         try {
             do {
-                ct = locker.lock("configure", configFilePath.getFileName()
-                        .toString(), 30000, true);
+                ct = locker.lock("configure",
+                        configFilePath.getFileName().toString(), 30_000, true);
             } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
 
             List<Dac> dacs = dacDao.getAll();
@@ -150,7 +153,9 @@ public class CommsConfigurator implements IContextStateProcessor {
                 }
             } else {
                 try {
-                    Files.createDirectories(configFilePath.getParent());
+                    com.raytheon.uf.common.util.file.Files.createDirectories(
+                            configFilePath.getParent(),
+                            FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
                 } catch (IOException e) {
                     statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                             "Cannot save comms config file.", e);
@@ -160,7 +165,8 @@ public class CommsConfigurator implements IContextStateProcessor {
             CommsConfig config = new CommsConfig();
             if (prevConfig != null) {
                 config.setPort(prevConfig.getPort());
-                config.setDacTransmitStarter(prevConfig.getDacTransmitStarter());
+                config.setDacTransmitStarter(
+                        prevConfig.getDacTransmitStarter());
                 config.setClusterHosts(prevConfig.getClusterHosts());
                 if (prevConfig.getDacs() != null) {
                     for (DacConfig dconf : prevConfig.getDacs()) {
@@ -176,8 +182,8 @@ public class CommsConfigurator implements IContextStateProcessor {
                 config.setClusterHosts(this.getOperationalClusterHosts());
             }
 
-            config.setJmsConnection(BMHConstants
-                    .getJmsConnectionString("commsmanager"));
+            config.setJmsConnection(
+                    BMHConstants.getJmsConnectionString("commsmanager"));
             if (!dacMap.isEmpty()) {
                 config.setDacs(new HashSet<>(dacMap.values()));
             }
@@ -190,28 +196,29 @@ public class CommsConfigurator implements IContextStateProcessor {
                 statusHandler.info("Writing new comms config.  Prev ["
                         + prevConfig + "], new [" + config + "]");
 
-                try {
-                    this.jaxbManager.marshalToXmlFile(config,
-                            configFilePath.toString());
+                try (OutputStream os = IOPermissionsHelper.getOutputStream(
+                        configFilePath,
+                        FilePermissionUtils.FILE_PERMISSIONS_SET)) {
+                    this.jaxbManager.marshalToStream(config, os);
 
-                    BmhMessageProducer
-                            .sendConfigMessage(new CommsConfigNotification(
-                                    traceable), operational);
-                } catch (DataBindingException e) {
+                    BmhMessageProducer.sendConfigMessage(
+                            new CommsConfigNotification(traceable),
+                            operational);
+                } catch (DataBindingException | IOException e) {
                     statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                             "Cannot save comms config file.", e);
                 } catch (EdexException | SerializationException e) {
-                    statusHandler
-                            .error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                                    "Unable to send comms config file notification.",
-                                    e);
+                    statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            "Unable to send comms config file notification.",
+                            e);
                 }
             }
 
             return config;
         } finally {
             if (ct != null) {
-                locker.deleteLock(ct.getId().getName(), ct.getId().getDetails());
+                locker.deleteLock(ct.getId().getName(),
+                        ct.getId().getDetails());
             }
         }
     }
@@ -224,7 +231,7 @@ public class CommsConfigurator implements IContextStateProcessor {
      */
     private Set<CommsHostConfig> getOperationalClusterHosts() {
         Path configFilePath = CommsConfig.getDefaultPath(true);
-        if (Files.exists(configFilePath) == false) {
+        if (!Files.exists(configFilePath)) {
             return Collections.emptySet();
         }
 
@@ -240,8 +247,8 @@ public class CommsConfigurator implements IContextStateProcessor {
              * configurator is writing it.
              */
             do {
-                ct = operationalLocker.lock("configure", configFilePath
-                        .getFileName().toString(), 30000, true);
+                ct = operationalLocker.lock("configure",
+                        configFilePath.getFileName().toString(), 30_000, true);
             } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
 
             commsConfig = JAXB.unmarshal(configFilePath.toFile(),
@@ -249,12 +256,13 @@ public class CommsConfigurator implements IContextStateProcessor {
         } catch (DataBindingException e) {
             statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
                     "Cannot load existing operational comms config file: "
-                            + configFilePath.toString() + ".", e);
+                            + configFilePath.toString() + ".",
+                    e);
             return Collections.emptySet();
         } finally {
             if (ct != null) {
-                operationalLocker.deleteLock(ct.getId().getName(), ct.getId()
-                        .getDetails());
+                operationalLocker.deleteLock(ct.getId().getName(),
+                        ct.getId().getDetails());
             }
         }
 
@@ -292,8 +300,8 @@ public class CommsConfigurator implements IContextStateProcessor {
      * @param dacMap
      */
     protected void populateChannels(Map<Integer, DacConfig> dacMap) {
-        Path playlistDirectoryPath = BMHConstants.getBmhDataDirectory(
-                operational).resolve("playlist");
+        Path playlistDirectoryPath = BMHConstants
+                .getBmhDataDirectory(operational).resolve("playlist");
         for (TransmitterGroup group : transmitterGroupDao.getAll()) {
             Set<Transmitter> transmitters = group.getEnabledTransmitters();
             if (transmitters.isEmpty()) {
@@ -312,10 +320,9 @@ public class CommsConfigurator implements IContextStateProcessor {
             for (Transmitter transmitter : transmitters) {
                 Integer dacPort = transmitter.getDacPort();
                 if (dacPort == null) {
-                    statusHandler
-                            .error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
-                                    transmitter.getLocation()
-                                            + " is enabled but has no port, it be omitted from the comms configuration.");
+                    statusHandler.error(BMH_CATEGORY.COMMS_CONFIGURATOR_ERROR,
+                            transmitter.getLocation()
+                                    + " is enabled but has no port, it be omitted from the comms configuration.");
                 } else {
                     radios[rindex] = transmitter.getDacPort();
                     rindex += 1;
@@ -335,8 +342,8 @@ public class CommsConfigurator implements IContextStateProcessor {
             DacChannelConfig channel = dconf.getChannels().get(radios[0] - 1);
             channel.setTransmitterGroup(group.getName());
             channel.setDeadAirAlarm(group.getDeadAirAlarm());
-            channel.setPlaylistDirectoryPath(playlistDirectoryPath
-                    .resolve(group.getName()));
+            channel.setPlaylistDirectoryPath(
+                    playlistDirectoryPath.resolve(group.getName()));
             channel.setAudioAmplitude(group.getAudioAmplitude());
             channel.setSameAmplitude(group.getSameAmplitude());
             channel.setAlertAmplitude(group.getAlertAmplitude());
@@ -362,7 +369,8 @@ public class CommsConfigurator implements IContextStateProcessor {
         this.dacDao = dacDao;
     }
 
-    public void setTransmitterGroupDao(TransmitterGroupDao transmitterGroupDao) {
+    public void setTransmitterGroupDao(
+            TransmitterGroupDao transmitterGroupDao) {
         this.transmitterGroupDao = transmitterGroupDao;
     }
 

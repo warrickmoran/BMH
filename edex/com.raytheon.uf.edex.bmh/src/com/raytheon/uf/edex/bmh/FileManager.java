@@ -20,7 +20,6 @@
 package com.raytheon.uf.edex.bmh;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileVisitResult;
@@ -42,7 +41,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.time.util.TimeUtil;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 
@@ -63,10 +64,10 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Nov 16, 2015 5127       rjpeter     Renamed to FileManager, made applicable for archiving.
  * Mar 01, 2016 5382       bkowal      Cleanup.
  * Apr 06, 2016 5552       bkowal      Added {@link #toString()}.
+ * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class FileManager {
@@ -76,7 +77,7 @@ public class FileManager {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    private final int MAX_UNIQUE_INDEX = 99;
+    private static final int MAX_UNIQUE_INDEX = 99;
 
     private final String processType;
 
@@ -98,10 +99,9 @@ public class FileManager {
              * the data destination has not been specified. ensure that spring
              * initialization fails.
              */
-            throw new BMHConfigurationException(
-                    String.format(
-                            "Failed to retrieve the %s Data Destination from the configuration. Please specify the %s Data Destination using the %s property.",
-                            processType, processType, pathProperty));
+            throw new BMHConfigurationException(String.format(
+                    "Failed to retrieve the %s Data Destination from the configuration. Please specify the %s Data Destination using the %s property.",
+                    processType, processType, pathProperty));
         }
 
         this.dataPath = Paths.get(specifiedDirectory);
@@ -125,7 +125,8 @@ public class FileManager {
          * the directory does not exist. attempt to create it.
          */
         try {
-            Files.createDirectories(this.dataPath);
+            com.raytheon.uf.common.util.file.Files.createDirectories(dataPath,
+                    FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         } catch (IOException e) {
             /*
              * failed to create the data rejection destination. ensure that
@@ -133,7 +134,8 @@ public class FileManager {
              */
             throw new BMHConfigurationException(
                     "Failed to create the Data Rejection Destination: "
-                            + this.dataPath.toString() + ".", e);
+                            + this.dataPath.toString() + ".",
+                    e);
         }
 
         logger.info("Successfully created {} data destination: {}",
@@ -163,12 +165,14 @@ public class FileManager {
         }
 
         Path targetDirectoryPath = this.dataPath.resolve(curDate);
-        Path targetFilePath = targetDirectoryPath.resolve(filePath
-                .getFileName());
+        Path targetFilePath = targetDirectoryPath
+                .resolve(filePath.getFileName());
 
         if (!Files.exists(targetDirectoryPath)) {
             try {
-                Files.createDirectories(targetDirectoryPath);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        targetDirectoryPath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 /*
                  * failed to create the data destination. ensure that spring
@@ -186,8 +190,8 @@ public class FileManager {
              * Attempt to find a unique name for the file.
              */
             int count = 1;
-            targetFilePath = targetDirectoryPath.resolve(filePath.getFileName()
-                    + "_" + count);
+            targetFilePath = targetDirectoryPath
+                    .resolve(filePath.getFileName() + "_" + count);
             while (Files.exists(targetFilePath)) {
                 ++count;
                 if (count > MAX_UNIQUE_INDEX) {
@@ -195,19 +199,16 @@ public class FileManager {
                      * there are already 100 files with the same name. do not
                      * attempt to copy another to the destination.
                      */
-                    statusHandler
-                            .warn(category,
-                                    "Unable to copy "
-                                            + processType
-                                            + " file: "
-                                            + filePath.getFileName()
-                                            + ". 100 files with the same name already exist; please review the contents of the BMH "
-                                            + processType + " data directory: "
-                                            + this.dataPath.toString() + ".");
+                    statusHandler.warn(category,
+                            "Unable to copy " + processType + " file: "
+                                    + filePath.getFileName()
+                                    + ". 100 files with the same name already exist; please review the contents of the BMH "
+                                    + processType + " data directory: "
+                                    + this.dataPath.toString() + ".");
                     return;
                 }
-                targetFilePath = targetDirectoryPath.resolve(filePath
-                        .getFileName() + "_" + count);
+                targetFilePath = targetDirectoryPath
+                        .resolve(filePath.getFileName() + "_" + count);
             }
         }
 
@@ -220,6 +221,26 @@ public class FileManager {
             }
         } catch (IOException e) {
             ex = new BMHFileProcessException(filePath, e);
+        }
+
+        /*
+         * Attempt to adjust the file permissions to fulfill the security
+         * requirements. As of May 2017, all of the files that will be processed
+         * are provided by an external source (ex: NWRWaves, manually copied,
+         * etc.).
+         */
+        try {
+            IOPermissionsHelper.applyFilePermissions(filePath,
+                    FilePermissionUtils.FILE_PERMISSIONS_SET);
+        } catch (Exception e) {
+            /*
+             * File has already been copied/moved and there is no reason to undo
+             * that operation. Ideally, the externally provided files would
+             * always arrive with the correct permissions.
+             */
+            logger.warn("Failed to complete permission update for "
+                    + this.processType + " file: " + targetFilePath.toString()
+                    + ".", e);
         }
 
         if (ex == null) {
@@ -239,11 +260,11 @@ public class FileManager {
             try {
                 Files.delete(filePath);
             } catch (IOException e) {
-                statusHandler.error(
-                        category,
+                statusHandler.error(category,
                         "Failed to purge unsuccessfully processed "
                                 + this.processType + " file: "
-                                + filePath.toString() + ".", e);
+                                + filePath.toString() + ".",
+                        e);
             }
         }
 
@@ -263,7 +284,8 @@ public class FileManager {
         tmp.add(Calendar.DAY_OF_MONTH, -retentionDays);
         Date purgeThreshold = tmp.getTime();
 
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dataPath)) {
+        try (DirectoryStream<Path> stream = Files
+                .newDirectoryStream(dataPath)) {
             for (Path entry : stream) {
                 String name = entry.getFileName().toString();
                 Matcher dayMatcher = dayPattern.matcher(name);
@@ -277,7 +299,8 @@ public class FileManager {
                              * Send Long.MAX_VALUE for purge threshold to purge
                              * all files
                              */
-                            logger.info("Purging directory " + entry.toString());
+                            logger.info(
+                                    "Purging directory " + entry.toString());
                             purgeDir(entry, Long.MAX_VALUE);
                         } else if (archiveThreshold.after(day)) {
                             logger.info("Compressing directory "
@@ -296,8 +319,8 @@ public class FileManager {
                         Date day = dayParser.parse(dayMatcher.group(1));
                         purgeFile = purgeThreshold.after(day);
                     } else {
-                        purgeFile = Files.getLastModifiedTime(entry).toMillis() < purgeThreshold
-                                .getTime();
+                        purgeFile = Files.getLastModifiedTime(entry)
+                                .toMillis() < purgeThreshold.getTime();
                     }
 
                     if (purgeFile) {
@@ -305,9 +328,11 @@ public class FileManager {
                             logger.info("Purging " + entry.toString());
                             Files.deleteIfExists(entry);
                         } catch (IOException e) {
-                            logger.error("Failed to purge " + this.processType
-                                    + " file: "
-                                    + entry.toAbsolutePath().toString(), e);
+                            logger.error(
+                                    "Failed to purge " + this.processType
+                                            + " file: "
+                                            + entry.toAbsolutePath().toString(),
+                                    e);
                         }
                     }
                 }
@@ -336,15 +361,16 @@ public class FileManager {
             return;
         }
 
-        try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(
-                zipFile))) {
+        try (ZipOutputStream zos = new ZipOutputStream(
+                IOPermissionsHelper.getOutputStream(zipFile.toPath(),
+                        FilePermissionUtils.FILE_PERMISSIONS_SET))) {
             Files.walkFileTree(dir, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file,
                         BasicFileAttributes attrs) throws IOException {
                     if (Files.exists(file)) {
-                        zos.putNextEntry(new ZipEntry(dataPath.relativize(file)
-                                .toString()));
+                        zos.putNextEntry(new ZipEntry(
+                                dataPath.relativize(file).toString()));
                         Files.copy(file, zos);
                         zos.closeEntry();
                         Files.delete(file);

@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
 
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
 import com.raytheon.uf.common.bmh.request.TextToSpeechRequest;
@@ -61,11 +62,11 @@ import com.raytheon.uf.edex.bmh.tts.TTSSynthesisFactory;
  * Jul 13, 2015 4636       bkowal      Create separate alignment test files for 1800 and 2400 Hz
  *                                     transfer tones.
  * May 23, 2016 5667       bkowal      Changed {@link #SAME} to "" instead of a valid SAME String.
+ * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class AlignmentTestGenerator {
@@ -157,34 +158,37 @@ public class AlignmentTestGenerator {
                 TRANSFER_24_ULAW_NAME);
     }
 
-    public void process() throws StaticGenerationException,
-            BMHConfigurationException {
+    public void process()
+            throws StaticGenerationException, BMHConfigurationException {
         /*
          * Generate any maintenance audio that does not exist.
          */
-        if (Files.exists(audioMaintenancePath) == false) {
+        if (!Files.exists(audioMaintenancePath)) {
             try {
-                Files.createDirectories(audioMaintenancePath);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        audioMaintenancePath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 throw new BMHConfigurationException(
                         "Failed to create the root audio maintenance directory for pre-synthesized maintenance messages: "
-                                + audioMaintenancePath.toString(), e);
+                                + audioMaintenancePath.toString(),
+                        e);
             }
         }
 
-        if (Files.exists(maintenanceTextPath) == false) {
+        if (!Files.exists(maintenanceTextPath)) {
             this.generateText();
         }
-        if (Files.exists(maintenanceAlertPath) == false) {
+        if (!Files.exists(maintenanceAlertPath)) {
             this.generateAlert();
         }
-        if (Files.exists(maintenanceSamePath) == false) {
+        if (!Files.exists(maintenanceSamePath)) {
             this.generateSame();
         }
-        if (Files.exists(maintenance18TransferPath) == false) {
+        if (!Files.exists(maintenance18TransferPath)) {
             this.generateTransfer();
         }
-        if (Files.exists(maintenance24TransferPath) == false) {
+        if (!Files.exists(maintenance24TransferPath)) {
             this.generateTransfer();
         }
     }
@@ -218,13 +222,7 @@ public class AlignmentTestGenerator {
                     "Failed to generate the text maintenance audio!", e);
         }
 
-        try {
-            Files.write(maintenanceTextPath, audio);
-        } catch (IOException e) {
-            throw new StaticGenerationException(
-                    "Failed to write the text maintenance audio to file: "
-                            + maintenanceTextPath.toString(), e);
-        }
+        writeAudio(maintenanceTextPath, audio, "text maintenance");
     }
 
     /*
@@ -237,7 +235,7 @@ public class AlignmentTestGenerator {
                     "Failed to retrieve a TTS Voice for synthesis. Please verify that any TTS Voices have been configured in the system.");
         }
 
-        return availableVoices.get(0).getVoiceNumber();
+        return availableVoices.iterator().next().getVoiceNumber();
     }
 
     private void generateAlert() throws StaticGenerationException {
@@ -253,13 +251,7 @@ public class AlignmentTestGenerator {
                     "Failed to generate the alert tone maintenance audio!", e);
         }
 
-        try {
-            Files.write(maintenanceAlertPath, audio);
-        } catch (IOException e) {
-            throw new StaticGenerationException(
-                    "Failed to write the alert tone maintenance audio to file: "
-                            + maintenanceTextPath.toString(), e);
-        }
+        writeAudio(maintenanceAlertPath, audio, "alert tone maintenance");
     }
 
     private void generateSame() throws StaticGenerationException {
@@ -274,24 +266,18 @@ public class AlignmentTestGenerator {
                     "Failed to generate the same tone maintenance audio!", e);
         }
 
-        try {
-            Files.write(maintenanceSamePath, audio);
-        } catch (IOException e) {
-            throw new StaticGenerationException(
-                    "Failed to write the same tone maintenance audio to file: "
-                            + maintenanceTextPath.toString(), e);
-        }
+        writeAudio(maintenanceSamePath, audio, "same tone maintenance");
     }
 
     private void generateTransfer() throws StaticGenerationException {
         boolean write18 = false;
         boolean write24 = false;
-        if (Files.exists(maintenance18TransferPath) == false) {
+        if (!Files.exists(maintenance18TransferPath)) {
             statusHandler.info("Generating transfer maintenance file: "
                     + maintenance18TransferPath.toString());
             write18 = true;
         }
-        if (Files.exists(maintenance24TransferPath) == false) {
+        if (!Files.exists(maintenance24TransferPath)) {
             statusHandler.info("Generating transfer maintenance file: "
                     + maintenance24TransferPath.toString());
             write24 = true;
@@ -307,27 +293,40 @@ public class AlignmentTestGenerator {
         }
 
         if (write18) {
-            byte[] audioToWrite = Arrays
-                    .copyOfRange(audio, 0, audio.length / 2);
-            try {
-                Files.write(maintenance18TransferPath, audioToWrite);
-            } catch (IOException e) {
-                throw new StaticGenerationException(
-                        "Failed to write the transfer tone maintenance audio to file: "
-                                + maintenance18TransferPath.toString(), e);
-            }
+            byte[] audioToWrite = Arrays.copyOfRange(audio, 0,
+                    audio.length / 2);
+            writeAudio(maintenance18TransferPath, audioToWrite,
+                    "transfer tone maintenance");
         }
 
         if (write24) {
-            try {
-                byte[] audioToWrite = Arrays.copyOfRange(audio,
-                        audio.length / 2, audio.length);
-                Files.write(maintenance24TransferPath, audioToWrite);
-            } catch (IOException e) {
-                throw new StaticGenerationException(
-                        "Failed to write the transfer tone maintenance audio to file: "
-                                + maintenance24TransferPath.toString(), e);
-            }
+            byte[] audioToWrite = Arrays.copyOfRange(audio, audio.length / 2,
+                    audio.length);
+            writeAudio(maintenance24TransferPath, audioToWrite,
+                    "transfer tone maintenance");
+        }
+    }
+
+    /**
+     * Writes the specified audio to the specified file {@link Path}.
+     * 
+     * @param filePath
+     *            the specified file {@link Path}.
+     * @param audio
+     *            the specified audio to write.
+     * @param description
+     *            a description of the type of file that is being written; only
+     *            used for error reporting.
+     * @throws StaticGenerationException
+     */
+    private void writeAudio(final Path filePath, final byte[] audio,
+            final String description) throws StaticGenerationException {
+        try {
+            FilePermissionUtils.writeFileContents(filePath, audio);
+        } catch (IOException e) {
+            throw new StaticGenerationException("Failed to write the "
+                    + description + " audio to file: " + filePath.toString(),
+                    e);
         }
     }
 

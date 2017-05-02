@@ -48,6 +48,7 @@ import com.raytheon.bmh.dactransmit.dacsession.DacSessionConfig;
 import com.raytheon.bmh.dactransmit.exceptions.NoSoundFileException;
 import com.raytheon.bmh.dactransmit.ipc.ChangeAmplitudeTarget;
 import com.raytheon.bmh.dactransmit.ipc.ChangeTimeZone;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.dac.archive.PlaylistMessageArchiver;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylist;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
@@ -58,6 +59,7 @@ import com.raytheon.uf.common.bmh.stats.DeliveryTimeEvent;
 import com.raytheon.uf.common.bmh.trace.TraceableUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.msg.logging.DefaultMessageLogger;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
@@ -137,6 +139,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
  * Aug 02, 2016 5766       bkowal       Eliminated message compatibility for previous versions.
  * Aug 04, 2016 5766       bkowal       Ensure periodicity cycles are set when retrieving a message.
  * Sep 30, 2016 5912       bkowal       Specify the SAME padding to use when loading audio.
+ * May 02, 2017 6259       bkowal       Updated to use {@link IOPermissionsHelper}.
  * </pre>
  * 
  * @author dgilling
@@ -151,7 +154,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * from memory. Only applies when the process is actively
      * broadcasting/receiving content.
      */
-    private static final long PURGE_JOB_INTERVAL = 15 * TimeUtil.MILLIS_PER_MINUTE;
+    private static final long PURGE_JOB_INTERVAL = 15
+            * TimeUtil.MILLIS_PER_MINUTE;
 
     private static final long ARCHIVE_JOB_INTERVAL = TimeUtil.MILLIS_PER_HOUR;
 
@@ -162,13 +166,15 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * based on 10 seconds of pauses plus an estimated 1 second for tones
      * playback.
      */
-    private static final long SAME_TONE_ESTIMATE = 11 * SECONDS_TO_BYTES_CONV_FACTOR;
+    private static final long SAME_TONE_ESTIMATE = 11
+            * SECONDS_TO_BYTES_CONV_FACTOR;
 
     /**
      * Estimated file size for alert tones playback: based on 9 second alert
      * tone plus 2 second pause prior to tone.
      */
-    private static final long ALERT_TONE_ESTIMATE = 11 * SECONDS_TO_BYTES_CONV_FACTOR;
+    private static final long ALERT_TONE_ESTIMATE = 11
+            * SECONDS_TO_BYTES_CONV_FACTOR;
 
     private final Path messageDirectory;
 
@@ -294,7 +300,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            the id of the message to update the expiration time for.
      */
     public void expirePlaylistMessage(DacPlaylistMessageId message) {
-        if (this.cachedMessages.containsKey(message) == false) {
+        if (!this.cachedMessages.containsKey(message)) {
             return;
         }
 
@@ -326,9 +332,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             DacPlaylistMessageMetadata updatedMetadata = this
                     .readMessageMetadata(message);
 
-            audioUpdated = checkAudio
-                    && (dacMessage.getSoundFiles().equals(
-                            updatedMetadata.getSoundFiles()) == false);
+            audioUpdated = checkAudio && (!dacMessage.getSoundFiles()
+                    .equals(updatedMetadata.getSoundFiles()));
 
             /*
              * The previous metadata can now be merged.
@@ -377,7 +382,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
                 Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(
                         PriorityBasedExecutorService.PRIORITY_NORMAL
-                                + playlist.getPriority() * 100 + index, message);
+                                + playlist.getPriority() * 100 + index,
+                        message);
                 this.cacheStatus.replace(message, jobStatus);
                 IAudioFileBuffer removedBuffer = this.cachedFiles
                         .remove(dacMessage);
@@ -403,7 +409,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      *            Message to cache.
      */
     private void retrieveAudio(final DacPlaylistMessageId id, int priority) {
-        Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(priority, id);
+        Future<IAudioFileBuffer> jobStatus = scheduleFileRetrieval(priority,
+                id);
         cacheStatus.put(id, jobStatus);
     }
 
@@ -506,8 +513,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             DefaultMessageLogger.getInstance().logError(message,
                     BMH_COMPONENT.DAC_TRANSMIT, BMH_ACTIVITY.AUDIO_READ,
                     message, e);
-            this.eventBus.post(new BroadcastMsgInitFailedNotification(message,
-                    interrupt));
+            this.eventBus.post(
+                    new BroadcastMsgInitFailedNotification(message, interrupt));
             return null;
         }
     }
@@ -524,8 +531,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
      * @return true if the file does exist; false, otherwise
      */
     public boolean doesMessageFileExist(DacPlaylistMessageId id) {
-        Path messageMetadataPath = messageDirectory.resolve(id.getBroadcastId()
-                + "_" + id.getTimestamp() + ".xml");
+        Path messageMetadataPath = messageDirectory.resolve(
+                id.getBroadcastId() + "_" + id.getTimestamp() + ".xml");
         return Files.exists(messageMetadataPath);
     }
 
@@ -567,9 +574,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                         DacPlaylistMessage.class);
             } catch (Exception e) {
                 logger.warn(
-                        "Failed to read message file: "
-                                + messagePath.toString()
-                                + ". Creating a new playlist message file", e);
+                        "Failed to read message file: " + messagePath.toString()
+                                + ". Creating a new playlist message file",
+                        e);
             }
         }
         if (message == null) {
@@ -586,9 +593,11 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                                         messageDirectory, messageFilePath);
                     }
                 } catch (Exception e) {
-                    logger.error("Failed to restore archived message file: "
-                            + messageFilePath.toString()
-                            + ". Using a new playlist message file.", e);
+                    logger.error(
+                            "Failed to restore archived message file: "
+                                    + messageFilePath.toString()
+                                    + ". Using a new playlist message file.",
+                            e);
                 }
             }
             if (restored) {
@@ -607,12 +616,16 @@ public final class PlaylistMessageCache implements IAudioJobListener {
 
     private DacPlaylistMessageMetadata readMessageMetadata(
             DacPlaylistMessageId id) {
-        Path messageMetadataPath = messageDirectory.resolve(id.getBroadcastId()
-                + "_" + id.getTimestamp() + ".xml");
+        Path messageMetadataPath = messageDirectory.resolve(
+                id.getBroadcastId() + "_" + id.getTimestamp() + ".xml");
         DacPlaylistMessageMetadata messageMetadata = JAXB.unmarshal(
                 messageMetadataPath.toFile(), DacPlaylistMessageMetadata.class);
         messageMetadata.setPath(messageMetadataPath);
-        if (CollectionUtil.isNullOrEmpty(messageMetadata.getSoundFiles()) == false) {
+
+        /*
+         * TODO: update to use Apache Commons Collections CollectionUtils.
+         */
+        if (!CollectionUtil.isNullOrEmpty(messageMetadata.getSoundFiles())) {
             for (String soundFile : messageMetadata.getSoundFiles()) {
                 if (Files.isDirectory(Paths.get(soundFile))) {
                     messageMetadata.setDynamic(true);
@@ -646,7 +659,9 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         /*
          * Write updated metadata only due to statistics.
          */
-        try (OutputStream os = Files.newOutputStream(messageMetadataPath)) {
+        try (OutputStream os = IOPermissionsHelper.getOutputStream(
+                messageMetadataPath,
+                FilePermissionUtils.FILE_PERMISSIONS_SET)) {
             JAXB.marshal(messageMetadata, os);
         } catch (Exception e) {
             logger.error("Failed to update message metadata file: "
@@ -694,8 +709,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
         if (message == null) {
             return 0L;
         }
-        boolean includeTones = (startTime != null) ? message
-                .shouldPlayTones(startTime) : false;
+        boolean includeTones = (startTime != null)
+                ? message.shouldPlayTones(startTime) : false;
 
         IAudioFileBuffer buffer = cachedFiles.get(message);
         if (buffer == null) {
@@ -803,8 +818,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     @Subscribe
     public void changeTimezone(ChangeTimeZone changeEvent) {
         this.timezone = TimeZone.getTimeZone(changeEvent.getTimeZone());
-        logger.info("Updated transmitter time zone to: "
-                + this.timezone.getID());
+        logger.info(
+                "Updated transmitter time zone to: " + this.timezone.getID());
     }
 
     @Override
@@ -868,11 +883,12 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void schedulePurge() {
-        if (this.cleanupAllowed == false) {
+        if (!this.cleanupAllowed) {
             return;
         }
         synchronized (cleanupLock) {
-            if (lastPurgeTime + PURGE_JOB_INTERVAL < System.currentTimeMillis()) {
+            if (lastPurgeTime + PURGE_JOB_INTERVAL < System
+                    .currentTimeMillis()) {
                 lastPurgeTime = System.currentTimeMillis();
                 logger.info("Scheduling a cache purge ... {}",
                         this.lastPurgeTime);
@@ -883,7 +899,7 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void scheduleArchive() {
-        if (this.cleanupAllowed == false) {
+        if (!this.cleanupAllowed) {
             return;
         }
         synchronized (cleanupLock) {
@@ -916,7 +932,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
     }
 
     private void purgeAudio(final DacPlaylistMessageId messageId) {
-        logger.debug("Removing audio for message " + messageId + " from cache.");
+        logger.debug(
+                "Removing audio for message " + messageId + " from cache.");
 
         Future<IAudioFileBuffer> jobStatus = cacheStatus.remove(messageId);
         if (jobStatus != null) {
@@ -964,7 +981,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
             return false;
         }
 
-        return (message.getMetadata().getLastReadTime() + PURGE_JOB_INTERVAL > thresholdTime);
+        return (message.getMetadata().getLastReadTime()
+                + PURGE_JOB_INTERVAL > thresholdTime);
     }
 
     private class PurgeTask implements PrioritizableCallable<Object> {
@@ -1046,7 +1064,8 @@ public final class PlaylistMessageCache implements IAudioJobListener {
                      * metadata file). All other cases will be handled by the
                      * {@link PurgeTask}.
                      */
-                    if (doesMessageFileExist(messageId) && isExpired(messageId)) {
+                    if (doesMessageFileExist(messageId)
+                            && isExpired(messageId)) {
                         purgeAudio(messageId);
                     }
                 }
