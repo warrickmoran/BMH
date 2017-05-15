@@ -20,6 +20,7 @@
 package com.raytheon.uf.edex.bmh.playlist;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +44,7 @@ import org.springframework.util.CollectionUtils;
 
 import com.raytheon.edex.site.SiteUtil;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastContents;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastFragment;
 import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
@@ -89,6 +91,7 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.ITimer;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
@@ -220,6 +223,7 @@ import com.raytheon.uf.edex.database.cluster.ClusterTask;
  *                                    periodic messages.
  * Jan 20, 2017  6078     bkowal      Set the Area Code Override for DMO messages created using
  *                                    the Demo Message dialog instead of all DMO messages.
+ * May 02, 2017  6259     bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * </pre>
  * 
  * @author bsteffen
@@ -276,7 +280,8 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         this.operational = operational;
         this.messageLogger = messageLogger;
-        Files.createDirectories(playlistDir);
+        com.raytheon.uf.common.util.file.Files.createDirectories(playlistDir,
+                FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         replacementManager = new ReplacementManager();
         replacementManager.setMessageLogger(messageLogger);
     }
@@ -328,7 +333,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 ClusterTask ct = null;
                 Path groupPlaylistPath = null;
                 do {
-                    ct = locker.lock("playlist", identifier.getName(), 30000,
+                    ct = locker.lock("playlist", identifier.getName(), 30_000,
                             true);
                 } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
                 try {
@@ -587,7 +592,7 @@ public class PlaylistManager implements IContextStateProcessor {
         String suiteName = programSuite.getSuite().getName();
         ClusterTask ct = null;
         do {
-            ct = locker.lock("playlist", groupName + "-" + suiteName, 30000,
+            ct = locker.lock("playlist", groupName + "-" + suiteName, 30_000,
                     true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         ITimer timer = TimeUtil.getTimer();
@@ -624,7 +629,7 @@ public class PlaylistManager implements IContextStateProcessor {
         do {
             ct = locker.lock("playlist",
                     group.getName() + "-" + programSuite.getSuite().getName(),
-                    30000, true);
+                    30_000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         ITimer timer = TimeUtil.getTimer();
         timer.start();
@@ -760,7 +765,7 @@ public class PlaylistManager implements IContextStateProcessor {
         do {
             ct = locker.lock("playlist",
                     group.getName() + "-" + programSuite.getSuite().getName(),
-                    30000, true);
+                    30_000, true);
         } while (!LockState.SUCCESSFUL.equals(ct.getLockState()));
         try {
             Playlist playlist = playlistDao.getBySuiteAndGroupName(
@@ -939,7 +944,9 @@ public class PlaylistManager implements IContextStateProcessor {
         }
         Path playlistDir = playlistPath.getParent();
         try {
-            Files.createDirectories(playlistDir);
+            com.raytheon.uf.common.util.file.Files.createDirectories(
+                    playlistDir,
+                    FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         } catch (IOException e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     "Unable to write playlist xml, cannot create directory:"
@@ -951,7 +958,10 @@ public class PlaylistManager implements IContextStateProcessor {
             return null;
         }
         try {
-            this.jaxbManager.marshalToXmlFile(dacList, playlistPath.toString());
+            try (OutputStream os = IOPermissionsHelper.getOutputStream(
+                    playlistPath, FilePermissionUtils.FILE_PERMISSIONS_SET)) {
+                jaxbManager.marshalToStream(dacList, os);
+            }
             this.messageLogger.logPlaylistActivity(traceable, dacList);
         } catch (Exception e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
@@ -1043,7 +1053,8 @@ public class PlaylistManager implements IContextStateProcessor {
         Path playlistDir = this.playlistDir
                 .resolve(broadcast.getTransmitterGroup().getName());
         Path messageDir = playlistDir.resolve("messages");
-        Files.createDirectories(messageDir);
+        com.raytheon.uf.common.util.file.Files.createDirectories(messageDir,
+                FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         return messageDir
                 .resolve(broadcast.getId() + "_" + metadataTimestamp + ".xml");
     }
@@ -1234,8 +1245,11 @@ public class PlaylistManager implements IContextStateProcessor {
                 dacMetadata.setInitialRecognitionTime(
                         input.getLastUpdateTime().getTime());
                 dacMetadata.setExpire(input.getExpirationTime());
-                this.jaxbManager.marshalToXmlFile(dacMetadata,
-                        messageMetadataFile.toString());
+                try (OutputStream os = IOPermissionsHelper.getOutputStream(
+                        messageMetadataFile,
+                        FilePermissionUtils.FILE_PERMISSIONS_SET)) {
+                    jaxbManager.marshalToStream(dacMetadata, os);
+                }
                 statusHandler.info("Wrote message metadata file: "
                         + messageMetadataFile.toString() + ".");
                 dac.setMetadata(dacMetadata);

@@ -20,9 +20,11 @@
 package com.raytheon.uf.edex.bmh;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 import com.raytheon.uf.common.status.UFStatus.Priority;
@@ -44,15 +46,11 @@ import com.raytheon.uf.common.status.UFStatus.Priority;
  * Aug 10, 2015 4424       bkowal      Added {@link #PLAYLIST_DIRECTORY}.
  * Aug 24, 2015 4770       bkowal      Added {@link #getBmhConfDirectory()}.
  * Feb 02, 2017 6085       bsteffen    Enable ssl in the JMS connection.
+ * May 08, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  *
  * </pre>
  * 
  * @author bkowal
- */
-/*
- * TODO: not sure if BMH_DATA will actually be an environment variable in the
- * final version. However, just adding this as a placeholder because it mimics
- * the way the current EDEX data directory is set.
  */
 public final class BMHConstants {
     /*
@@ -159,13 +157,22 @@ public final class BMHConstants {
             throw new RuntimeException(exceptionText);
         }
 
-        File verifyExistence = new File(bmhDataDirectory);
-        if (!verifyExistence.exists() && !verifyExistence.mkdirs()) {
-            final String exceptionText = "Failed to create the BMH DATA directory: "
-                    + bmhDataDirectory + "!";
+        final Path bmhDataPath = Paths.get(bmhDataDirectory);
+        if (!Files.exists(bmhDataPath)) {
+            /*
+             * Attempt to create the BMH data directory.
+             */
+            try {
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        bmhDataPath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
+            } catch (Exception e) {
+                final String exceptionText = "Failed to create the BMH DATA directory: "
+                        + bmhDataDirectory + "!";
 
-            statusHandler.handle(Priority.CRITICAL, exceptionText);
-            throw new RuntimeException(exceptionText);
+                statusHandler.handle(Priority.CRITICAL, exceptionText, e);
+                throw new RuntimeException(exceptionText);
+            }
         }
 
         statusHandler.info("BMH DATA is: " + bmhDataDirectory);
@@ -175,6 +182,6 @@ public final class BMHConstants {
     /**
      * 
      */
-    protected BMHConstants() {
+    private BMHConstants() {
     }
 }

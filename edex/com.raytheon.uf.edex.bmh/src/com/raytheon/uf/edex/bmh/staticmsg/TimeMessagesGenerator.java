@@ -29,6 +29,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.TIME_MSG_TOKENS;
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.language.TtsVoice;
@@ -68,11 +69,11 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  * Apr 20, 2015 4314       bkowal      Use {@link TTSManager} synthesis to verify that the
  *                                     retry logic will be utilized.
  * May 08, 2015 4465       bkowal      Generate audio for all recognized {@link BMHTimeZone}s.
+ * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class TimeMessagesGenerator {
@@ -125,13 +126,16 @@ public class TimeMessagesGenerator {
         /*
          * Determine if the location exists.
          */
-        if (Files.exists(audioTimePath) == false) {
+        if (!Files.exists(audioTimePath)) {
             try {
-                Files.createDirectories(audioTimePath);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        audioTimePath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 throw new BMHConfigurationException(
                         "Failed to create the root audio time directory for pre-synthesized time messages: "
-                                + audioTimePath.toString(), e);
+                                + audioTimePath.toString(),
+                        e);
             }
         }
 
@@ -142,8 +146,8 @@ public class TimeMessagesGenerator {
          * Generate a {@link SSMLTimeCache} for every {@link Language}.
          */
         for (Language language : Language.values()) {
-            this.ssmlLanguageTimeCacheMap.put(language, new SSMLTimeCache(
-                    language));
+            this.ssmlLanguageTimeCacheMap.put(language,
+                    new SSMLTimeCache(language));
             statusHandler
                     .info("Successfully initialized ssml time cache for language: "
                             + language.name() + ".");
@@ -170,20 +174,23 @@ public class TimeMessagesGenerator {
                             + voice.getVoiceNumber() + "!",
                     ttsReturn.getIoFailureCause());
         }
-        if (ttsReturn.isSynthesisSuccess() == false
+        if (!ttsReturn.isSynthesisSuccess()
                 || ttsReturn.getVoiceData() == null) {
             throw new StaticGenerationException(
                     "Failed to generate a static time message: "
                             + timeFilePath.toString() + " with voice "
                             + voice.getVoiceNumber() + " due to TTS Error "
-                            + ttsReturn.getReturnValue().getDescription() + "!");
+                            + ttsReturn.getReturnValue().getDescription()
+                            + "!");
         }
         try {
-            Files.write(timeFilePath, ttsReturn.getVoiceData());
+            FilePermissionUtils.writeFileContents(timeFilePath,
+                    ttsReturn.getVoiceData());
         } catch (IOException e) {
             throw new StaticGenerationException(
                     "Failed to write static time message: "
-                            + timeFilePath.toString() + "!", e);
+                            + timeFilePath.toString() + "!",
+                    e);
         }
         fileTimer.stop();
         statusHandler.info("Successfully generated and wrote time audio file: "
@@ -221,8 +228,8 @@ public class TimeMessagesGenerator {
         }
 
         int totalFilesWritten = 0;
-        final SSMLTimeCache cache = this.ssmlLanguageTimeCacheMap.get(ttsVoice
-                .getLanguage());
+        final SSMLTimeCache cache = this.ssmlLanguageTimeCacheMap
+                .get(ttsVoice.getLanguage());
         if (cache == null) {
             throw new StaticGenerationException(
                     "Unable to find a ssml time cache for language "
@@ -283,10 +290,11 @@ public class TimeMessagesGenerator {
                 final String logIdentifier = ttsVoice.getLanguage().name()
                         + " Timezone " + timezone + " (Speech Rate: "
                         + speechRate + ")";
-                if (this.generateStaticTimeMsg(cache.getTimezoneSSML(
-                        speechRate, timezone), this.getTimeVoiceTZFilePath(
-                        ttsVoice, speechRate, timezone), ttsVoice,
-                        logIdentifier)) {
+                if (this.generateStaticTimeMsg(
+                        cache.getTimezoneSSML(speechRate, timezone),
+                        this.getTimeVoiceTZFilePath(ttsVoice, speechRate,
+                                timezone),
+                        ttsVoice, logIdentifier)) {
                     ++totalFilesWritten;
                 }
             }
@@ -295,27 +303,28 @@ public class TimeMessagesGenerator {
         overallTimer.stop();
         if (totalFilesWritten > 0) {
             statusHandler.info("Successfully generated " + totalFilesWritten
-                    + " time audio files for voice "
-                    + ttsVoice.getVoiceNumber() + " and speech rate "
+                    + " time audio files for voice " + ttsVoice.getVoiceNumber()
+                    + " and speech rate "
                     + SpeechRateFormatter.formatSpeechRate(speechRate) + " in "
                     + TimeUtil.prettyDuration(overallTimer.getElapsedTime())
                     + ".");
         } else {
             statusHandler
                     .info("Successfully verified the existence of time audio files for voice "
-                            + ttsVoice.getVoiceNumber()
-                            + " and speech rate "
+                            + ttsVoice.getVoiceNumber() + " and speech rate "
                             + SpeechRateFormatter.formatSpeechRate(speechRate)
-                            + " in "
-                            + TimeUtil.prettyDuration(overallTimer
-                                    .getElapsedTime()) + ".");
+                            + " in " + TimeUtil.prettyDuration(
+                                    overallTimer.getElapsedTime())
+                            + ".");
         }
     }
 
-    public Path getTimeVoiceDirectory(final TtsVoice voice, final int speechRate) {
-        return Paths.get(audioTimePath.toString(),
-                Integer.toString(voice.getVoiceNumber())).resolve(
-                this.speechRateToDirectoryName(speechRate));
+    public Path getTimeVoiceDirectory(final TtsVoice voice,
+            final int speechRate) {
+        return Paths
+                .get(audioTimePath.toString(),
+                        Integer.toString(voice.getVoiceNumber()))
+                .resolve(this.speechRateToDirectoryName(speechRate));
     }
 
     public Path getTimeVoiceHourDirectory(final TtsVoice voice,
@@ -344,20 +353,23 @@ public class TimeMessagesGenerator {
 
     public Path getTimeVoiceHourFilePath(final TtsVoice voice,
             final int speechRate, final int hour) {
-        return Paths.get(getTimeVoiceHourDirectory(voice, speechRate)
-                .toString(), Integer.toString(hour));
+        return Paths.get(
+                getTimeVoiceHourDirectory(voice, speechRate).toString(),
+                Integer.toString(hour));
     }
 
     public Path getTimeVoiceMinuteFilePath(final TtsVoice voice,
             final int speechRate, final int minute) {
-        return Paths.get(getTimeVoiceMinuteDirectory(voice, speechRate)
-                .toString(), Integer.toString(minute));
+        return Paths.get(
+                getTimeVoiceMinuteDirectory(voice, speechRate).toString(),
+                Integer.toString(minute));
     }
 
     public Path getTimePeriodFilePath(final TtsVoice voice,
             final int speechRate, final String period) {
-        return Paths.get(getTimeVoicePeriodDirectory(voice, speechRate)
-                .toString(), period);
+        return Paths.get(
+                getTimeVoicePeriodDirectory(voice, speechRate).toString(),
+                period);
     }
 
     public Path getTimeVoiceTZFilePath(final TtsVoice voice,

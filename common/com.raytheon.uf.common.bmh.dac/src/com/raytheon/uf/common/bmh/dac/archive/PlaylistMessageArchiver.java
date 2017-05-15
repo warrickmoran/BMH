@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
 
 /**
@@ -43,11 +44,11 @@ import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Feb 26, 2016 5382       bkowal      Initial creation
+ * May 08, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * 
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class PlaylistMessageArchiver {
@@ -68,7 +69,9 @@ public class PlaylistMessageArchiver {
         }
 
         try {
-            Files.createDirectories(playlistArchivePath);
+            com.raytheon.uf.common.util.file.Files.createDirectories(
+                    playlistArchivePath,
+                    FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         } catch (IOException e) {
             throw new Exception("Failed to create playlist archive: "
                     + playlistArchivePath + ".", e);
@@ -108,7 +111,7 @@ public class PlaylistMessageArchiver {
             throws Exception {
         final Path expectedMessageFilePath = this.playlistArchivePath
                 .resolve(messageFile);
-        if (Files.exists(expectedMessageFilePath) == false) {
+        if (!Files.exists(expectedMessageFilePath)) {
             return false;
         }
 
