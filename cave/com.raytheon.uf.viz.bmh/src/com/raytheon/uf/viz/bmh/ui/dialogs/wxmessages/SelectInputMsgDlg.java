@@ -92,6 +92,7 @@ import com.raytheon.viz.ui.dialogs.CaveSWTDialog;
  * Jun 12, 2015   4482      rjpeter     Fixed NPE.
  * Jul 14, 2015   4162      rferrel     The filterAction combines text and time filtering.
  * Apr 04, 2016   5504      bkowal      Fix GUI sizing issues.
+ * May 17, 2017  19315      xwei        Added an extra column for Effective Time
  * </pre>
  * 
  * @author lvenable
@@ -294,6 +295,9 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
             tcd = new TableColumnData("Creation Date");
             columnNames.add(tcd);
 
+            tcd = new TableColumnData("Effective Date");    
+            columnNames.add(tcd);                       
+
             inputMsgTableData = new TableData(columnNames);
         } else {
             inputMsgTableData.deleteAllRows();
@@ -346,6 +350,13 @@ public class SelectInputMsgDlg extends CaveSWTDialog implements IFilterAction {
                         .getCreationTime().getTime())));
             }
 
+            if (im.getEffectiveTime() == null) {
+                trd.addTableCellData(new TableCellData("??????"));
+            } else {
+                trd.addTableCellData(new TableCellData(dateFmt.format(im
+                        .getEffectiveTime().getTime())));
+            }
+            
             inputMsgTableData.addDataRow(trd);
         }
     }

@@ -56,6 +56,7 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 16, 2015  5127     rjpeter     Added getActiveWithAfosidAndAreaCodesAndNoMrd, overrode saveOrUpdate
  *                                    to set lastUpdateTime.
  * Feb 04, 2016  5308     rjpeter     Removed checkDuplicate, getPeriodicMessages, and getInputMessages.
+ * May 17, 2017  19315      xwei      Updated createInputMessageIdNameAfosCreation so Effective Time can be assigned
  * </pre>
  * 
  * @author bsteffen
@@ -141,12 +142,14 @@ public class InputMessageDao extends
             im.setAfosid((String) objArray[2]);
             im.setCreationTime((Calendar) objArray[3]);
             im.setActive((Boolean) objArray[4]);
+            im.setEffectiveTime((Calendar) objArray[5]);      
             imList.add(im);
         }
 
         return imList;
     }
-
+    
+    
     @SuppressWarnings("unchecked")
     public List<InputMessage> getPurgableMessages(final Calendar purgeTime) {
         return (List<InputMessage>) findByNamedQueryAndNamedParam(
@@ -161,7 +164,7 @@ public class InputMessageDao extends
         List<Object[]> objectList = (List<Object[]>) findByNamedQueryAndNamedParam(
                 InputMessage.UNEXPIRED_QUERY_NAME, "currentTime", currentTime);
 
-        return createInputMessageIdNameAfosCreation(objectList);
+        return createInputMessageIdNameAfosCreation(objectList); 
     }
 
     @SuppressWarnings("unchecked")
