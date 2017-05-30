@@ -97,6 +97,8 @@ import com.raytheon.uf.viz.bmh.ui.common.table.TableRowData;
  * Jan 28, 2016   5300     rjpeter     Fixed PlaylistDataStructure memory leak.
  * Feb 04, 2016   5308     rjpeter     Ask comms manager for playlist data if none in memory.
  * Mar 14, 2016   5472     rjpeter     Moved comms manager playlist request to BroadcastCycleDlg.
+ * Jan 20, 2017   6078     bkowal      Update to account for the fact that the Alert column is displayed
+ *                                     before the SAME column in the Broadcast Cycle dialog.
  * </pre>
  * 
  * @author mpduff
@@ -204,13 +206,13 @@ public class PlaylistData {
      */
     public void handlePlaybackStatusNotification(
             MessagePlaybackStatusNotification notification) {
-        if (this.broadcastOverrideMap.containsKey(notification
-                .getTransmitterGroup())) {
+        if (this.broadcastOverrideMap
+                .containsKey(notification.getTransmitterGroup())) {
             this.broadcastOverrideMap
                     .remove(notification.getTransmitterGroup());
         }
-        PlaylistDataStructure playlistData = playlistDataMap.get(notification
-                .getTransmitterGroup());
+        PlaylistDataStructure playlistData = playlistDataMap
+                .get(notification.getTransmitterGroup());
         if (playlistData == null) {
             playlistData = new PlaylistDataStructure();
             playlistDataMap.put(notification.getTransmitterGroup(),
@@ -231,11 +233,11 @@ public class PlaylistData {
     public void handleLiveBroadcastSwitchNotification(
             LiveBroadcastSwitchNotification notification) {
         if (notification.getBroadcastState() == STATE.STARTED) {
-            this.broadcastOverrideMap.put(notification.getTransmitterGroup()
-                    .getName(), notification);
+            this.broadcastOverrideMap.put(
+                    notification.getTransmitterGroup().getName(), notification);
         } else if (notification.getBroadcastState() == STATE.FINISHED) {
-            this.broadcastOverrideMap.remove(notification.getTransmitterGroup()
-                    .getName());
+            this.broadcastOverrideMap
+                    .remove(notification.getTransmitterGroup().getName());
         }
     }
 
@@ -257,8 +259,8 @@ public class PlaylistData {
      */
     public TableData getUpdatedTableData(String transmitterGroupName) {
         if (this.broadcastOverrideMap.containsKey(transmitterGroupName)) {
-            return this.getNonStandardTableData(this.broadcastOverrideMap
-                    .get(transmitterGroupName));
+            return this.getNonStandardTableData(
+                    this.broadcastOverrideMap.get(transmitterGroupName));
         }
 
         PlaylistDataStructure playlistDataStructure = playlistDataMap
@@ -288,12 +290,12 @@ public class PlaylistData {
 
             if (pred.getNextTransmitTime() == null) {
                 cycleTableData.setTransmitTime(pred.getLastTransmitTime());
-                cycleTableData.setTransmitTimeColor(colorManager
-                        .getActualTransmitTimeColor());
+                cycleTableData.setTransmitTimeColor(
+                        colorManager.getActualTransmitTimeColor());
             } else {
                 cycleTableData.setTransmitTime(pred.getNextTransmitTime());
-                cycleTableData.setTransmitTimeColor(colorManager
-                        .getPredictedTransmitTimeColor());
+                cycleTableData.setTransmitTimeColor(
+                        colorManager.getPredictedTransmitTimeColor());
             }
 
             BroadcastMsg message = playlistMap.get(broadcastId);
@@ -326,20 +328,21 @@ public class PlaylistData {
                 mrd = inputMsg.getMrd();
 
                 if (inputMsg.isPeriodic()) {
-                    cycleTableData.setMessageIdColor(colorManager
-                            .getPeriodicColor());
+                    cycleTableData
+                            .setMessageIdColor(colorManager.getPeriodicColor());
                 }
 
                 if (message.getReplacementType() != null) {
-                    cycleTableData.setMessageIdColor(colorManager
-                            .getReplaceColor());
+                    cycleTableData
+                            .setMessageIdColor(colorManager.getReplaceColor());
                 }
 
                 if (inputMsg.getInterrupt()
-                        && ((message.isPlayedInterrupt() == false) || playlistDataStructure
-                                .getSuiteName().startsWith("Interrupt"))) {
-                    cycleTableData.setMessageIdColor(colorManager
-                            .getInterruptColor());
+                        && ((message.isPlayedInterrupt() == false)
+                                || playlistDataStructure.getSuiteName()
+                                        .startsWith("Interrupt"))) {
+                    cycleTableData.setMessageIdColor(
+                            colorManager.getInterruptColor());
                 }
             }
 
@@ -369,7 +372,8 @@ public class PlaylistData {
             }
             cell.setBackgroundColor(data.getTransmitTimeColor());
             row.addTableCellData(cell);
-            TableCellData messageIdCell = new TableCellData(data.getMessageId());
+            TableCellData messageIdCell = new TableCellData(
+                    data.getMessageId());
             if (data.getMessageIdColor() != null) {
                 messageIdCell.setBackgroundColor(data.getMessageIdColor());
             }
@@ -378,8 +382,8 @@ public class PlaylistData {
             row.addTableCellData(new TableCellData(data.getMessageTitle()));
 
             if (data.getInputMsg() != null) {
-                row.addTableCellData(new TableCellData(data.getInputMsg()
-                        .getName()));
+                row.addTableCellData(
+                        new TableCellData(data.getInputMsg().getName()));
             } else {
                 row.addTableCellData(new TableCellData("Unknown"));
             }
@@ -389,17 +393,17 @@ public class PlaylistData {
             if (data.getExpirationTime() == null) {
                 row.addTableCellData(new TableCellData(UNKNOWN_TIME_STR));
             } else {
-                row.addTableCellData(new TableCellData(sdf.format(data
-                        .getExpirationTime().getTime())));
+                row.addTableCellData(new TableCellData(
+                        sdf.format(data.getExpirationTime().getTime())));
             }
 
-            if (data.isSameSent()) {
+            if (data.isAlertSent()) {
                 row.addTableCellData(new TableCellData("SENT"));
             } else {
                 row.addTableCellData(new TableCellData("NONE"));
             }
 
-            if (data.isAlertSent()) {
+            if (data.isSameSent()) {
                 row.addTableCellData(new TableCellData("SENT"));
             } else {
                 row.addTableCellData(new TableCellData("NONE"));
@@ -414,14 +418,16 @@ public class PlaylistData {
         return tableData;
     }
 
-    public TableData getNonStandardTableData(INonStandardBroadcast notification) {
+    public TableData getNonStandardTableData(
+            INonStandardBroadcast notification) {
         TableData liveTableData = new TableData(columns);
 
         String[] columnText = new String[0];
         if (notification instanceof LiveBroadcastSwitchNotification) {
             LiveBroadcastSwitchNotification broadcastNotification = (LiveBroadcastSwitchNotification) notification;
             columnText = new String[] {
-                    sdf.format(broadcastNotification.getTransitTime().getTime()),
+                    sdf.format(
+                            broadcastNotification.getTransitTime().getTime()),
                     broadcastNotification.getMessageId(),
                     broadcastNotification.getMessageTitle(),
                     broadcastNotification.getMessageName(),
@@ -435,7 +441,8 @@ public class PlaylistData {
 
             MaintenanceMessagePlayback broadcastNotification = (MaintenanceMessagePlayback) notification;
             columnText = new String[] {
-                    sdf.format(broadcastNotification.getTransitTime().getTime()),
+                    sdf.format(
+                            broadcastNotification.getTransitTime().getTime()),
                     contentFiller, contentFiller,
                     broadcastNotification.getName(), contentFiller,
                     UNKNOWN_TIME_STR, contentFiller,
@@ -444,8 +451,8 @@ public class PlaylistData {
         TableRowData tableRowData = new TableRowData();
         for (String text : columnText) {
             TableCellData tableCellData = new TableCellData(text);
-            tableCellData.setBackgroundColor(this.colorManager
-                    .getLiveBroadcastColor());
+            tableCellData.setBackgroundColor(
+                    this.colorManager.getLiveBroadcastColor());
             tableRowData.addTableCellData(tableCellData);
         }
         liveTableData.addDataRow(tableRowData);
@@ -473,8 +480,8 @@ public class PlaylistData {
                 dataManager.getPeriodicMessageColumns());
 
         for (MessagePlaybackPrediction prediction : predictionMap.values()) {
-            BroadcastMsg playlistMessage = playlistMap.get(prediction
-                    .getBroadcastId());
+            BroadcastMsg playlistMessage = playlistMap
+                    .get(prediction.getBroadcastId());
             if (playlistMessage != null) {
                 /*
                  * This is bad but the user was already informed when the
@@ -491,8 +498,8 @@ public class PlaylistData {
         }
         for (MessagePlaybackPrediction prediction : periodicPredictionMap
                 .values()) {
-            BroadcastMsg broadcast = playlistMap.get(prediction
-                    .getBroadcastId());
+            BroadcastMsg broadcast = playlistMap
+                    .get(prediction.getBroadcastId());
             TableRowData trd = createPeriodicTableRow(prediction, broadcast);
             if (trd != null) {
                 tableData.addDataRow(trd);
@@ -508,8 +515,8 @@ public class PlaylistData {
         if (lastTransmitTime == null) {
             rowData.addTableCellData(new TableCellData(UNKNOWN_TIME_STR));
         } else {
-            rowData.addTableCellData(new TableCellData(sdf
-                    .format(lastTransmitTime.getTime())));
+            rowData.addTableCellData(
+                    new TableCellData(sdf.format(lastTransmitTime.getTime())));
         }
         Calendar nextTransmitTime = prediction.getNextTransmitTime();
         if (nextTransmitTime == null) {
@@ -522,16 +529,16 @@ public class PlaylistData {
             }
         }
         if (nextTransmitTime != null) {
-            if (nextTransmitTime.after(broadcast.getInputMessage()
-                    .getExpirationTime())) {
+            if (nextTransmitTime
+                    .after(broadcast.getInputMessage().getExpirationTime())) {
                 /*
                  * The message expires before the next time it is supposed to be
                  * broadcast, exclude it.
                  */
                 return null;
             }
-            rowData.addTableCellData(new TableCellData(sdf
-                    .format(nextTransmitTime.getTime())));
+            rowData.addTableCellData(
+                    new TableCellData(sdf.format(nextTransmitTime.getTime())));
         }
 
         TableCellData cell = new TableCellData(broadcast.getAfosid());

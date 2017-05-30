@@ -111,6 +111,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * May 09, 2016   5634     bkowal      Allow any Transmitter to be selected as a SAME Transmitter
  *                                     regardless of area selection.
  * Jul 29, 2016   5766     bkowal      Updates to support periodic cycles.
+ * Jan 19, 2017   6078     bkowal      Removed the DMO message creation restriction.
  * </pre>
  * 
  * @author lvenable
@@ -125,9 +126,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
     /** Message type text field. */
     private Text msgTypeTF;
-
-    /** Message type label. */
-    private Label msgTypeLbl;
 
     /** MEssage type title text field. */
     private Text msgTypeTitleTF;
@@ -155,9 +153,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
     /** Interrupt check box. */
     private Button interruptChk;
-
-    /** CIV radio button. */
-    private Button civRdo;
 
     /** WXR radio button. */
     private Button wxrRdo;
@@ -310,8 +305,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     private void createMainControlComposite() {
         Composite mainControlComp = new Composite(shell, SWT.NONE);
         mainControlComp.setLayout(new GridLayout(2, false));
-        mainControlComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        mainControlComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         createGeneralAndDefaultGroups(mainControlComp);
         createSAMETranmitterControl(mainControlComp);
@@ -326,8 +321,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     private void createGeneralAndDefaultGroups(Composite mainComp) {
         Composite genDefaultComp = new Composite(mainComp, SWT.NONE);
         genDefaultComp.setLayout(new GridLayout(1, false));
-        genDefaultComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        genDefaultComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         createGeneralGroupControls(genDefaultComp);
         createDefaultGroupControls(genDefaultComp);
@@ -366,7 +361,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         } else if (dialogType == DialogType.EDIT) {
             gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
             gd.widthHint = controlWidth;
-            msgTypeLbl = new Label(generalGroup, SWT.NONE);
+            Label msgTypeLbl = new Label(generalGroup, SWT.NONE);
             msgTypeLbl.setLayoutData(gd);
 
             if (selectedMsgType != null) {
@@ -401,8 +396,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         gd.widthHint = controlWidth;
-        voiceCbo = new Combo(generalGroup, SWT.VERTICAL | SWT.DROP_DOWN
-                | SWT.BORDER | SWT.READ_ONLY);
+        voiceCbo = new Combo(generalGroup,
+                SWT.VERTICAL | SWT.DROP_DOWN | SWT.BORDER | SWT.READ_ONLY);
         voiceCbo.setLayoutData(gd);
         populateVoicesCombo();
 
@@ -416,15 +411,16 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, false, false);
         gd.widthHint = controlWidth;
-        designationCbo = new Combo(generalGroup, SWT.VERTICAL | SWT.DROP_DOWN
-                | SWT.BORDER | SWT.READ_ONLY);
+        designationCbo = new Combo(generalGroup,
+                SWT.VERTICAL | SWT.DROP_DOWN | SWT.BORDER | SWT.READ_ONLY);
         designationCbo.setLayoutData(gd);
         populateDesignationCombo();
 
         /*
          * Emergency Override
          */
-        new Label(generalGroup, SWT.NONE); // Filler label
+        // Filler label
+        new Label(generalGroup, SWT.NONE);
         eoChk = new Button(generalGroup, SWT.CHECK);
         eoChk.setText("Emergency Override");
 
@@ -521,7 +517,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         gd = new GridData();
         gd.horizontalIndent = 5;
-        civRdo = new Button(radioComp, SWT.RADIO);
+        Button civRdo = new Button(radioComp, SWT.RADIO);
         civRdo.setText("CIV");
         civRdo.setLayoutData(gd);
 
@@ -532,8 +528,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         wxrRdo.setLayoutData(gd);
 
         if (selectedMsgType != null) {
-            if (SAMEToneTextBuilder.NWS_ORIGINATOR.equals(this.selectedMsgType
-                    .getOriginator())) {
+            if (SAMEToneTextBuilder.NWS_ORIGINATOR
+                    .equals(this.selectedMsgType.getOriginator())) {
                 wxrRdo.setSelection(true);
             } else {
                 civRdo.setSelection(true);
@@ -554,7 +550,7 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         gd.horizontalSpan = 2;
         blackoutComp.setLayoutData(gd);
 
-        List<DateFieldType> blackoutFieldTypes = new ArrayList<DateFieldType>();
+        List<DateFieldType> blackoutFieldTypes = new ArrayList<>();
         blackoutFieldTypes.add(DateFieldType.HOUR);
         blackoutFieldTypes.add(DateFieldType.MINUTE);
 
@@ -573,8 +569,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         });
 
         if (selectedMsgType != null) {
-            enableBlackoutChk.setSelection(selectedMsgType
-                    .isToneBlackoutEnabled());
+            enableBlackoutChk
+                    .setSelection(selectedMsgType.isToneBlackoutEnabled());
         }
 
         gd = new GridData(SWT.DEFAULT, SWT.CENTER, false, true);
@@ -641,8 +637,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
     private void createAreaAndRelationshipControls() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, false));
-        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
-                false));
+        buttonComp.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
         GridData gd = new GridData(SWT.CENTER, SWT.CENTER, true, true);
         Button areaSelectionBtn = new Button(buttonComp, SWT.PUSH);
@@ -669,8 +665,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         if ((dialogType == DialogType.EDIT) && (selectedMsgType != null)) {
             gd = new GridData(SWT.CENTER, SWT.DEFAULT, true, false);
             ImageDescriptor id;
-            id = AbstractUIPlugin.imageDescriptorFromPlugin(
-                    Activator.PLUGIN_ID, "icons/Relationship.png");
+            id = AbstractUIPlugin.imageDescriptorFromPlugin(Activator.PLUGIN_ID,
+                    "icons/Relationship.png");
             relationshipImg = id.createImage();
 
             Button relationshipBtn = new Button(buttonComp, SWT.PUSH);
@@ -697,8 +693,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
 
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, false));
-        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
-                false));
+        buttonComp.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
         int buttonWidth = 70;
 
@@ -764,13 +760,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                         "Invalid Name", message);
                 return false;
             }
-
-            if ("DMO".equals(afosId.subSequence(3, 6))) {
-                String message = "Invalid Message Type.\n\nDMO messages are reserved for use by Send Demo Message.";
-                DialogUtility.showMessageBox(getShell(), SWT.ICON_WARNING,
-                        "Invalid Message Type", message);
-                return false;
-            }
         }
 
         String title = msgTypeTitleTF.getText().trim();
@@ -821,8 +810,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
         }
         selectedMsgType.setAlert(alertChk.getSelection());
         selectedMsgType.setConfirm(confirmChk.getSelection());
-        selectedMsgType.setDesignation(Designation.valueOf(this.designationCbo
-                .getText()));
+        selectedMsgType.setDesignation(
+                Designation.valueOf(this.designationCbo.getText()));
         selectedMsgType.setDuration(duration);
         selectedMsgType.setEmergencyOverride(eoChk.getSelection());
         selectedMsgType.setInterrupt(interruptChk.getSelection());
@@ -1004,8 +993,8 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
             return;
         }
 
-        int index = designationCbo.indexOf(selectedMsgType.getDesignation()
-                .name());
+        int index = designationCbo
+                .indexOf(selectedMsgType.getDesignation().name());
         designationCbo.select(index);
     }
 

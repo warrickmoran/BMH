@@ -32,6 +32,7 @@ import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
 
@@ -51,13 +52,16 @@ import org.eclipse.swt.widgets.Display;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Sep 10, 2014  #3610     lvenable     Initial creation
+ * Feb 24, 2017  #6030     bkowal       Added {@link #generateImage(Button, String, RGB)} to
+ *                                      calculate a resolution-independent height/width.
  * 
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class ButtonImageCreator {
+
+    private final Composite parentComp;
 
     /** Parent display. */
     private Display parentDisplay;
@@ -78,6 +82,7 @@ public class ButtonImageCreator {
      *            Parent composite.
      */
     public ButtonImageCreator(Composite parentComp) {
+        this.parentComp = parentComp;
         parentDisplay = parentComp.getDisplay();
         fontData = new FontData("Monospace", 10, SWT.NORMAL);
         addDisposeToParent(parentComp);
@@ -110,6 +115,64 @@ public class ButtonImageCreator {
      */
     public void setFontData(FontData fd) {
         this.fontData = fd;
+    }
+
+    /**
+     * Generate the image with the text centered in the middle of the image.
+     * 
+     * NOTE: The image that is passed back will be disposed of when the parent
+     * composite for this class is disposed. There is no need to dispose of the
+     * image.
+     * 
+     * @param text
+     *            Text to be drawn on the image.
+     * @param rgb
+     *            Color of the image background.
+     * @return The generated image.
+     */
+    public Image generateImage(final String text, final RGB rgb) {
+        return generateImage(text, rgb, 0, 0);
+    }
+
+    /**
+     * Generate the image with the text centered in the middle of the image.
+     * Optional horizontal and/or vertical padding can be added that will be
+     * even distributed between the left and right side of the image and the top
+     * and bottom of the image respectively.
+     * 
+     * NOTE: The image that is passed back will be disposed of when the parent
+     * composite for this class is disposed. There is no need to dispose of the
+     * image.
+     * 
+     * @param text
+     *            Text to be drawn on the image.
+     * @param rgb
+     *            Color of the image background.
+     * @param widthPadding
+     *            the horizontal padding amount to apply evenly distributed
+     *            between the right and left of the image.
+     * @param heightPadding
+     *            the vertical padding amount to apply evenly distributed
+     *            between the top and bottom of the image.
+     * @return The generated image.
+     */
+    public Image generateImage(final String text, final RGB rgb,
+            final int widthPadding, final int heightPadding) {
+        /*
+         * Calculate the width and height in a resolution independent way.
+         */
+        Font tmpFont = null;
+        tmpFont = new Font(parentDisplay, fontData);
+        GC gc = new GC(parentComp);
+        gc.setFont(tmpFont);
+
+        final int imageHeight = gc.getFontMetrics().getHeight() + heightPadding;
+        final int imageWidth = gc.textExtent(text).x + widthPadding;
+
+        gc.dispose();
+        tmpFont.dispose();
+
+        return generateImage(imageWidth, imageHeight, text, rgb);
     }
 
     /**

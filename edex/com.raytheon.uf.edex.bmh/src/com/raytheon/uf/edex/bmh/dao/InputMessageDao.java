@@ -28,6 +28,7 @@ import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.datamodel.language.Language;
 import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage;
+import com.raytheon.uf.common.bmh.datamodel.msg.InputMessage.Origin;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 
@@ -56,14 +57,18 @@ import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
  * Nov 16, 2015  5127     rjpeter     Added getActiveWithAfosidAndAreaCodesAndNoMrd, overrode saveOrUpdate
  *                                    to set lastUpdateTime.
  * Feb 04, 2016  5308     rjpeter     Removed checkDuplicate, getPeriodicMessages, and getInputMessages.
+<<<<<<< HEAD
  * May 17, 2017  19315      xwei      Updated createInputMessageIdNameAfosCreation so Effective Time can be assigned
+=======
+ * Jan 19, 2017  6078     bkowal      Updated {@link #createInputMessageIdNameAfosCreation(List)} to
+ *                                    handle retrieval of the origin column.
+>>>>>>> origin/omaha_17.3.1
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
-public class InputMessageDao extends
-        AbstractBMHPersistenceLoggingDao<InputMessage, Integer> {
+public class InputMessageDao
+        extends AbstractBMHPersistenceLoggingDao<InputMessage, Integer> {
 
     public InputMessageDao(final IMessageLogger messageLogger) {
         super(InputMessage.class, messageLogger);
@@ -77,9 +82,8 @@ public class InputMessageDao extends
     /*
      * (non-Javadoc)
      * 
-     * @see
-     * com.raytheon.uf.edex.bmh.dao.AbstractBMHPersistenceLoggingDao#saveOrUpdate
-     * (java.lang.Object)
+     * @see com.raytheon.uf.edex.bmh.dao.AbstractBMHPersistenceLoggingDao#
+     * saveOrUpdate (java.lang.Object)
      */
     @Override
     public void saveOrUpdate(Object obj) {
@@ -98,13 +102,15 @@ public class InputMessageDao extends
      * @return List of input messages.
      */
     public List<InputMessage> getInputMsgsIdNameAfosCreation() {
-        List<Object[]> objectList = getInputMessagesByQuery(InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION);
+        List<Object[]> objectList = getInputMessagesByQuery(
+                InputMessage.GET_INPUT_MSGS_ID_NAME_AFOS_CREATION);
 
         if (objectList == null) {
             return Collections.emptyList();
         }
 
-        List<InputMessage> inputMessages = createInputMessageIdNameAfosCreation(objectList);
+        List<InputMessage> inputMessages = createInputMessageIdNameAfosCreation(
+                objectList);
 
         return inputMessages;
     }
@@ -132,8 +138,7 @@ public class InputMessageDao extends
     private List<InputMessage> createInputMessageIdNameAfosCreation(
             List<Object[]> objectList) {
 
-        List<InputMessage> imList = new ArrayList<InputMessage>(
-                objectList.size());
+        List<InputMessage> imList = new ArrayList<>(objectList.size());
 
         for (Object[] objArray : objectList) {
             InputMessage im = new InputMessage();
@@ -143,6 +148,7 @@ public class InputMessageDao extends
             im.setCreationTime((Calendar) objArray[3]);
             im.setActive((Boolean) objArray[4]);
             im.setEffectiveTime((Calendar) objArray[5]);      
+            im.setOrigin((Origin) objArray[6]);
             imList.add(im);
         }
 
@@ -181,8 +187,8 @@ public class InputMessageDao extends
         Object[] values = { afosid, areaCodes, expireAfter, language };
         @SuppressWarnings("unchecked")
         List<InputMessage> result = (List<InputMessage>) findByNamedQueryAndNamedParam(
-                InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME,
-                names, values);
+                InputMessage.ACTIVE_WITH_AFOSID_AND_AREACODES_QUERY_NAME, names,
+                values);
         return result;
     }
 
@@ -208,7 +214,8 @@ public class InputMessageDao extends
         return result;
     }
 
-    public List<InputMessage> getAllWithAfosIdAndName(String afosId, String name) {
+    public List<InputMessage> getAllWithAfosIdAndName(String afosId,
+            String name) {
         final String[] names = { "afosid", "name" };
         final String[] values = { afosId, name };
         List<?> results = this.findByNamedQueryAndNamedParam(

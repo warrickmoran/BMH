@@ -4,7 +4,6 @@
 %define __prelink_undo_cmd %{nil}
 # Turn off the brp-python-bytecompile script
 %global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')
-%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-java-repack-jars[[:space:]].*$!!g')
 
 Name: awips2-edex-bmh
 Summary: AWIPS II EDEX BMH Installation
@@ -17,6 +16,7 @@ License: N/A
 Distribution: N/A
 Vendor: Raytheon
 Packager: %{_build_site}
+Obsoletes: awips2-common-bmh
 
 #######################################################
 # Added since lib/plugins are exported in OSGI format
@@ -34,7 +34,6 @@ requires: awips2-edex
 requires: awips2-python
 requires: awips2-java
 requires: awips2-psql
-requires: awips2-common-bmh
 
 %description
 AWIPS II Edex BMH - Installs AWIPS II BMH Edex Plugins and Configuration.
@@ -87,31 +86,36 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
-# prepare the BMH EDEX services list
-mkdir -p %{_build_root}/etc/init.d
-if [ $? -ne 0 ]; then
-   echo "FAILED TO COPY THE BMH SERVICE LIST!"
-   exit 1
-fi
-cp -v %{_baseline_workspace}/rpms-BMH/Installer.edex-bmh/scripts/init.d/* \
-   %{_build_root}/etc/init.d/edexServiceList-bmh
-if [ $? -ne 0 ]; then
-   echo "FAILED TO COPY THE BMH SERVICE LIST!"
-   exit 1
-fi
-
 %pre
 %post
-# replace the existing service list with the BMH service list
-if [ -f /etc/init.d/edexServiceList ]; then
-   mv -f /etc/init.d/edexServiceList /etc/init.d/edexServiceList.orig
-   if [ $? -ne 0 ]; then
-      exit 1
-   fi
-fi
-mv -f /etc/init.d/edexServiceList-bmh /etc/init.d/edexServiceList
-if [ $? -ne 0 ]; then
-   exit 1
+
+if [ "${1}" = "1" ]; then
+
+  #add services to the edex service list
+  LIST_FILE=/etc/init.d/edexServiceList
+  BMH_SERVICES=(bmh)
+
+  if [ -f $LIST_FILE ]; then
+     source $LIST_FILE
+
+     for service in ${BMH_SERVICES[*]}; do
+        addService=true;
+        for index in ${!SERVICES[@]};
+        do
+           if [ ${SERVICES[$index]} = $service ]; then
+              addService=false;
+           fi
+        done
+        if $addService; then
+           SERVICES=(${SERVICES[@]} $service)
+        fi
+     done
+  else
+     SERVICES=$BMH_SERVICES
+  fi
+
+  echo "#generated on $(date)" > $LIST_FILE
+  echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 fi
 
 %preun
@@ -119,12 +123,24 @@ if [ "${1}" = "1" ]; then
    exit 0
 fi
 
-# replace the bmh service list with the original service list
-if [ -f /etc/init.d/edexServiceList.orig ]; then
-   mv -f /etc/init.d/edexServiceList.orig /etc/init.d/edexServiceList
-   if [ $? -ne 0 ]; then
-      exit 1
-   fi
+#remove BMH services from the service list
+LIST_FILE=/etc/init.d/edexServiceList
+BMH_SERVICES=(bmh)
+
+if [ -f $LIST_FILE ]; then
+   source $LIST_FILE
+
+   for service in ${BMH_SERVICES[*]}; do
+       for index in ${!SERVICES[@]}
+       do
+           if [ ${SERVICES[$index]} = $service ]; then
+              unset SERVICES[$index]
+           fi
+       done
+   done
+
+   echo "#generated on $(date)" > $LIST_FILE
+   echo "export SERVICES=(${SERVICES[@]})" >> $LIST_FILE
 fi
 
 %postun
@@ -136,5 +152,3 @@ rm -rf ${RPM_BUILD_ROOT}
 %defattr(644,awips,fxalpha,755)
 /awips2/edex/*
 %config(noreplace) /awips2/edex/etc/bmh.sh
-
-%attr(744,root,root) /etc/init.d/*

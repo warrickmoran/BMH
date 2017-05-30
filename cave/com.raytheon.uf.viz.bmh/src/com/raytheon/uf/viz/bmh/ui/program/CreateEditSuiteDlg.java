@@ -21,7 +21,6 @@ package com.raytheon.uf.viz.bmh.ui.program;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -122,10 +121,10 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Apr 04, 2016   5504     bkowal      Updated for compatibility with TableComp changes.
  * May 04, 2016   5562     bkowal      Highlight trigger message types in red. Display a
  *                                     {@link TriggerSelectionDlg} for trigger message selection.
+ * Jan 19, 2016   6078     bkowal      Allow DMO messages to be added to a Suite.
  * </pre>
  * 
  * @author lvenable
- * @version 1.0
  */
 public class CreateEditSuiteDlg extends CaveSWTDialog {
 
@@ -140,13 +139,13 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private List<MessageType> availMessageTypes;
 
     /** List of message types in the suite. */
-    private final List<SuiteMessage> msgTypesInSuiteList = new ArrayList<SuiteMessage>();
+    private final List<SuiteMessage> msgTypesInSuiteList = new ArrayList<>();
 
     /**
      * List of suite messages corresponding to a message type that is associated
      * with a trigger that have been removed from the suite.
      **/
-    private final List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<SuiteMessagePk>();
+    private final List<SuiteMessagePk> triggerSuiteMsgsRemoved = new ArrayList<>();
 
     /**
      * Current list of message type summary with triggers.
@@ -180,15 +179,6 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     /** Category combo box. */
     private Combo categoryCbo;
 
-    /** Suite name label. */
-    private Label suiteNameLbl;
-
-    /** Button to move the selected message type up in the table. */
-    private Button moveUpBtn;
-
-    /** Button to move the selected message type down in the table. */
-    private Button moveDownBtn;
-
     /** Class providing up/down images. */
     private UpDownImages upDownImages;
 
@@ -219,19 +209,19 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private final Suite selectedSuite;
 
     /** List of program and associated data. */
-    private List<Program> programsArray = new ArrayList<Program>();
+    private List<Program> programsArray = new ArrayList<>();
 
     /** Array of Programs to save the create suite to. */
-    private final List<Program> newAssignedProgramsArray = new ArrayList<Program>();
+    private final List<Program> newAssignedProgramsArray = new ArrayList<>();
 
     /** List of assigned program for this suite. */
-    private final List<Program> assignedPrograms = new ArrayList<Program>();
+    private final List<Program> assignedPrograms = new ArrayList<>();
 
     /** Existing suite names. */
     private Set<String> existingSuiteNames = null;
 
     /** Assign program names to the current suite. */
-    private final Set<String> assignedProgramNames = new TreeSet<String>();
+    private final Set<String> assignedProgramNames = new TreeSet<>();
 
     /**
      * 
@@ -288,7 +278,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
     @Override
     protected void disposed() {
-        if ((dialogType == DialogType.CREATE) && (this.selectedProgram != null)) {
+        if ((dialogType == DialogType.CREATE)
+                && (this.selectedProgram != null)) {
             selectedProgram.cancelNewSuite(selectedSuite);
         }
     }
@@ -332,8 +323,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private void createSuiteControls() {
         Composite suiteComp = new Composite(shell, SWT.NONE);
         suiteComp.setLayout(new GridLayout(2, false));
-        suiteComp
-                .setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true, false));
+        suiteComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         Label nameLbl = new Label(suiteComp, SWT.NONE);
         nameLbl.setText("Suite Name: ");
@@ -343,7 +334,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             suiteNameTF = new Text(suiteComp, SWT.BORDER);
             suiteNameTF.setLayoutData(gd);
         } else if (dialogType == DialogType.EDIT) {
-            suiteNameLbl = new Label(suiteComp, SWT.NONE);
+            Label suiteNameLbl = new Label(suiteComp, SWT.NONE);
             suiteNameLbl.setLayoutData(gd);
             if (selectedSuite != null) {
                 suiteNameLbl.setText(selectedSuite.getName());
@@ -355,8 +346,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         gd = new GridData(SWT.DEFAULT, SWT.DEFAULT, true, true);
         gd.minimumWidth = 175;
-        categoryCbo = new Combo(suiteComp, SWT.VERTICAL | SWT.DROP_DOWN
-                | SWT.BORDER | SWT.READ_ONLY);
+        categoryCbo = new Combo(suiteComp,
+                SWT.VERTICAL | SWT.DROP_DOWN | SWT.BORDER | SWT.READ_ONLY);
         categoryCbo.setLayoutData(gd);
         categoryCbo.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -374,8 +365,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         Composite progTransComp = new Composite(shell, SWT.NONE);
         GridLayout gl = new GridLayout(2, false);
         progTransComp.setLayout(gl);
-        progTransComp.setLayoutData(new GridData(SWT.FILL, SWT.DEFAULT, true,
-                false));
+        progTransComp.setLayoutData(
+                new GridData(SWT.FILL, SWT.DEFAULT, true, false));
 
         /*
          * Program controls.
@@ -430,7 +421,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         int buttonWidth = 120;
         gd = new GridData(buttonWidth, SWT.DEFAULT);
-        moveUpBtn = new Button(moveComp, SWT.PUSH);
+        Button moveUpBtn = new Button(moveComp, SWT.PUSH);
         moveUpBtn.setImage(upDownImages.getImage(Arrows.UP_THIN));
         moveUpBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -447,7 +438,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         });
 
         gd = new GridData(buttonWidth, SWT.DEFAULT);
-        moveDownBtn = new Button(moveComp, SWT.PUSH);
+        Button moveDownBtn = new Button(moveComp, SWT.PUSH);
         moveDownBtn.setImage(upDownImages.getImage(Arrows.DOWN_THIN));
         moveDownBtn.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -484,7 +475,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
         Composite btnComp = new Composite(shell, SWT.NONE);
         btnComp.setLayout(new GridLayout(2, true));
-        btnComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
+        btnComp.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
         final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
@@ -530,7 +522,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         availMsgGrp.setLayoutData(gd);
         availMsgGrp.setText(" Available Message Types: ");
 
-        List<String> columnNames = new ArrayList<String>();
+        List<String> columnNames = new ArrayList<>();
         columnNames.add("Message Type");
         columnNames.add("Message Title");
         availableMsgTypeTable = new GenericTable(availMsgGrp, 8);
@@ -553,8 +545,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
     private void createBottomButtons() {
         Composite buttonComp = new Composite(shell, SWT.NONE);
         buttonComp.setLayout(new GridLayout(2, true));
-        buttonComp.setLayoutData(new GridData(SWT.CENTER, SWT.DEFAULT, true,
-                false));
+        buttonComp.setLayoutData(
+                new GridData(SWT.CENTER, SWT.DEFAULT, true, false));
 
         final int buttonMinimumWidth = getShell().getDisplay().getDPI().x;
         GridData gd = new GridData(SWT.FILL, SWT.DEFAULT, true, false);
@@ -672,8 +664,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * @return The selected suite type.
      */
     private SuiteType getSelectedSuiteType() {
-        String categoryName = categoryCbo.getItem(categoryCbo
-                .getSelectionIndex());
+        String categoryName = categoryCbo
+                .getItem(categoryCbo.getSelectionIndex());
         SuiteType suiteType = SuiteType.valueOf(categoryName);
 
         return suiteType;
@@ -691,8 +683,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
 
             String msg = "You have trigger message(s) for the GENERAL suite type.  Select OK "
                     + "to remove the triggers and continue saving or Cancel to edit the suite.";
-            int result = DialogUtility.showMessageBox(shell, SWT.ICON_WARNING
-                    | SWT.OK | SWT.CANCEL, "Triggers Selected", msg.toString());
+            int result = DialogUtility.showMessageBox(shell,
+                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL, "Triggers Selected",
+                    msg);
 
             if (result == SWT.CANCEL) {
                 return false;
@@ -755,7 +748,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                     .getSuiteEnabledTransmitterGroups(suite);
             if (!enabledGroups.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
-                sb.append("Unable to change suite's category. The following ENABLED transmitter/groups(s) dependent on this suite being GENERAL:");
+                sb.append(
+                        "Unable to change suite's category. The following ENABLED transmitter/groups(s) dependent on this suite being GENERAL:");
                 for (TransmitterGroup group : enabledGroups) {
                     sb.append("\n\t").append(group.getName());
                 }
@@ -777,7 +771,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
             if (!haveGeneralSuite.isEmpty()) {
                 StringBuilder sb = new StringBuilder();
-                sb.append("Unable to change suite's category. The following program(s) using this suite already contain a suite with a GENERAL category:");
+                sb.append(
+                        "Unable to change suite's category. The following program(s) using this suite already contain a suite with a GENERAL category:");
                 for (Program program : haveGeneralSuite) {
                     sb.append("\n\t").append(program.getName());
                 }
@@ -804,15 +799,15 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
-        if (validateTriggerMessagesGeneralType() == false) {
+        if (!validateTriggerMessagesGeneralType()) {
             return;
         }
 
         SuiteDataManager sdm = new SuiteDataManager();
 
-        if (this.triggerSuiteMsgsRemoved.isEmpty() == false) {
-            this.selectedSuite
-                    .setRemovedTriggerSuiteMessages(this.triggerSuiteMsgsRemoved);
+        if (!this.triggerSuiteMsgsRemoved.isEmpty()) {
+            this.selectedSuite.setRemovedTriggerSuiteMessages(
+                    this.triggerSuiteMsgsRemoved);
         }
 
         Suite savedSuite = null;
@@ -853,7 +848,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             return;
         }
 
-        if (validateTriggerMessagesGeneralType() == false) {
+        if (!validateTriggerMessagesGeneralType()) {
             return;
         }
 
@@ -866,18 +861,14 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 Suite oldGeneralSuite = BmhUtils
                         .getProgramGeneralSuite(selectedProgram);
                 if (oldGeneralSuite != null) {
-                    int result = DialogUtility
-                            .showMessageBox(
-                                    shell,
-                                    SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
-                                    "Create Suite",
-                                    "The \""
-                                            + selectedProgram.getName()
-                                            + "\" program already contains a GENERAL category suite: "
-                                            + oldGeneralSuite.getName()
-                                            + ".\n\nSelect OK to replace with new suite: "
-                                            + suiteNameTF.getText().trim()
-                                            + ".");
+                    int result = DialogUtility.showMessageBox(shell,
+                            SWT.ICON_WARNING | SWT.OK | SWT.CANCEL,
+                            "Create Suite",
+                            "The \"" + selectedProgram.getName()
+                                    + "\" program already contains a GENERAL category suite: "
+                                    + oldGeneralSuite.getName()
+                                    + ".\n\nSelect OK to replace with new suite: "
+                                    + suiteNameTF.getText().trim() + ".");
                     if (result != SWT.OK) {
                         return;
                     }
@@ -885,8 +876,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                 }
             }
         } catch (Exception e1) {
-            statusHandler
-                    .handle(Priority.PROBLEM, e1.getLocalizedMessage(), e1);
+            statusHandler.handle(Priority.PROBLEM, e1.getLocalizedMessage(),
+                    e1);
         }
 
         ProgramDataManager pdm = new ProgramDataManager();
@@ -900,12 +891,13 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             }
             savedSuite = suiteReponse.getSuiteList().get(0);
         } catch (Exception e) {
-            statusHandler.error("Error creating the suite: "
-                    + this.selectedSuite.getName(), e);
+            statusHandler.error(
+                    "Error creating the suite: " + this.selectedSuite.getName(),
+                    e);
             return;
         }
 
-        if (triggerMessageTypes.isEmpty() == false) {
+        if (!triggerMessageTypes.isEmpty()) {
             savedSuite.setNewTriggerSuiteMessages(triggerMessageTypes);
         }
 
@@ -918,8 +910,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             try {
                 pdm.saveProgram(p);
             } catch (Exception e) {
-                statusHandler.error(
-                        "Error saving suite " + selectedSuite.getName()
+                statusHandler
+                        .error("Error saving suite " + selectedSuite.getName()
                                 + " to program " + p.getName() + ": ", e);
             }
         }
@@ -933,7 +925,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         this.selectedSuite.setType(getSelectedSuiteType());
 
         if ((this.msgTypesInSuiteList != null)
-                && (this.msgTypesInSuiteList.isEmpty() == false)) {
+                && !(this.msgTypesInSuiteList.isEmpty())) {
             this.selectedSuite
                     .setOrderedSuiteMessages(this.msgTypesInSuiteList);
         }
@@ -1004,28 +996,28 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
                         removalCandidate.getSuite(),
                         removalCandidate.getMsgTypeSummary());
             } catch (Exception e) {
-                statusHandler.error(
-                        "Error checking for programs with trigger: '"
+                statusHandler
+                        .error("Error checking for programs with trigger: '"
                                 + removalCandidate.getMsgTypeSummary()
-                                        .getAfosid() + "'!", e);
+                                        .getAfosid()
+                                + "'!", e);
                 continue;
             }
 
-            if ((triggeredPrograms != null)
-                    && (triggeredPrograms.isEmpty() == false)) {
+            if ((triggeredPrograms != null) && !(triggeredPrograms.isEmpty())) {
                 if (dialogType == DialogType.EDIT) {
                     StringBuilder stringBuilder = new StringBuilder(
                             "Message Type ");
-                    stringBuilder.append(removalCandidate.getMsgTypeSummary()
-                            .getAfosid());
-                    stringBuilder
-                            .append(" is currently a Trigger for the following programs:\n\n");
+                    stringBuilder.append(
+                            removalCandidate.getMsgTypeSummary().getAfosid());
+                    stringBuilder.append(
+                            " is currently a Trigger for the following programs:\n\n");
                     for (Program triggeredProgram : triggeredPrograms) {
                         stringBuilder.append(triggeredProgram.getName());
                         stringBuilder.append("\n");
                     }
-                    stringBuilder
-                            .append("\nAre you sure you want to remove the message type from Suite ");
+                    stringBuilder.append(
+                            "\nAre you sure you want to remove the message type from Suite ");
                     stringBuilder.append(removalCandidate.getSuite().getName());
                     stringBuilder.append("?");
 
@@ -1185,9 +1177,9 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
             allMsgTypesList = msgTypeDataMgr
                     .getMessageTypes(new MsgTypeAfosComparator());
         } catch (Exception e) {
-            statusHandler
-                    .error("Error retrieving message type data from the database: ",
-                            e);
+            statusHandler.error(
+                    "Error retrieving message type data from the database: ",
+                    e);
         }
     }
 
@@ -1198,7 +1190,7 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         if (selectedSuite != null) {
             List<SuiteMessage> suiteMessageArray = selectedSuite
                     .getOrderedSuiteMessages();
-            Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<Integer, SuiteMessage>();
+            Map<Integer, SuiteMessage> suiteMsgMap = new TreeMap<>();
             for (SuiteMessage sm : suiteMessageArray) {
                 suiteMsgMap.put(sm.getPosition(), sm);
             }
@@ -1213,8 +1205,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * associated with the suite.
      */
     private void populateSelectedMsgTypesTable(boolean replaceTableItems) {
-        if (selectedMsgTypeTable.hasTableData() == false) {
-            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+        if (!selectedMsgTypeTable.hasTableData()) {
+            List<TableColumnData> columnNames = new ArrayList<>();
             TableColumnData tcd = new TableColumnData("Message Type", 150);
             columnNames.add(tcd);
             tcd = new TableColumnData("Message Title", 300);
@@ -1260,38 +1252,29 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
         for (SuiteMessage sm : msgTypesInSuiteList) {
             TableRowData trd = new TableRowData();
 
-            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
-                    .getAfosid()));
-            trd.addTableCellData(new TableCellData(sm.getMsgTypeSummary()
-                    .getTitle()));
+            trd.addTableCellData(
+                    new TableCellData(sm.getMsgTypeSummary().getAfosid()));
+            trd.addTableCellData(
+                    new TableCellData(sm.getMsgTypeSummary().getTitle()));
             for (MessageType mt : allMsgTypesList) {
                 if (mt.getId() == sm.getMsgTypeSummary().getId()) {
                     availMessageTypes.remove(mt);
                     break;
                 }
             }
-            if ((this.selectedProgram != null) && (this.selectedSuite != null)) {
+            if ((this.selectedProgram != null)
+                    && (this.selectedSuite != null)) {
                 TableCellData tcd = new TableCellData(
-                        triggerMessageTypes.contains(sm.getMsgTypeSummary()) ? "Yes"
-                                : "No");
+                        triggerMessageTypes.contains(sm.getMsgTypeSummary())
+                                ? "Yes" : "No");
                 if (triggerMessageTypes.contains(sm.getMsgTypeSummary())) {
-                    tcd.setBackgroundColor(getDisplay().getSystemColor(
-                            SWT.COLOR_RED));
+                    tcd.setBackgroundColor(
+                            getDisplay().getSystemColor(SWT.COLOR_RED));
                 }
                 trd.addTableCellData(tcd);
             }
 
             selectedMsgTypeTableData.addDataRow(trd);
-        }
-
-        // Remove DMO messages
-        for (Iterator<MessageType> iter = availMessageTypes.iterator(); iter
-                .hasNext();) {
-            MessageType mt = iter.next();
-            String afosId = mt.getAfosid();
-            if ((afosId.length() >= 6) && "DMO".equals(afosId.substring(3, 6))) {
-                iter.remove();
-            }
         }
     }
 
@@ -1299,8 +1282,8 @@ public class CreateEditSuiteDlg extends CaveSWTDialog {
      * Populate the Message Type table.
      */
     private void populateAvailableMessageTypeTable() {
-        if (availableMsgTypeTable.hasTableData() == false) {
-            List<TableColumnData> columnNames = new ArrayList<TableColumnData>();
+        if (!availableMsgTypeTable.hasTableData()) {
+            List<TableColumnData> columnNames = new ArrayList<>();
             TableColumnData tcd = new TableColumnData("Message Type", 150);
             columnNames.add(tcd);
             tcd = new TableColumnData("Message Title");

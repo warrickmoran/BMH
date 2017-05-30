@@ -98,10 +98,10 @@ import com.raytheon.uf.common.util.CollectionUtil;
  * Sep 03, 2015 4836       bkowal      Only evaluate the {@link TimeZone} during ascii file import
  *                                     if the transmitter is configured.
  * Jan 27, 2016 5160       rjpeter     Don't allow DMO messages to be part of a suite.
+ * Jan 19, 2017 6078       bkowal      Allow DMO messages to be part of a suite.
  * </pre>
  * 
  * @author rjpeter
- * @version 1.0
  */
 public class AsciiFileTranslator {
 
@@ -156,8 +156,8 @@ public class AsciiFileTranslator {
         }
 
         IGNORE_BLOCKS = Collections.unmodifiableSet(blocks);
-        PLAYBACK_TRANSMITTERS = Collections.unmodifiableSet(new HashSet<>(
-                Arrays.asList(new String[] { "PB1", "PB2" })));
+        PLAYBACK_TRANSMITTERS = Collections.unmodifiableSet(
+                new HashSet<>(Arrays.asList(new String[] { "PB1", "PB2" })));
     }
 
     /**
@@ -217,8 +217,8 @@ public class AsciiFileTranslator {
     }
 
     public AsciiFileTranslator(BufferedReader buffer, String source,
-            boolean strict, List<TtsVoice> definedVoices) throws IOException,
-            ParseException {
+            boolean strict, List<TtsVoice> definedVoices)
+            throws IOException, ParseException {
         this.strict = strict;
 
         if ((definedVoices == null) || (definedVoices.size() == 0)) {
@@ -244,11 +244,12 @@ public class AsciiFileTranslator {
         try (AsciiFileParser reader = new AsciiFileParser(buffer, source)) {
             reader.setStartOfSectionPattern(BLOCK_HEADER);
             reader.setEndOfSectionPattern(BLOCK_HEADER);
-            for (Matcher blockMatcher = reader.scanToNextSection(true); blockMatcher != null; blockMatcher = reader
-                    .scanToNextSection(true)) {
+            for (Matcher blockMatcher = reader.scanToNextSection(
+                    true); blockMatcher != null; blockMatcher = reader
+                            .scanToNextSection(true)) {
                 int blockNumber = Integer.parseInt(blockMatcher.group(1));
-                String blockExtra = (blockMatcher.groupCount() > 1 ? blockMatcher
-                        .group(2) : null);
+                String blockExtra = (blockMatcher.groupCount() > 1
+                        ? blockMatcher.group(2) : null);
                 parseBlock(blockNumber, blockExtra, reader);
 
                 /*
@@ -283,9 +284,9 @@ public class AsciiFileTranslator {
     private void parseBlock(int blockNumber, String blockExtra,
             AsciiFileParser reader) throws ParseException, IOException {
         if ((blockExtra != null) && (blockNumber != 7)) {
-            throw new ParseException("Unknown block " + blockNumber
-                    + blockExtra, reader.getCurrentLineNumber() - 1,
-                    reader.getSourceFile());
+            throw new ParseException(
+                    "Unknown block " + blockNumber + blockExtra,
+                    reader.getCurrentLineNumber() - 1, reader.getSourceFile());
         }
 
         switch (blockNumber) {
@@ -314,8 +315,8 @@ public class AsciiFileTranslator {
             } else {
                 throw new ParseException(
                         "Could not find transmitter start section in block "
-                                + blockNumber, scanStart,
-                        reader.getSourceFile());
+                                + blockNumber,
+                        scanStart, reader.getSourceFile());
             }
 
             Pattern roamsPortConfig = Pattern
@@ -393,8 +394,9 @@ public class AsciiFileTranslator {
         // BLOCK 18 - Data not used in BMH
         default:
             if (!IGNORE_BLOCKS.contains(blockNumber)) {
-                throw new ParseException("Unknown block " + blockNumber
-                        + (blockExtra == null ? "" : blockExtra),
+                throw new ParseException(
+                        "Unknown block " + blockNumber
+                                + (blockExtra == null ? "" : blockExtra),
                         reader.getCurrentLineNumber() - 1,
                         reader.getSourceFile());
             }
@@ -483,8 +485,8 @@ public class AsciiFileTranslator {
             boolean isTransmitter = 1 == parseInt(reader);
             reader.nextField();// skip Proc ID
             reader.nextField();// skip Proc Slot
-            trans.setTxStatus(parseBool(reader) ? TxStatus.ENABLED
-                    : TxStatus.DISABLED);
+            trans.setTxStatus(
+                    parseBool(reader) ? TxStatus.ENABLED : TxStatus.DISABLED);
             TimeZone baseTZ = parseTimeZone(reader);
 
             reader.nextField(); // skip alert tone amplitude
@@ -508,11 +510,11 @@ public class AsciiFileTranslator {
             reader.nextField();// skip unused dict name
             reader.nextField();// skip unused dict name
 
-            String engStatIdMsg = parseTransmitterStationIdMsg(
-                    Language.ENGLISH, reader);
+            String engStatIdMsg = parseTransmitterStationIdMsg(Language.ENGLISH,
+                    reader);
             boolean englishStaticMessage = false;
-            String spaStatIdMsg = parseTransmitterStationIdMsg(
-                    Language.SPANISH, reader);
+            String spaStatIdMsg = parseTransmitterStationIdMsg(Language.SPANISH,
+                    reader);
             boolean spanishStaticMessage = false;
 
             if (isTransmitter) {
@@ -604,8 +606,8 @@ public class AsciiFileTranslator {
      * @throws ParseException
      * @throws IOException
      */
-    private void parseAreaData(AsciiFileParser reader) throws ParseException,
-            IOException {
+    private void parseAreaData(AsciiFileParser reader)
+            throws ParseException, IOException {
         Map<String, Area> map = new HashMap<>(128, 1);
 
         while (reader.hasNextField()) {
@@ -632,15 +634,14 @@ public class AsciiFileTranslator {
                     if (group == null) {
                         StringBuilder msg = new StringBuilder(64);
                         msg.append("Uknown Transmitter mnemonic [")
-                                .append(mnemonic)
-                                .append("] assigned to area [")
+                                .append(mnemonic).append("] assigned to area [")
                                 .append(area.getAreaCode()).append("]");
                         handleError(msg, reader.getCurrentLineNumber(),
                                 reader.getSourceFile());
                     } else {
                         // one to one mapping as part of initial load
-                        area.addTransmitter(group.getTransmitters().iterator()
-                                .next());
+                        area.addTransmitter(
+                                group.getTransmitters().iterator().next());
                     }
                 }
             }
@@ -656,8 +657,8 @@ public class AsciiFileTranslator {
      * @throws ParseException
      * @throws IOException
      */
-    private void parseZoneData(AsciiFileParser reader) throws ParseException,
-            IOException {
+    private void parseZoneData(AsciiFileParser reader)
+            throws ParseException, IOException {
         Map<String, Zone> map = new HashMap<>(64, 1);
 
         while (reader.hasNextField()) {
@@ -728,10 +729,10 @@ public class AsciiFileTranslator {
                 }
 
                 data.setAfosid(afosId);
-                String eventCode = (afosId.length() >= 6) ? afosId.substring(3,
-                        6) : null;
-                data.setOriginator(SAMEOriginatorMapper.DEFAULT
-                        .getOriginator(eventCode));
+                String eventCode = (afosId.length() >= 6)
+                        ? afosId.substring(3, 6) : null;
+                data.setOriginator(
+                        SAMEOriginatorMapper.DEFAULT.getOriginator(eventCode));
                 map.put(afosId, data);
                 data.setTitle(reader.nextField());
                 parseInt(reader); // skip listening area override
@@ -744,8 +745,9 @@ public class AsciiFileTranslator {
                 data.setVoice(voice);
 
                 if (reader.hasNextField()) {
-                    throw new ParseException("Unknown field ["
-                            + reader.nextField() + "] in message type section",
+                    throw new ParseException(
+                            "Unknown field [" + reader.nextField()
+                                    + "] in message type section",
                             reader.getCurrentLineNumber(),
                             reader.getSourceFile());
                 }
@@ -779,8 +781,7 @@ public class AsciiFileTranslator {
                                     data.addDefaultTransmitterGroup(tg);
                                 } else {
                                     StringBuilder msg = new StringBuilder(64);
-                                    msg.append("Uknown area [")
-                                            .append(field)
+                                    msg.append("Uknown area [").append(field)
                                             .append("] in area section for msgType [")
                                             .append(data.getAfosid())
                                             .append("]");
@@ -801,8 +802,7 @@ public class AsciiFileTranslator {
                                         .iterator().next());
                             } else {
                                 StringBuilder msg = new StringBuilder(64);
-                                msg.append("Uknown transmitter [")
-                                        .append(field)
+                                msg.append("Uknown transmitter [").append(field)
                                         .append("] in same section for msgType [")
                                         .append(data.getAfosid()).append("]");
                                 handleError(msg, reader.getCurrentLineNumber(),
@@ -834,8 +834,8 @@ public class AsciiFileTranslator {
                 } else {
                     throw new ParseException(
                             "Error parsing MessageType data.  Unknown indicator section",
-                            reader.getCurrentLineNumber(), reader
-                                    .getSourceFile());
+                            reader.getCurrentLineNumber(),
+                            reader.getSourceFile());
                 }
             }
 
@@ -921,9 +921,9 @@ public class AsciiFileTranslator {
                 data = new MessageGroupData();
                 data.setName(field.substring(1));
                 map.put(data.getName(), data);
-            } else if (field.equals("MessageType")) {
+            } else if ("MessageType".equals(field)) {
                 isMsgType = true;
-            } else if (field.equals("SAME")) {
+            } else if ("SAME".equals(field)) {
                 isMsgType = false;
             } else if (isMsgType) {
                 MessageType msgType = msgTypes.get(field);
@@ -940,8 +940,8 @@ public class AsciiFileTranslator {
             } else {
                 TransmitterGroup group = groups.get(field);
                 if (group != null) {
-                    data.addSameTransmitter(group.getTransmitters().iterator()
-                            .next());
+                    data.addSameTransmitter(
+                            group.getTransmitters().iterator().next());
                 } else {
                     StringBuilder msg = new StringBuilder(64);
                     msg.append("Unknown transmitter [").append(field)
@@ -963,8 +963,8 @@ public class AsciiFileTranslator {
      * @throws ParseException
      * @throws IOException
      */
-    private void parseSuiteData(AsciiFileParser reader) throws ParseException,
-            IOException {
+    private void parseSuiteData(AsciiFileParser reader)
+            throws ParseException, IOException {
         Map<String, Suite> rval = new HashMap<>();
         Suite suite = null;
         Map<String, MessageType> msgTypes = bmhData.getMsgTypes();
@@ -978,18 +978,12 @@ public class AsciiFileTranslator {
                 suite = new Suite();
                 suite.setName(field.substring(1));
                 rval.put(suite.getName(), suite);
-            } else if (field.equals("group")) {
+            } else if ("group".equals(field)) {
                 field = reader.nextField();
                 MessageGroupData group = msgGroups.get(field);
                 if (group != null) {
                     for (MessageType msgType : group.getMessageTypes()) {
                         if (!msgTypesInSuite.contains(msgType)) {
-                            String afosId = msgType.getAfosid();
-                            if ((afosId.length() >= 6)
-                                    && "DMO".equals(afosId.substring(3, 6))) {
-                                // Don't add DMO messages to playlists
-                                continue;
-                            }
                             SuiteMessage msg = new SuiteMessage();
                             msg.setMsgTypeSummary(msgType.getSummary());
                             suite.addSuiteMessage(msg);
@@ -1008,13 +1002,6 @@ public class AsciiFileTranslator {
             } else {
                 MessageType msgType = msgTypes.get(field);
                 if (msgType != null) {
-                    String afosId = msgType.getAfosid();
-                    if ((afosId.length() >= 6)
-                            && "DMO".equals(afosId.substring(3, 6))) {
-                        // Don't add DMO messages to playlists
-                        continue;
-                    }
-
                     if (!msgTypesInSuite.contains(msgType)) {
                         SuiteMessage msg = new SuiteMessage();
                         msg.setMsgTypeSummary(msgType.getSummary());
@@ -1071,7 +1058,8 @@ public class AsciiFileTranslator {
 
             if (field.startsWith(">")) {
                 // validate last suite
-                validateProgramSuite(program, suite, triggers, msgTypes, reader);
+                validateProgramSuite(program, suite, triggers, msgTypes,
+                        reader);
                 // validate previous program
                 program = validateProgram(program, reader);
 
@@ -1123,14 +1111,14 @@ public class AsciiFileTranslator {
                         handleError(msg, reader.getCurrentLineNumber(),
                                 reader.getSourceFile());
                     }
-                } else if (field.equals("group")) {
+                } else if ("group".equals(field)) {
                     // legacy system can trigger on a group
                     String triggerGroup = reader.nextField();
                     MessageGroupData group = msgGroups.get(triggerGroup);
                     if (group != null) {
                         for (MessageType msgType : group.getMessageTypes()) {
-                            SuiteMessage suiteMsg = suiteMessages.get(msgType
-                                    .getSummary());
+                            SuiteMessage suiteMsg = suiteMessages
+                                    .get(msgType.getSummary());
                             if (suiteMsg != null) {
                                 triggers.add(triggerGroup);
                             } else {
@@ -1152,14 +1140,13 @@ public class AsciiFileTranslator {
                 } else {
                     MessageType msgType = msgTypes.get(field);
                     if (msgType != null) {
-                        SuiteMessage suiteMsg = suiteMessages.get(msgType
-                                .getSummary());
+                        SuiteMessage suiteMsg = suiteMessages
+                                .get(msgType.getSummary());
                         if (suiteMsg != null) {
                             triggers.add(field);
                         } else {
                             StringBuilder msg = new StringBuilder(80);
-                            msg.append("Program [")
-                                    .append(program.getName())
+                            msg.append("Program [").append(program.getName())
                                     .append("], Suite [")
                                     .append(suite.getName())
                                     .append("] has MessagType [")
@@ -1245,11 +1232,11 @@ public class AsciiFileTranslator {
 
         if ((suite.getType() == SuiteType.GENERAL)
                 && this.doesGeneralSuiteExists(program)) {
-            StringBuilder sb = new StringBuilder("Program: ").append(program
-                    .getName());
+            StringBuilder sb = new StringBuilder("Program: ")
+                    .append(program.getName());
             sb.append(" already contains a GENERAL category suite. Suite ");
-            sb.append(suite.getName()).append(
-                    " will not be associated with a Program.");
+            sb.append(suite.getName())
+                    .append(" will not be associated with a Program.");
             this.validationMessages.add(sb.toString());
             return;
         }
@@ -1334,8 +1321,8 @@ public class AsciiFileTranslator {
         }
     }
 
-    private Language parseLanguage(AsciiFileParser reader) throws IOException,
-            ParseException {
+    private Language parseLanguage(AsciiFileParser reader)
+            throws IOException, ParseException {
         String field = reader.nextField();
 
         try {
@@ -1345,37 +1332,36 @@ public class AsciiFileTranslator {
             case 1:
                 return Language.SPANISH;
             case 2:
-                System.err
-                        .println("English and Spanish Language found.  Ignoring and setting to English. Entry found at line "
-                                + reader.getCurrentLineNumber()
-                                + " of file "
+                System.err.println(
+                        "English and Spanish Language found.  Ignoring and setting to English. Entry found at line "
+                                + reader.getCurrentLineNumber() + " of file "
                                 + reader.getSourceFile());
                 return Language.ENGLISH;
             default:
                 throw new ParseException(
                         "Unrecognized language.  Expected 0 or 1, received ["
-                                + field + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                                + field + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             }
         } catch (NumberFormatException e) {
             throw new ParseException(
                     "Unrecognized language.  Expected 0 or 1, received ["
-                            + field + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                            + field + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }
 
-    private int parseInt(AsciiFileParser reader) throws IOException,
-            ParseException {
+    private int parseInt(AsciiFileParser reader)
+            throws IOException, ParseException {
         String field = reader.nextField();
 
         try {
             return Integer.parseInt(field);
         } catch (NumberFormatException e) {
             throw new ParseException(
-                    "Error occurred, expected integer field, received ["
-                            + field + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                    "Error occurred, expected integer field, received [" + field
+                            + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }
 
@@ -1387,20 +1373,20 @@ public class AsciiFileTranslator {
             } catch (NumberFormatException e) {
                 throw new ParseException(
                         "Error occurred, expected float field, received ["
-                                + freq + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                                + freq + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             }
         } else {
             throw new ParseException(
                     "Error occurred, expected float field, received [" + freq
-                            + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                            + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
 
         }
     }
 
-    private boolean parseBool(AsciiFileParser reader) throws IOException,
-            ParseException {
+    private boolean parseBool(AsciiFileParser reader)
+            throws IOException, ParseException {
         String field = reader.nextField();
 
         try {
@@ -1412,19 +1398,19 @@ public class AsciiFileTranslator {
             default:
                 throw new ParseException(
                         "Unrecognized boolean.  Expected 0 or 1, received ["
-                                + field + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                                + field + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             }
         } catch (NumberFormatException e) {
             throw new ParseException(
-                    "Unrecognized boolean.  Expected 0 or 1, received ["
-                            + field + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                    "Unrecognized boolean.  Expected 0 or 1, received [" + field
+                            + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }
 
-    private TimeZone parseTimeZone(AsciiFileParser reader) throws IOException,
-            ParseException {
+    private TimeZone parseTimeZone(AsciiFileParser reader)
+            throws IOException, ParseException {
         String field = reader.nextField();
 
         try {
@@ -1434,8 +1420,8 @@ public class AsciiFileTranslator {
         } catch (IllegalArgumentException e) {
             throw new ParseException(
                     "Unrecognized time zone.  Expected 0, 1, 3, 5, 7, 9, 11, 13, or 14 received ["
-                            + field + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                            + field + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }
 
@@ -1446,14 +1432,14 @@ public class AsciiFileTranslator {
         if (dictName != null) {
             Dictionary dict = bmhData.getDictionaries().get(dictName);
             if (dict == null) {
-                throw new ParseException("Unknown " + lang + " dictionary ["
-                        + dictName + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                throw new ParseException(
+                        "Unknown " + lang + " dictionary [" + dictName + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             } else if (!lang.equals(dict.getLanguage())) {
-                throw new ParseException("Expected dictionary [" + dictName
-                        + "] to be " + lang + " instead is "
-                        + dict.getLanguage(), reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                throw new ParseException(
+                        "Expected dictionary [" + dictName + "] to be " + lang
+                                + " instead is " + dict.getLanguage(),
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             }
 
             return dict;
@@ -1469,12 +1455,13 @@ public class AsciiFileTranslator {
         if (stationId != null) {
             StationIdData statData = ascii.getStationIdData().get(stationId);
             if (statData == null) {
-                throw new ParseException("Unknown " + lang + " station id ["
-                        + stationId + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                throw new ParseException(
+                        "Unknown " + lang + " station id [" + stationId + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             } else if (!lang.equals(statData.getLanguage())) {
-                throw new ParseException("Expected " + lang + " Station Id ["
-                        + stationId + "] received " + statData.getLanguage(),
+                throw new ParseException(
+                        "Expected " + lang + " Station Id [" + stationId
+                                + "] received " + statData.getLanguage(),
                         reader.getCurrentLineNumber(), reader.getSourceFile());
             }
 
@@ -1532,27 +1519,28 @@ public class AsciiFileTranslator {
             default:
                 throw new ParseException(
                         "Unrecognized designation.  Expected 0-8, received ["
-                                + field + "]", reader.getCurrentLineNumber(),
-                        reader.getSourceFile());
+                                + field + "]",
+                        reader.getCurrentLineNumber(), reader.getSourceFile());
             }
         } catch (NumberFormatException e) {
             throw new ParseException(
                     "Unrecognized designation.  Expected 0-8, received ["
-                            + field + "]", reader.getCurrentLineNumber(),
-                    reader.getSourceFile());
+                            + field + "]",
+                    reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }
 
-    private String parsePeriod(AsciiFileParser reader) throws IOException,
-            ParseException {
+    private String parsePeriod(AsciiFileParser reader)
+            throws IOException, ParseException {
         String period = reader.nextField();
         Matcher matcher = PERIOD.matcher(period);
         if (matcher.matches()) {
             return matcher.group(1) + matcher.group(2) + matcher.group(3)
                     + matcher.group(4);
         } else {
-            throw new ParseException("Invalid time format, found [" + period
-                    + "], expected [00.00:00:00]",
+            throw new ParseException(
+                    "Invalid time format, found [" + period
+                            + "], expected [00.00:00:00]",
                     reader.getCurrentLineNumber(), reader.getSourceFile());
         }
     }

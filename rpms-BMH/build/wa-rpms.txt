@@ -7,4 +7,3 @@ awips2-edex-request-bmh
 awips2-neospeech
 awips2-neospeech-english
 awips2-neospeech-english-and-spanish
-awips2-common-bmh

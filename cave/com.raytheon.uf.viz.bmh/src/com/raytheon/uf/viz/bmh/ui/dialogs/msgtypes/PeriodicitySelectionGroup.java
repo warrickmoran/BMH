@@ -21,9 +21,11 @@ package com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes;
 
 import java.util.Map;
 
+import org.apache.commons.lang.StringUtils;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -48,6 +50,8 @@ import com.raytheon.uf.viz.bmh.ui.common.utility.DateTimeFields.DateFieldType;
  * ------------ ---------- ----------- --------------------------
  * Jul 25, 2016 5766       bkowal      Initial creation
  * Aug 04, 2016 5766       bkowal      Added {@link #noPeriodicity(String)}.
+ * Feb 22, 2017   6030     bkowal      Adjust the width of the cycle time spinner based on the
+ *                                     maximum allowed number of digits.
  * 
  * </pre>
  * 
@@ -113,6 +117,10 @@ public class PeriodicitySelectionGroup {
 
         gd = new GridData(SWT.LEFT, SWT.CENTER, false, false);
         periodicityCycleSpinner = new Spinner(group, SWT.BORDER);
+        GC gc = new GC(periodicityCycleSpinner);
+        gd.widthHint = gc.textExtent(StringUtils.repeat("9", Integer
+                .toString(MessageType.MAX_PERIODICITY_CYLES).length())).x;
+        gc.dispose();
         periodicityCycleSpinner.setMinimum(MessageType.MIN_PERIODICITY_CYCLES);
         periodicityCycleSpinner.setMaximum(MessageType.MAX_PERIODICITY_CYLES);
         periodicityCycleSpinner.setEnabled(false);
@@ -125,11 +133,11 @@ public class PeriodicitySelectionGroup {
                 .generateDayHourMinuteSecondMap(periodicity);
         periodicityDTF.setFieldValues(periodicityMap);
 
-        int selectedCycles = (cycles == null) ? MessageType.MIN_PERIODICITY_CYCLES
-                : cycles;
+        int selectedCycles = (cycles == null)
+                ? MessageType.MIN_PERIODICITY_CYCLES : cycles;
         periodicityCycleSpinner.setSelection(selectedCycles);
-        periodicityCycleBtn.setSelection(cycles != null
-                && noPeriodicity(periodicity));
+        periodicityCycleBtn
+                .setSelection(cycles != null && noPeriodicity(periodicity));
         /*
          * time-based periodicity should be the default when cycle-based
          * periodicity is not applicable.

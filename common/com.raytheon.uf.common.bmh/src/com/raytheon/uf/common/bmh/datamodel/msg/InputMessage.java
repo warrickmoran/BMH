@@ -104,7 +104,13 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
  * Jul 29, 2016 5766      bkowal      Added {@link #cycles}.
  * Aug 04, 2016  5766     bkowal      Include {@link #cycles} in {@link #hashCode()} and {@link #equals(Object)}.
+<<<<<<< HEAD
  * May 17, 2017  19315      xwei      Updated GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY & UNEXPIRED_QUERY so they will return effectiveTime
+=======
+ * Jan 19, 2017  6078     bkowal      Updated {@link #GET_INPUT_MSGS_ID_NAME_AFOS_CREATION} and
+ *                                    {@link #UNEXPIRED_QUERY_NAME} to retrieve the origin column.
+ * Feb 24, 2017  6030     bkowal      Added {@link #MESSAGE_NAME_LENGTH}.
+>>>>>>> origin/omaha_17.3.1
  * </pre>
  * 
  * @author bsteffen
@@ -129,11 +135,16 @@ public class InputMessage {
         MAT, MRD;
     }
 
+    public static enum Origin {
+        UNKNOWN, EXTERNAL, WXMSG, DMOMSG, EOMSG;
+    }
+
     protected static final String GEN = "Input Messsage Id Generator";
 
     public static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION = "getInputMsgIdNameAfosCreation";
 
-    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime, active, effectiveTime FROM InputMessage im ORDER BY im.effectiveTime ASC";    
+
+    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime, active, effectiveTime, origin FROM InputMessage im ORDER BY im.effectiveTime ASC";    
 
     /**
      * Named query to pull all messages with a matching afosid and with a valid
@@ -155,7 +166,7 @@ public class InputMessage {
      */
     public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
 
-    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active, effectiveTime FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true) ORDER BY m.effectiveTime ASC";   
+    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active, effectiveTime, origin FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true) ORDER BY m.effectiveTime ASC";   
 
     /**
      * Named query to retrieve messages that have a specific afosid and
@@ -193,7 +204,11 @@ public class InputMessage {
 
     protected static final String ALL_WITH_NAME_AND_AFOSID_QUERY = "FROM InputMessage m WHERE m.afosid = :afosid AND m.name = :name";
 
+    public static final int MESSAGE_NAME_LENGTH = 40;
+
     private static final int AREA_CODE_LENGTH = 4096;
+
+    private static final int ORIGIN_LENGTH = 8;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = GEN)
@@ -203,7 +218,7 @@ public class InputMessage {
     /**
      * Name for the input message.
      */
-    @Column(length = 40, nullable = false)
+    @Column(length = MESSAGE_NAME_LENGTH, nullable = false)
     @DynamicSerializeElement
     private String name = "";
 
@@ -318,7 +333,7 @@ public class InputMessage {
      * used for user-generated Weather Messages.
      */
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id"), inverseJoinColumns = @JoinColumn(name = "transmitter_id"))
+    @JoinTable(name = "input_msg_selected_transmitters", joinColumns = @JoinColumn(name = "input_msg_id") , inverseJoinColumns = @JoinColumn(name = "transmitter_id") )
     @ForeignKey(name = "fk_selected_tx_to_input_msg", inverseName = "fk_selected_tx_to_tx")
     @Fetch(FetchMode.SUBSELECT)
     @DynamicSerializeElement
@@ -370,6 +385,11 @@ public class InputMessage {
     @Column(nullable = false, insertable = false, updatable = false, columnDefinition = "timestamp default now()")
     @DynamicSerializeElement
     private Date insertTime;
+
+    @Column(nullable = false, length = ORIGIN_LENGTH)
+    @Enumerated(EnumType.STRING)
+    @DynamicSerializeElement
+    private Origin origin = Origin.UNKNOWN;
 
     private transient File originalFile;
 
@@ -599,8 +619,7 @@ public class InputMessage {
         if (sameTransmitters == null) {
             return Collections.emptySet();
         } else {
-            return new HashSet<String>(Arrays.asList(sameTransmitters
-                    .split("-")));
+            return new HashSet<>(Arrays.asList(sameTransmitters.split("-")));
         }
     }
 
@@ -664,7 +683,7 @@ public class InputMessage {
      */
     private String trimAreaCodesToLength(String areaCodes) {
         while (areaCodes.length() > AREA_CODE_LENGTH) {
-            int lastIndex = areaCodes.lastIndexOf("-");
+            int lastIndex = areaCodes.lastIndexOf('-');
             areaCodes = areaCodes.substring(0, lastIndex);
         }
 
@@ -784,6 +803,14 @@ public class InputMessage {
         this.insertTime = insertTime;
     }
 
+    public Origin getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(Origin origin) {
+        this.origin = origin;
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;
@@ -816,11 +843,10 @@ public class InputMessage {
         result = (prime * result)
                 + ((periodicity == null) ? 0 : periodicity.hashCode());
         result = (prime * result) + ((cycles == null) ? 0 : cycles.hashCode());
-        result = (prime * result)
-                + ((sameTransmitters == null) ? 0 : sameTransmitters.hashCode());
-        result = (prime * result)
-                + ((selectedTransmitters == null) ? 0 : selectedTransmitters
-                        .hashCode());
+        result = (prime * result) + ((sameTransmitters == null) ? 0
+                : sameTransmitters.hashCode());
+        result = (prime * result) + ((selectedTransmitters == null) ? 0
+                : selectedTransmitters.hashCode());
         result = (prime * result) + (validHeader ? 1231 : 1237);
         result = (prime * result)
                 + ((replacementType == null) ? 0 : replacementType.hashCode());

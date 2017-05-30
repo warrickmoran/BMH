@@ -19,8 +19,11 @@
 
    <requires>
       <import feature="com.raytheon.uf.edex.base.feature" version="1.0.0.qualifier"/>
-      <import feature="com.raytheon.uf.common.bmh.feature" version="1.0.0.qualifier"/>
    </requires>
+
+   <includes
+         id="com.raytheon.uf.common.bmh.feature"
+         version="0.0.0"/>
 
    <plugin
          id="com.raytheon.uf.edex.request.bmh"
