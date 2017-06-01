@@ -41,6 +41,7 @@ import java.util.Set;
 import org.springframework.util.CollectionUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.datamodel.PositionComparator;
 import com.raytheon.uf.common.bmh.datamodel.dac.Dac;
 import com.raytheon.uf.common.bmh.datamodel.language.Dictionary;
@@ -71,6 +72,7 @@ import com.raytheon.uf.common.serialization.SerializationException;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.Pair;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.BmhMessageProducer;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
@@ -129,12 +131,13 @@ import com.raytheon.uf.edex.core.EdexException;
  * Aug 03, 2015  4350     bkowal      Only assign a practice dac to a practice transmitter group if a
  *                                    dac was originally assigned to the operational group.
  * Dec 09, 2015  5175     bkowal      Practice LDAD Configuration will be removed prior to an
- *                                    operational database copy. 
+ *                                    operational database copy.
+ * Jun 01, 2017  6259     bkowal      Apply required permissions to files and directories as they
+ *                                    are copied.
  * 
  * </pre>
  * 
  * @author bsteffen
- * @version 1.0
  */
 public class BmhDatabaseCopier {
 
@@ -165,8 +168,8 @@ public class BmhDatabaseCopier {
         this.pracMessageLogger = pracMessageLogger;
     }
 
-    public void copyAll(ITraceable traceable) throws EdexException,
-            SerializationException, IOException {
+    public void copyAll(ITraceable traceable)
+            throws EdexException, SerializationException, IOException {
         Calendar currentTime = TimeUtil.newGmtCalendar();
         clearAllPracticeTables(traceable);
         copyDictionaries();
@@ -198,7 +201,7 @@ public class BmhDatabaseCopier {
         clearTable(new LdadConfigDao(false));
         clearTable(new TtsVoiceDao(false));
         List<?> objects = clearTable(new TransmitterGroupDao(false));
-        if (CollectionUtils.isEmpty(objects) == false) {
+        if (!CollectionUtils.isEmpty(objects)) {
             List<TransmitterGroup> groups = new ArrayList<>(objects.size());
             for (Object object : objects) {
                 groups.add((TransmitterGroup) object);
@@ -210,10 +213,9 @@ public class BmhDatabaseCopier {
                                 ConfigChangeType.Delete, groups, traceable),
                         false);
             } catch (Exception e) {
-                statusHandler
-                        .error(BMH_CATEGORY.UNKNOWN,
-                                "Error occurred sending transmitter group config delete notification for operational database copy",
-                                e);
+                statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                        "Error occurred sending transmitter group config delete notification for operational database copy",
+                        e);
             }
         }
         clearTable(new DictionaryDao(false));
@@ -290,10 +292,10 @@ public class BmhDatabaseCopier {
         TransmitterLanguageDao prDao = new TransmitterLanguageDao(false);
         List<TransmitterLanguage> langs = opDao.getAll();
         for (TransmitterLanguage lang : langs) {
-            lang.setTransmitterGroup(transmitterGroupMap.get(lang
-                    .getTransmitterGroup().getId()));
+            lang.setTransmitterGroup(transmitterGroupMap
+                    .get(lang.getTransmitterGroup().getId()));
             if ((lang.getStaticMessageTypes() != null)
-                    && (lang.getStaticMessageTypes().isEmpty() == false)) {
+                    && (!lang.getStaticMessageTypes().isEmpty())) {
                 // update the message type references.
                 for (StaticMessageType stm : lang.getStaticMessageTypes()) {
                     MessageTypeSummary stmMsg = stm.getMsgTypeSummary();
@@ -312,8 +314,8 @@ public class BmhDatabaseCopier {
         List<Area> areas = opDao.getAll();
         Map<Integer, Area> areaMap = new HashMap<>(areas.size(), 1.0f);
         for (Area area : areas) {
-            Set<Transmitter> transmitters = new HashSet<>(area
-                    .getTransmitters().size(), 1.0f);
+            Set<Transmitter> transmitters = new HashSet<>(
+                    area.getTransmitters().size(), 1.0f);
             for (Transmitter transmitter : area.getTransmitters()) {
                 transmitters.add(transmitterMap.get(transmitter.getId()));
             }
@@ -352,30 +354,30 @@ public class BmhDatabaseCopier {
         List<Pair<MessageType, Set<MessageTypeSummary>>> replaceMsgs = new LinkedList<>();
 
         for (MessageType messageType : messageTypes) {
-            Set<Transmitter> transmitters = new HashSet<>(messageType
-                    .getSameTransmitters().size(), 1.0f);
+            Set<Transmitter> transmitters = new HashSet<>(
+                    messageType.getSameTransmitters().size(), 1.0f);
             for (Transmitter transmitter : messageType.getSameTransmitters()) {
                 transmitters.add(transmitterMap.get(transmitter.getId()));
             }
             messageType.setSameTransmitters(transmitters);
-            Set<Area> areas = new HashSet<>(messageType.getDefaultAreas()
-                    .size(), 1.0f);
+            Set<Area> areas = new HashSet<>(
+                    messageType.getDefaultAreas().size(), 1.0f);
             for (Area area : messageType.getDefaultAreas()) {
                 areas.add(areaMap.get(area.getId()));
             }
             messageType.setDefaultAreas(areas);
-            Set<Zone> zones = new HashSet<>(messageType.getDefaultZones()
-                    .size(), 1.0f);
+            Set<Zone> zones = new HashSet<>(
+                    messageType.getDefaultZones().size(), 1.0f);
             for (Zone zone : messageType.getDefaultZones()) {
                 zones.add(zoneMap.get(zone.getId()));
             }
             messageType.setDefaultZones(zones);
-            Set<TransmitterGroup> transmitterGroups = new HashSet<>(messageType
-                    .getDefaultTransmitterGroups().size(), 1.0f);
+            Set<TransmitterGroup> transmitterGroups = new HashSet<>(
+                    messageType.getDefaultTransmitterGroups().size(), 1.0f);
             for (TransmitterGroup transmitterGroup : messageType
                     .getDefaultTransmitterGroups()) {
-                transmitterGroups.add(transmitterGroupMap.get(transmitterGroup
-                        .getId()));
+                transmitterGroups
+                        .add(transmitterGroupMap.get(transmitterGroup.getId()));
             }
             messageType.setDefaultTransmitterGroups(transmitterGroups);
             Set<MessageTypeSummary> replaceMsgSet = messageType
@@ -392,9 +394,10 @@ public class BmhDatabaseCopier {
         // save any replace messages
         for (Pair<MessageType, Set<MessageTypeSummary>> replaceMsg : replaceMsgs) {
             MessageType mt = replaceMsg.getFirst();
-            for (MessageTypeSummary oldReplacedMessage : replaceMsg.getSecond()) {
-                mt.addReplacementMsg(messageTypeMap.get(oldReplacedMessage
-                        .getId()));
+            for (MessageTypeSummary oldReplacedMessage : replaceMsg
+                    .getSecond()) {
+                mt.addReplacementMsg(
+                        messageTypeMap.get(oldReplacedMessage.getId()));
             }
             prDao.persist(mt);
         }
@@ -409,8 +412,8 @@ public class BmhDatabaseCopier {
         Map<Integer, Suite> suiteMap = new HashMap<>(suites.size(), 1.0f);
         for (Suite suite : suites) {
             for (SuiteMessage suiteMessage : suite.getSuiteMessages()) {
-                suiteMessage.setMsgTypeSummary(messageTypeMap.get(suiteMessage
-                        .getMsgTypeSummary().getId()));
+                suiteMessage.setMsgTypeSummary(messageTypeMap
+                        .get(suiteMessage.getMsgTypeSummary().getId()));
             }
             suiteMap.put(suite.getId(), suite);
             suite.setId(0);
@@ -425,8 +428,8 @@ public class BmhDatabaseCopier {
         List<Program> programs = opDao.getAll();
         for (Program program : programs) {
             for (ProgramSuite programSuite : program.getProgramSuites()) {
-                programSuite.setSuite(suiteMap.get(programSuite.getSuite()
-                        .getId()));
+                programSuite.setSuite(
+                        suiteMap.get(programSuite.getSuite().getId()));
                 Set<MessageTypeSummary> messageTypes = new HashSet<>(
                         programSuite.getTriggers().size(), 1.0f);
                 for (MessageTypeSummary messageType : programSuite
@@ -435,12 +438,12 @@ public class BmhDatabaseCopier {
                 }
                 programSuite.setTriggers(messageTypes);
             }
-            Set<TransmitterGroup> transmitterGroups = new HashSet<>(program
-                    .getTransmitterGroups().size(), 1.0f);
+            Set<TransmitterGroup> transmitterGroups = new HashSet<>(
+                    program.getTransmitterGroups().size(), 1.0f);
             for (TransmitterGroup transmitterGroup : program
                     .getTransmitterGroups()) {
-                transmitterGroups.add(transmitterGroupMap.get(transmitterGroup
-                        .getId()));
+                transmitterGroups
+                        .add(transmitterGroupMap.get(transmitterGroup.getId()));
             }
             program.setTransmitterGroups(transmitterGroups);
             program.setId(0);
@@ -472,8 +475,8 @@ public class BmhDatabaseCopier {
         for (InputMessage inputMessage : inputMessages) {
             inputMessageMap.put(inputMessage.getId(), inputMessage);
             inputMessage.setId(0);
-            if (!CollectionUtil.isNullOrEmpty(inputMessage
-                    .getSelectedTransmitters())) {
+            if (!CollectionUtil
+                    .isNullOrEmpty(inputMessage.getSelectedTransmitters())) {
                 Set<Transmitter> opSelected = inputMessage
                         .getSelectedTransmitters();
                 Set<Transmitter> prSelected = new HashSet<>(opSelected.size(),
@@ -496,8 +499,8 @@ public class BmhDatabaseCopier {
         List<ValidatedMessage> validatedMsgs = opDao
                 .getAllUnexpiredMessages(currentTime);
         for (ValidatedMessage validatedMsg : validatedMsgs) {
-            validatedMsg.setInputMessage(this.inputMessageMap.get(validatedMsg
-                    .getInputMessage().getId()));
+            validatedMsg.setInputMessage(this.inputMessageMap
+                    .get(validatedMsg.getInputMessage().getId()));
             validatedMsg.setId(0);
             if (validatedMsg.getTransmitterGroups().isEmpty()) {
                 continue;
@@ -505,8 +508,8 @@ public class BmhDatabaseCopier {
             Set<TransmitterGroup> validMsgTransmitterGroups = new HashSet<>(
                     validatedMsg.getTransmitterGroups().size(), 1.0f);
             for (TransmitterGroup tg : validatedMsg.getTransmitterGroups()) {
-                validMsgTransmitterGroups.add(this.transmitterGroupMap.get(tg
-                        .getId()));
+                validMsgTransmitterGroups
+                        .add(this.transmitterGroupMap.get(tg.getId()));
             }
             validatedMsg.setTransmitterGroups(validMsgTransmitterGroups);
         }
@@ -520,10 +523,10 @@ public class BmhDatabaseCopier {
                 this.pracMessageLogger);
         BroadcastContentsDao prContentsDao = new BroadcastContentsDao(false);
 
-        Path opAudioDir = BMHConstants.getBmhDataDirectory(true).resolve(
-                BMHConstants.AUDIO_DATA_DIRECTORY);
-        Path prAudioDir = BMHConstants.getBmhDataDirectory(false).resolve(
-                BMHConstants.AUDIO_DATA_DIRECTORY);
+        Path opAudioDir = BMHConstants.getBmhDataDirectory(true)
+                .resolve(BMHConstants.AUDIO_DATA_DIRECTORY);
+        Path prAudioDir = BMHConstants.getBmhDataDirectory(false)
+                .resolve(BMHConstants.AUDIO_DATA_DIRECTORY);
 
         List<BroadcastMsg> broadcastMsgs = opDao
                 .getAllUnexpiredMessages(currentTime);
@@ -534,8 +537,8 @@ public class BmhDatabaseCopier {
         for (BroadcastMsg broadcastMsg : broadcastMsgs) {
             broadcastMsg.setTransmitterGroup(transmitterGroupMap
                     .get(broadcastMsg.getTransmitterGroup().getId()));
-            broadcastMsg.setInputMessage(inputMessageMap.get(broadcastMsg
-                    .getInputMessage().getId()));
+            broadcastMsg.setInputMessage(inputMessageMap
+                    .get(broadcastMsg.getInputMessage().getId()));
             broadcastMsgMap.put(broadcastMsg.getId(), broadcastMsg);
             broadcastMsg.setId(0);
             if (broadcastMsg.getContents() == null
@@ -561,18 +564,23 @@ public class BmhDatabaseCopier {
                 continue;
             }
 
-            for (BroadcastFragment broadcastFragment : contents.getFragments()) {
+            for (BroadcastFragment broadcastFragment : contents
+                    .getFragments()) {
                 Path output = Paths.get(broadcastFragment.getOutputName());
                 if (output.startsWith(opAudioDir)) {
-                    Path newOutput = prAudioDir.resolve(opAudioDir
-                            .relativize(output));
+                    Path newOutput = prAudioDir
+                            .resolve(opAudioDir.relativize(output));
                     if (Files.isDirectory(newOutput)) {
-                        Files.walkFileTree(output, new DirectoryCopier(output,
-                                newOutput));
+                        Files.walkFileTree(output,
+                                new DirectoryCopier(output, newOutput));
                     } else {
-                        Files.createDirectories(newOutput.getParent());
+                        com.raytheon.uf.common.util.file.Files
+                                .createDirectories(newOutput.getParent(),
+                                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
                         Files.copy(output, newOutput,
                                 StandardCopyOption.REPLACE_EXISTING);
+                        IOPermissionsHelper.applyFilePermissions(newOutput,
+                                FilePermissionUtils.FILE_PERMISSIONS_SET);
                     }
                     broadcastFragment.setOutputName(newOutput.toString());
                 }
@@ -583,8 +591,8 @@ public class BmhDatabaseCopier {
              * No reason to alter the timestamp because we do not alter the
              * timestamped file path or name.
              */
-            contents.setBroadcastMsg(broadcastMsgMap.get(contents.getId()
-                    .getBroadcastId()));
+            contents.setBroadcastMsg(
+                    broadcastMsgMap.get(contents.getId().getBroadcastId()));
         }
         prContentsDao.persistAll(contentsToCopy);
     }
@@ -607,7 +615,8 @@ public class BmhDatabaseCopier {
         public FileVisitResult preVisitDirectory(Path dir,
                 BasicFileAttributes attrs) throws IOException {
             Path newDir = newRoot.resolve(oldRoot.relativize(dir));
-            Files.createDirectories(newDir);
+            com.raytheon.uf.common.util.file.Files.createDirectories(newDir,
+                    FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             return FileVisitResult.CONTINUE;
         }
 
@@ -616,6 +625,8 @@ public class BmhDatabaseCopier {
                 throws IOException {
             Path newFile = newRoot.resolve(oldRoot.relativize(file));
             Files.copy(file, newFile, StandardCopyOption.REPLACE_EXISTING);
+            IOPermissionsHelper.applyFilePermissions(newFile,
+                    FilePermissionUtils.FILE_PERMISSIONS_SET);
             return FileVisitResult.CONTINUE;
         }
     }

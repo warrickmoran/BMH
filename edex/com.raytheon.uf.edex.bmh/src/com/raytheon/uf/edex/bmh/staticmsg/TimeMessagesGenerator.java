@@ -70,6 +70,7 @@ import com.raytheon.uf.edex.bmh.tts.TTSReturn;
  *                                     retry logic will be utilized.
  * May 08, 2015 4465       bkowal      Generate audio for all recognized {@link BMHTimeZone}s.
  * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
+ * Jun 01, 2017 6259       bkowal      Apply required permissions to all time audio directories.
  * 
  * </pre>
  * 
@@ -218,7 +219,9 @@ public class TimeMessagesGenerator {
                 continue;
             }
             try {
-                Files.createDirectories(timeDirPath);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        timeDirPath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 throw new StaticGenerationException(
                         "Failed to create time directory: "

@@ -65,6 +65,7 @@ import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
  * Mar 01, 2016 5382       bkowal      Cleanup.
  * Apr 06, 2016 5552       bkowal      Added {@link #toString()}.
  * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
+ * Jun 01, 2017 6259       bkowal      Apply file permissions to the target file and not the source.
  * </pre>
  * 
  * @author bkowal
@@ -230,7 +231,7 @@ public class FileManager {
          * etc.).
          */
         try {
-            IOPermissionsHelper.applyFilePermissions(filePath,
+            IOPermissionsHelper.applyFilePermissions(targetFilePath,
                     FilePermissionUtils.FILE_PERMISSIONS_SET);
         } catch (Exception e) {
             /*
