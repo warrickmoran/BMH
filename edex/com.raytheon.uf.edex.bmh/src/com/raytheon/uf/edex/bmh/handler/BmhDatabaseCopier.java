@@ -134,6 +134,8 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                    operational database copy.
  * Jun 01, 2017  6259     bkowal      Apply required permissions to files and directories as they
  *                                    are copied.
+ * Jun 14, 2017  6259     bkowal      Check the source path when determining if a path is a directory
+ *                                    while copying audio files.
  * 
  * </pre>
  * 
@@ -570,7 +572,7 @@ public class BmhDatabaseCopier {
                 if (output.startsWith(opAudioDir)) {
                     Path newOutput = prAudioDir
                             .resolve(opAudioDir.relativize(output));
-                    if (Files.isDirectory(newOutput)) {
+                    if (Files.isDirectory(output)) {
                         Files.walkFileTree(output,
                                 new DirectoryCopier(output, newOutput));
                     } else {
