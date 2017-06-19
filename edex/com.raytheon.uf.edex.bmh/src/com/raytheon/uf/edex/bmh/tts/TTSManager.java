@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.TimeZone;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -38,11 +37,11 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioFormat.Encoding;
 import javax.sound.sampled.AudioSystem;
-
 import org.apache.commons.io.FilenameUtils;
 
 import com.raytheon.uf.common.bmh.BMHVoice;
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_FORMAT;
 import com.raytheon.uf.common.bmh.TTSConstants.TTS_RETURN_VALUE;
 import com.raytheon.uf.common.bmh.TTSSynthesisException;
@@ -58,6 +57,7 @@ import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.SerializationUtil;
 import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.SystemUtil;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.BMHConfigurationException;
 import com.raytheon.uf.edex.bmh.BMHConstants;
 import com.raytheon.uf.edex.bmh.audio.EdexAudioConverterManager;
@@ -129,11 +129,11 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
  * Aug 07, 2015 4424       bkowal      Convert audio to wav format before converting to mp3.
  * Aug 10, 2015 4723       bkowal      Made the message processing and ldad processing methods
  *                                     easily distinguishable.
- * Oct 06, 2015 4904       bkowal      Verify the NeoSpeech volume.                                    
+ * Oct 06, 2015 4904       bkowal      Verify the NeoSpeech volume.
+ * May 02, 2017 6259       bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
 
 public class TTSManager implements IContextStateProcessor, Runnable {
@@ -143,12 +143,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     private static final int CORE_POOL_SIZE = 1;
 
     private static final ThreadLocal<SimpleDateFormat> TODAY_DATED_DIRECTORY_FORMAT = TimeUtil
-            .buildThreadLocalSimpleDateFormat("yyMMdd",
-                    TimeZone.getTimeZone("GMT"));
+            .buildThreadLocalSimpleDateFormat("yyMMdd", TimeUtil.GMT_TIME_ZONE);
 
     private static final ThreadLocal<SimpleDateFormat> FILE_NAME_TIME_FORMAT = TimeUtil
-            .buildThreadLocalSimpleDateFormat("HHmmss",
-                    TimeZone.getTimeZone("GMT"));
+            .buildThreadLocalSimpleDateFormat("HHmmss", TimeUtil.GMT_TIME_ZONE);
 
     /* For now, just default the format to a MULAW file. */
     private static final TTS_FORMAT TTS_DEFAULT_FORMAT = TTS_FORMAT.TTS_FORMAT_MULAW;
@@ -177,8 +175,6 @@ public class TTSManager implements IContextStateProcessor, Runnable {
     private String bmhDataDirectory;
 
     private String bmhStatusDestination;
-
-    private long ttsHeartbeat;
 
     private final Integer ttsValidationVoice = BMHVoice.PAUL.getId();
 
@@ -212,7 +208,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
         this.maxAudioDuration = Integer.getInteger(MAX_AUDIO_DURATION,
                 DEFAULT_MAX_AUDIO_DURATION_SECONDS);
-        this.maxAudioByteCount = ((this.maxAudioDuration * (int) TimeUtil.MILLIS_PER_SECOND) / 20) * 160;
+        this.maxAudioByteCount = ((this.maxAudioDuration
+                * (int) TimeUtil.MILLIS_PER_SECOND) / 20) * 160;
     }
 
     /*
@@ -300,24 +297,25 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     "Failed to retrieve the TTS Retry Delay from configuration!");
         }
 
-        this.ttsHeartbeat = ttsHeartbeatLong;
+        long ttsHeartbeat = ttsHeartbeatLong.longValue();
 
         this.ttsRetryThreshold = retryInteger;
         this.ttsRetryDelay = delayLong;
 
         /* Ensure that the heartbeat interval is > 0 */
-        if (this.ttsHeartbeat <= 0) {
+        if (ttsHeartbeat <= 0) {
             throw new BMHConfigurationException(
                     "TTS Heartbeat Interval must be > 0!");
         }
 
         /* Ensure that the TTS Retry Delay is >= 0 */
         if (this.ttsRetryDelay < 0) {
-            throw new BMHConfigurationException("TTS Retry Delay must be >= 0!");
+            throw new BMHConfigurationException(
+                    "TTS Retry Delay must be >= 0!");
         }
 
-        statusHandler.info("TTS Heartbeat Interval is: " + this.ttsHeartbeat
-                + " ms");
+        statusHandler
+                .info("TTS Heartbeat Interval is: " + ttsHeartbeat + " ms");
         statusHandler.info("BMH Audio Directory is: " + this.bmhDataDirectory);
         statusHandler.info("TTS Retry Threshold is: " + this.ttsRetryThreshold);
         statusHandler
@@ -326,20 +324,23 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         if (this.operational) {
             this.heartbeatMonitor = new ScheduledThreadPoolExecutor(
                     CORE_POOL_SIZE);
-            this.heartbeatMonitor.scheduleAtFixedRate(this, 30000,
-                    this.ttsHeartbeat, TimeUnit.MILLISECONDS);
+            this.heartbeatMonitor.scheduleAtFixedRate(this, 30_000,
+                    ttsHeartbeat, TimeUnit.MILLISECONDS);
         }
 
         NeoSpeechConstants.verify();
-        statusHandler.info("NeoSpeech Volume is: " + NeoSpeechConstants.getVolume());
+        statusHandler
+                .info("NeoSpeech Volume is: " + NeoSpeechConstants.getVolume());
 
         statusHandler.info("Initialization Successful!");
 
         this.edexHost = SystemUtil.getHostName();
         this.ttsHost = ("localhost"
-                .equals(this.synthesisFactory.getTtsServer())) ? this.edexHost
-                : InetAddress.getByName(this.synthesisFactory.getTtsServer())
-                        .getCanonicalHostName();
+                .equals(this.synthesisFactory.getTtsServer()))
+                        ? this.edexHost
+                        : InetAddress
+                                .getByName(this.synthesisFactory.getTtsServer())
+                                .getCanonicalHostName();
     }
 
     public void dispose() {
@@ -357,8 +358,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      * @throws BMHConfigurationException
      * @throws IOException
      */
-    private void validateSynthesis() throws BMHConfigurationException,
-            IOException {
+    private void validateSynthesis()
+            throws BMHConfigurationException, IOException {
 
         TTSReturn ttsReturn;
         try {
@@ -371,7 +372,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             return;
         }
 
-        this.notifyTTSStatus((ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS));
+        this.notifyTTSStatus((ttsReturn
+                .getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS));
 
         if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
             statusHandler.info("Verified the TTS Server at " + this.ttsHost
@@ -383,11 +385,12 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     "Connection to the TTS Server ");
             stringBuilder.append(this.ttsHost);
             stringBuilder.append(" has failed! ");
-            stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
-                    .getReturnValue()));
+            stringBuilder.append(
+                    this.getTTSErrorLogStatement(ttsReturn.getReturnValue()));
             stringBuilder.append(".");
-            statusHandler.error(ttsReturn.getReturnValue()
-                    .getAssociatedBMHCategory(), stringBuilder.toString());
+            statusHandler.error(
+                    ttsReturn.getReturnValue().getAssociatedBMHCategory(),
+                    stringBuilder.toString());
         }
     }
 
@@ -396,8 +399,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             try {
                 TTSStatus status = new TTSStatus(this.edexHost, this.ttsHost,
                         connected);
-                EDEXUtil.getMessageProducer().sendAsyncUri(
-                        bmhStatusDestination,
+                EDEXUtil.getMessageProducer().sendAsyncUri(bmhStatusDestination,
                         SerializationUtil.transformToThrift(status));
             } catch (Throwable e) {
                 statusHandler.error(BMH_CATEGORY.TTS_SOFTWARE_ERROR,
@@ -422,8 +424,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         for (BroadcastMsg message : group.getMessages()) {
             process(group, message);
         }
-        messageLogger
-                .logMessageActivity(group, MESSAGE_ACTIVITY.TTS_END, group);
+        messageLogger.logMessageActivity(group, MESSAGE_ACTIVITY.TTS_END,
+                group);
         return group;
     }
 
@@ -439,8 +441,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     private BroadcastMsg process(ITraceable traceable, BroadcastMsg message)
             throws Exception {
-        if (message == null
-                || message.getLatestBroadcastContents() == null
+        if (message == null || message.getLatestBroadcastContents() == null
                 || message.getLatestBroadcastContents().getFragments() == null
                 || message.getLatestBroadcastContents().getFragments()
                         .isEmpty()) {
@@ -465,8 +466,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
             logIdentifier.append(fragment.getId());
             logIdentifier.append(")");
 
-            TTSReturn ttsReturn = this.attemptAudioSynthesis(
-                    fragment.getSsml(), fragment.getVoice().getVoiceNumber(),
+            TTSReturn ttsReturn = this.attemptAudioSynthesis(fragment.getSsml(),
+                    fragment.getVoice().getVoiceNumber(),
                     logIdentifier.toString());
 
             fragment.setSuccess(ttsReturn.isSynthesisSuccess());
@@ -478,8 +479,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
 
                 /* Write the output file. */
                 File outputFile = this.determineOutputFile(message.getId(),
-                        fragment.getId(),
-                        message.getInputMessage().getAfosid(),
+                        fragment.getId(), message.getInputMessage().getAfosid(),
                         fragment.getVoice());
                 boolean writeSuccess = true;
                 try {
@@ -488,8 +488,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                             logIdentifier.toString(), DEFAULT_OUTPUT_FORMAT);
                 } catch (IOException e) {
                     writeSuccess = false;
-                    this.messageLogger.logError(null,
-                            BMH_COMPONENT.TTS_MANAGER,
+                    this.messageLogger.logError(null, BMH_COMPONENT.TTS_MANAGER,
                             BMH_ACTIVITY.AUDIO_WRITE, message, e);
                 }
                 fragment.setSuccess(writeSuccess);
@@ -579,8 +578,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                                     message.getEncoding());
                 } catch (UnsupportedAudioFormatException
                         | AudioConversionException e) {
-                    statusHandler.error(
-                            BMH_CATEGORY.LDAD_ERROR,
+                    statusHandler.error(BMH_CATEGORY.LDAD_ERROR,
                             "Failed to convert the audio for "
                                     + logIdentifier.toString() + " from the "
                                     + DEFAULT_OUTPUT_FORMAT.toString()
@@ -647,9 +645,10 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 ttsReturn = this.synthesisFactory.synthesize(ssml, voiceNumber,
                         TTS_DEFAULT_FORMAT);
             } catch (TTSSynthesisException e) {
-                statusHandler.error(BMH_CATEGORY.UNKNOWN, "TTS synthesis of "
-                        + logIdentifier + " has failed! Attempt (" + attempt
-                        + ")", e);
+                statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                        "TTS synthesis of " + logIdentifier
+                                + " has failed! Attempt (" + attempt + ")",
+                        e);
                 if (attempt > this.ttsRetryThreshold) {
                     break;
                 } else {
@@ -657,8 +656,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 }
             }
 
-            if (ttsReturn.isIoFailed() == false) {
-                if (ttsReturn.getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
+            if (!ttsReturn.isIoFailed()) {
+                if (ttsReturn
+                        .getReturnValue() == TTS_RETURN_VALUE.TTS_RESULT_SUCCESS) {
                     statusHandler.info("Successfully retrieved "
                             + ttsReturn.getVoiceData().length
                             + " bytes of audio data for " + logIdentifier
@@ -666,7 +666,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                     break;
                 }
 
-                if (this.retry(ttsReturn.getReturnValue()) == false) {
+                if (!this.retry(ttsReturn.getReturnValue())) {
                     /* Absolute Failure */
                     break;
                 }
@@ -686,14 +686,13 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 BMH_CATEGORY category = null;
                 if (ttsReturn.getIoFailureCause() == null) {
                     /* Build the log message. */
-                    logMessage += this.getTTSErrorLogStatement(ttsReturn
-                            .getReturnValue());
+                    logMessage += this.getTTSErrorLogStatement(
+                            ttsReturn.getReturnValue());
                     category = ttsReturn.getReturnValue()
                             .getAssociatedBMHCategory();
                 } else {
-                    logMessage += "IO Error = "
-                            + ttsReturn.getIoFailureCause()
-                                    .getLocalizedMessage();
+                    logMessage += "IO Error = " + ttsReturn.getIoFailureCause()
+                            .getLocalizedMessage();
                     category = BMH_CATEGORY.TTS_SYSTEM_ERROR;
                 }
                 logMessage += "! Attempt (" + attempt + ")";
@@ -731,11 +730,12 @@ public class TTSManager implements IContextStateProcessor, Runnable {
         stringBuilder.append(logIdentifier);
         if (ttsReturn.getIoFailureCause() == null) {
             stringBuilder.append("; ");
-            stringBuilder.append(this.getTTSErrorLogStatement(ttsReturn
-                    .getReturnValue()));
+            stringBuilder.append(
+                    this.getTTSErrorLogStatement(ttsReturn.getReturnValue()));
             stringBuilder.append("!");
-            statusHandler.error(ttsReturn.getReturnValue()
-                    .getAssociatedBMHCategory(), stringBuilder.toString());
+            statusHandler.error(
+                    ttsReturn.getReturnValue().getAssociatedBMHCategory(),
+                    stringBuilder.toString());
         } else {
             stringBuilder.append("!");
             statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
@@ -760,17 +760,19 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      */
     private void writeSynthesizedAudio(final byte[] audio,
             final Path outputPath, final String logIdentifier,
-            BMHAudioFormat format) throws IOException {
+            BMHAudioFormat format) throws Exception {
         /*
          * Ensure that the required directories exist.
          */
         final Path containingDirectory = outputPath.getParent();
-        if (Files.exists(containingDirectory) == false) {
+        if (!Files.exists(containingDirectory)) {
             /*
              * attempt to create the root directories.
              */
             try {
-                Files.createDirectories(containingDirectory);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        containingDirectory,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 StringBuilder stringBuilder = new StringBuilder(
                         "Failed to create audio directory: ");
@@ -793,7 +795,7 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          */
         if (totalPlaybackSeconds > this.maxAudioDuration) {
             StringBuilder sb = new StringBuilder("Truncating audio for ");
-            sb.append(logIdentifier.toString()).append(" from ");
+            sb.append(logIdentifier).append(" from ");
             sb.append(totalPlaybackSeconds).append(" seconds to ");
             sb.append(this.maxAudioDuration).append(" seconds.");
             statusHandler.warn(BMH_CATEGORY.AUDIO_TRUNCATED, sb.toString());
@@ -808,7 +810,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
          * to DDOS the system by constantly sending data files with large blocks
          * of text that when synthesized are significantly > 10 minutes.
          */
-        try (OutputStream os = Files.newOutputStream(outputPath)) {
+        try (OutputStream os = IOPermissionsHelper.getOutputStream(outputPath,
+                FilePermissionUtils.FILE_PERMISSIONS_SET)) {
             if (format == BMHAudioFormat.WAV) {
                 final AudioFormat audioFormat = new AudioFormat(Encoding.ULAW,
                         8000, 8, 1, 1, 8000, true);
@@ -821,9 +824,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
                 os.flush();
             }
             statusHandler.info("Successfully wrote audio output file: "
-                    + outputPath.toString() + " for "
-                    + logIdentifier.toString() + ". " + audio.length
-                    + " bytes were written.");
+                    + outputPath.toString() + " for " + logIdentifier + ". "
+                    + audio.length + " bytes were written.");
         } catch (Exception e) {
             StringBuilder stringBuilder = new StringBuilder(
                     "Failed to write audio output file: ");
@@ -954,8 +956,8 @@ public class TTSManager implements IContextStateProcessor, Runnable {
      *            than just the standard {@link BMHAudioFormat#ULAW} format.
      * @return {@link Path} to the location of the ldad audio output file
      */
-    private Path determineLdadOutputPath(final long ldadId,
-            final String afosId, final BMHAudioFormat encoding) {
+    private Path determineLdadOutputPath(final long ldadId, final String afosId,
+            final BMHAudioFormat encoding) {
 
         final String fileNamePartsSeparator = "_";
 
@@ -1037,10 +1039,9 @@ public class TTSManager implements IContextStateProcessor, Runnable {
              */
             this.validateSynthesis();
         } catch (BMHConfigurationException | IOException e) {
-            statusHandler
-                    .error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
-                            "Failed to determine the current status of the TTS Server!",
-                            e);
+            statusHandler.error(BMH_CATEGORY.TTS_SYSTEM_ERROR,
+                    "Failed to determine the current status of the TTS Server!",
+                    e);
         }
     }
 

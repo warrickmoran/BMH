@@ -37,6 +37,7 @@ import java.util.TimeZone;
 import org.apache.commons.lang.StringUtils;
 
 import com.raytheon.uf.common.bmh.BMH_CATEGORY;
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.audio.BMHAudioFormat;
 import com.raytheon.uf.common.bmh.audio.ImportedByUtils;
 import com.raytheon.uf.common.bmh.audio.RecordedByUtils;
@@ -114,13 +115,13 @@ import com.raytheon.uf.edex.core.EdexException;
  *                                     requirements when the same tone flag is set.
  * Nov 16, 2015  5127      rjpeter     InputMessage lastUpdateTime auto set to latest time on store.
  * Aug 04, 2016  5766      bkowal      Ensure that cycle-based periodicty updates are persisted.
+ * May 02, 2017  6259      bkowal      Updated to use {@link com.raytheon.uf.common.util.file.Files}.
  * </pre>
  * 
  * @author bkowal
- * @version 1.0
  */
-public class NewBroadcastMsgHandler extends
-        AbstractBMHLoggingServerRequestHandler<NewBroadcastMsgRequest> {
+public class NewBroadcastMsgHandler
+        extends AbstractBMHLoggingServerRequestHandler<NewBroadcastMsgRequest> {
 
     private static final IBMHStatusHandler statusHandler = BMHStatusHandler
             .getInstance(NewBroadcastMsgHandler.class);
@@ -161,14 +162,17 @@ public class NewBroadcastMsgHandler extends
         wxMessagesPath = Paths.get(BMHConstants.getBmhDataDirectory(),
                 AUDIO_DIRECTORY, WX_MESSAGES_DIRECTORY);
 
-        if (Files.exists(wxMessagesPath) == false) {
+        if (!Files.exists(wxMessagesPath)) {
             try {
-                Files.createDirectories(wxMessagesPath);
+                com.raytheon.uf.common.util.file.Files.createDirectories(
+                        wxMessagesPath,
+                        FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
             } catch (IOException e) {
                 // TODO: create BMH category.
                 statusHandler.error(BMH_CATEGORY.UNKNOWN,
                         "Failed to create the Weather Messages audio directory: "
-                                + wxMessagesPath.toString() + "!", e);
+                                + wxMessagesPath.toString() + "!",
+                        e);
                 return;
             }
         }
@@ -188,13 +192,9 @@ public class NewBroadcastMsgHandler extends
             /*
              * Verify that the afos id meets the length requirements.
              */
-            throw new IllegalArgumentException(
-                    inputMessage.getName()
-                            + "("
-                            + traceId
-                            + ": "
-                            + inputMessage.getAfosid()
-                            + ") failed to validate because the associated message type does not meet the minimum length requirements. Message type length must be >= 7 characters.");
+            throw new IllegalArgumentException(inputMessage.getName() + "("
+                    + traceId + ": " + inputMessage.getAfosid()
+                    + ") failed to validate because the associated message type does not meet the minimum length requirements. Message type length must be >= 7 characters.");
         }
         inputMessage = updateInputMessage(request);
         final boolean newInputMsg = inputMessage.getId() == 0;
@@ -230,19 +230,15 @@ public class NewBroadcastMsgHandler extends
 
         validMsg.setTransmitterGroups(transmitterGroups);
         if (!validMsg.isAccepted()) {
-            throw new IllegalArgumentException(
-                    inputMessage.getName()
-                            + "("
-                            + traceId
-                            + ": "
-                            + inputMessage.getAfosid()
-                            + ") failed to validate because it contains the following unacceptable words: "
-                            + unacceptableWords.toString());
+            throw new IllegalArgumentException(inputMessage.getName() + "("
+                    + traceId + ": " + inputMessage.getAfosid()
+                    + ") failed to validate because it contains the following unacceptable words: "
+                    + unacceptableWords.toString());
         } else if (request.getMessageAudio() == null
-                && RecordedByUtils.isMessage(inputMessage.getContent()) == false
-                && ImportedByUtils.isMessage(inputMessage.getContent()) == false) {
+                && !RecordedByUtils.isMessage(inputMessage.getContent())
+                && !ImportedByUtils.isMessage(inputMessage.getContent())) {
             validatedMsgDao.persistCascade(validMsg);
-            if (newInputMsg == false
+            if (!newInputMsg
                     && Boolean.FALSE.equals(inputMessage.getActive())) {
                 /*
                  * If an existing message is in the inactive state, ensure that
@@ -252,9 +248,9 @@ public class NewBroadcastMsgHandler extends
                  * inactive messages by default.
                  */
                 BmhMessageProducer.sendConfigMessage(
-                        new MessageActivationNotification(inputMessage, request
-                                .getExpireRequestTime(), request), request
-                                .isOperational());
+                        new MessageActivationNotification(inputMessage,
+                                request.getExpireRequestTime(), request),
+                        request.isOperational());
                 /*
                  * If the message transitioned from active to inactive. Now that
                  * all edits are in-place, the normal update procedure will
@@ -304,7 +300,7 @@ public class NewBroadcastMsgHandler extends
         }
 
         // persist all entities.
-        List<Object> entitiesToPersist = new ArrayList<Object>(
+        List<Object> entitiesToPersist = new ArrayList<>(
                 broadcastRecords.size() + 2);
         // input message first
         validMsg.getInputMessage().setLastUpdateTime(TimeUtil.newDate());
@@ -315,12 +311,11 @@ public class NewBroadcastMsgHandler extends
         entitiesToPersist.addAll(broadcastRecords);
         validatedMsgDao.persistAll(entitiesToPersist);
 
-        if (newInputMsg == false
-                && Boolean.FALSE.equals(inputMessage.getActive())) {
+        if (!newInputMsg && Boolean.FALSE.equals(inputMessage.getActive())) {
             BmhMessageProducer.sendConfigMessage(
-                    new MessageActivationNotification(inputMessage, request
-                            .getExpireRequestTime(), request), request
-                            .isOperational());
+                    new MessageActivationNotification(inputMessage,
+                            request.getExpireRequestTime(), request),
+                    request.isOperational());
         }
 
         // send the broadcast message(s) to the playlist scheduler.
@@ -342,7 +337,7 @@ public class NewBroadcastMsgHandler extends
          * audio is recorded.
          */
         // will it be necessary to trigger ldad dissemination?
-        if (LdadStatus.ACCEPTED.equals(validMsg.getLdadStatus()) == false) {
+        if (!LdadStatus.ACCEPTED.equals(validMsg.getLdadStatus())) {
             /*
              * no ldad configuration exists.
              */
@@ -367,7 +362,8 @@ public class NewBroadcastMsgHandler extends
         }
 
         // retrieve the ldad configurations
-        LdadConfigDao ldadConfigDao = new LdadConfigDao(request.isOperational());
+        LdadConfigDao ldadConfigDao = new LdadConfigDao(
+                request.isOperational());
         List<LdadConfig> ldadConfigList = ldadConfigDao
                 .getLdadConfigsForMsgType(inputMessage.getAfosid());
 
@@ -384,8 +380,8 @@ public class NewBroadcastMsgHandler extends
             ldadMsg.setAfosid(inputMessage.getAfosid());
             ldadMsg.setEncoding(ldadConfig.getEncoding());
             ldadMsg.setSuccess(true);
-            Path ldadOutputName = audioFormatsPathMap.get(ldadConfig
-                    .getEncoding());
+            Path ldadOutputName = audioFormatsPathMap
+                    .get(ldadConfig.getEncoding());
             if (ldadOutputName != null) {
                 // audio already exists in the required format.
                 ldadMsg.setOutputName(ldadOutputName.toString());
@@ -411,8 +407,8 @@ public class NewBroadcastMsgHandler extends
             audioFileNameString = StringUtils.removeEnd(audioFileNameString,
                     DEFAULT_TTS_FILE_EXTENSION);
             audioFileNameString += ldadConfig.getEncoding().getExtension();
-            Path alternateRecordedAudioOutputPath = Paths.get(
-                    containingDirectoryString, audioFileNameString);
+            Path alternateRecordedAudioOutputPath = Paths
+                    .get(containingDirectoryString, audioFileNameString);
 
             /*
              * attempt the conversion
@@ -423,17 +419,15 @@ public class NewBroadcastMsgHandler extends
                         .convertAudio(request.getMessageAudio(),
                                 DEFAULT_TTS_FORMAT, ldadConfig.getEncoding());
             } catch (Exception e) {
-                statusHandler
-                        .error(BMH_CATEGORY.LDAD_ERROR,
-                                TraceableUtil.createTraceMsgHeader(traceId)
-                                        + "Failed to convert audio to the "
-                                        + ldadConfig.getEncoding().toString()
-                                        + " format for ldad configuration: "
-                                        + ldadConfig.getName()
-                                        + " (id = "
-                                        + ldadConfig.getId()
-                                        + "). Scheduled audio will not be disseminated for this configuration.",
-                                e);
+                statusHandler.error(BMH_CATEGORY.LDAD_ERROR,
+                        TraceableUtil.createTraceMsgHeader(traceId)
+                                + "Failed to convert audio to the "
+                                + ldadConfig.getEncoding().toString()
+                                + " format for ldad configuration: "
+                                + ldadConfig.getName() + " (id = "
+                                + ldadConfig.getId()
+                                + "). Scheduled audio will not be disseminated for this configuration.",
+                        e);
                 // skip dissemination for this configuration.
                 continue;
             }
@@ -445,18 +439,14 @@ public class NewBroadcastMsgHandler extends
                 this.writeOutputAudio(convertedAudio,
                         alternateRecordedAudioOutputPath, traceId);
             } catch (Exception e) {
-                statusHandler
-                        .error(BMH_CATEGORY.LDAD_ERROR,
-                                traceId
-                                        + " Failed to write audio: "
-                                        + alternateRecordedAudioOutputPath
-                                                .toString()
-                                        + " in an alternate format for ldad configuration: "
-                                        + ldadConfig.getName()
-                                        + " (id = "
-                                        + ldadConfig.getId()
-                                        + "). Scheduled audio will not be disseminated for this configuration.",
-                                e);
+                statusHandler.error(BMH_CATEGORY.LDAD_ERROR,
+                        traceId + " Failed to write audio: "
+                                + alternateRecordedAudioOutputPath.toString()
+                                + " in an alternate format for ldad configuration: "
+                                + ldadConfig.getName() + " (id = "
+                                + ldadConfig.getId()
+                                + "). Scheduled audio will not be disseminated for this configuration.",
+                        e);
             }
             /*
              * cache the converted audio path.
@@ -482,11 +472,13 @@ public class NewBroadcastMsgHandler extends
                         BMHJmsDestinations.getBMHLdadDestination(request),
                         SerializationUtil.transformToThrift(ldadMsg));
             } catch (Exception e) {
-                statusHandler.error(BMH_CATEGORY.LDAD_ERROR, traceId
-                        + " Failed to trigger the ldad dissemination of: "
-                        + ldadMsg.getOutputName() + " for ldad configuration: "
-                        + ldadConfig.getName() + " (id = " + ldadConfig.getId()
-                        + ").", e);
+                statusHandler.error(BMH_CATEGORY.LDAD_ERROR,
+                        traceId + " Failed to trigger the ldad dissemination of: "
+                                + ldadMsg.getOutputName()
+                                + " for ldad configuration: "
+                                + ldadConfig.getName() + " (id = "
+                                + ldadConfig.getId() + ").",
+                        e);
             }
         }
 
@@ -549,7 +541,8 @@ public class NewBroadcastMsgHandler extends
     private List<BroadcastMsg> buildBroadcastRecords(
             final ValidatedMessage validMsg,
             final Set<TransmitterGroup> transmitterGroups,
-            Path recordedAudioOutputPath, final AbstractBMHServerRequest request) {
+            Path recordedAudioOutputPath,
+            final AbstractBMHServerRequest request) {
         List<BroadcastMsg> broadcastRecords = new ArrayList<>(
                 transmitterGroups.size());
         BroadcastMsgDao broadcastMsgDao = new BroadcastMsgDao(
@@ -620,7 +613,9 @@ public class NewBroadcastMsgHandler extends
         Path datedWxMsgDirectory = this.wxMessagesPath
                 .resolve(TODAY_DATED_DIRECTORY_FORMAT.get().format(current));
 
-        Files.createDirectories(datedWxMsgDirectory);
+        com.raytheon.uf.common.util.file.Files.createDirectories(
+                datedWxMsgDirectory,
+                FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
 
         StringBuilder fileName = new StringBuilder(inputMsg.getAfosid());
         fileName.append(fileNamePartsSeparator);
@@ -637,10 +632,10 @@ public class NewBroadcastMsgHandler extends
 
     private void writeOutputAudio(final byte[] audio, final Path audioFilePath,
             String traceId) throws IOException {
-        Files.write(audioFilePath, audio);
-        statusHandler.info(traceId
-                + " Successfully wrote Weather Message audio file: "
-                + audioFilePath.toString() + ".");
+        FilePermissionUtils.writeFileContents(audioFilePath, audio);
+        statusHandler.info(
+                traceId + " Successfully wrote Weather Message audio file: "
+                        + audioFilePath.toString() + ".");
     }
 
     private void sendToDestination(final String destinationURI,
@@ -652,12 +647,13 @@ public class NewBroadcastMsgHandler extends
             NewBroadcastMsgRequest request) {
         TransmitterDao transmitterDao = new TransmitterDao(
                 request.isOperational());
-        Set<TransmitterGroup> transmitterGroups = new HashSet<>(request
-                .getSelectedTransmitters().size(), 1.0f);
+        Set<TransmitterGroup> transmitterGroups = new HashSet<>(
+                request.getSelectedTransmitters().size(), 1.0f);
         for (Transmitter transmitter : request.getSelectedTransmitters()) {
             Transmitter fullRecord = transmitterDao
                     .getByID(transmitter.getId());
-            if (fullRecord == null || fullRecord.getTransmitterGroup() == null) {
+            if (fullRecord == null
+                    || fullRecord.getTransmitterGroup() == null) {
                 continue;
             }
             transmitterGroups.add(transmitter.getTransmitterGroup());

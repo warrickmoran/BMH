@@ -21,14 +21,16 @@ package com.raytheon.bmh.dactransmit.playlist;
 
 import java.nio.file.Path;
 import java.util.concurrent.locks.ReentrantLock;
+import java.io.OutputStream;
 
 import javax.xml.bind.JAXB;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.raytheon.uf.common.bmh.FilePermissionUtils;
 import com.raytheon.uf.common.bmh.datamodel.playlist.DacPlaylistMessage;
 import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
+import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 
 /**
  * {@link Runnable} created to asynchronously write an updated version of a
@@ -41,6 +43,7 @@ import com.raytheon.uf.common.bmh.lock.InMemoryFileLockManager;
  * Date         Ticket#    Engineer    Description
  * ------------ ---------- ----------- --------------------------
  * Aug 3, 2016  5766       bkowal      Initial creation
+ * May 02, 2017 6259       bkowal      Updated to use {@link IOPermissionsHelper}.
  * 
  * </pre>
  * 
@@ -77,7 +80,10 @@ public class UpdatePlaylistMsgTask implements Runnable {
                         + msgPath.toString() + ". Failed to lock the file.");
                 return;
             }
-            JAXB.marshal(message, msgPath.toFile());
+            try (OutputStream os = IOPermissionsHelper.getOutputStream(msgPath,
+                    FilePermissionUtils.FILE_PERMISSIONS_SET)) {
+                JAXB.marshal(message, os);
+            }
         } catch (Throwable e) {
             logger.error("Unable to persist message state.", e);
         } finally {
