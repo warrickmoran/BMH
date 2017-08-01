@@ -54,10 +54,10 @@ import com.raytheon.uf.common.serialization.SerializationUtil;
  * ------------ ---------- ----------- --------------------------
  * Nov 11, 2015 5114      rjpeter     Initial creation.
  * Dec 15, 2015  5114     rjpeter     Updated to use a ThreadPool.
+ * Jun 28, 2017  6321     bkowal      Suppress error output for RHEL7 keep-alive checks.
  * </pre>
  * 
  * @author rjpeter
- * @version 1.0
  */
 public class SocketListener extends Thread {
     private static final long TIMEOUT = 10000;
@@ -76,7 +76,8 @@ public class SocketListener extends Thread {
      * finishing and submitting of a new task.
      */
     private final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(1,
-            POOL_SIZE, 1, TimeUnit.MINUTES, new ArrayBlockingQueue<Runnable>(1));
+            POOL_SIZE, 1, TimeUnit.MINUTES,
+            new ArrayBlockingQueue<Runnable>(1));
 
     private final Set<SocketAcceptor> runningAcceptors = new LinkedHashSet<>();
 
@@ -140,8 +141,8 @@ public class SocketListener extends Thread {
 
     @Override
     public void run() {
-        logger.info("{} is now accepting connections ", this.getClass()
-                .getSimpleName());
+        logger.info("{} is now accepting connections ",
+                this.getClass().getSimpleName());
         while ((server != null) && !server.isClosed()) {
             ServerSocket server = this.server;
             Socket socket = null;
@@ -218,7 +219,8 @@ public class SocketListener extends Thread {
 
                 }
                 if (acceptor.hasTimedOut()) {
-                    logger.error("SocketListener has timed out. No free threads");
+                    logger.error(
+                            "SocketListener has timed out. No free threads");
                 } else {
                     if (threadWaited) {
                         logger.info("Thread available to process {}", socket);
@@ -252,8 +254,8 @@ public class SocketListener extends Thread {
             }
         }
 
-        logger.info("{} is no longer accepting connections ", this.getClass()
-                .getSimpleName());
+        logger.info("{} is no longer accepting connections ",
+                this.getClass().getSimpleName());
     }
 
     private class SocketAcceptor implements Runnable {
@@ -279,8 +281,8 @@ public class SocketListener extends Thread {
             boolean closeSocket = true;
 
             try {
-                Object obj = SerializationUtil.transformFromThrift(
-                        Object.class, socket.getInputStream());
+                Object obj = SerializationUtil.transformFromThrift(Object.class,
+                        socket.getInputStream());
                 Class<?> objClass = obj.getClass();
                 AbstractServer server = registeredTypes.get(obj.getClass());
 
@@ -316,7 +318,10 @@ public class SocketListener extends Thread {
                  */
                 boolean printError = true;
                 if (e.getCause() instanceof TTransportException) {
-                    if (((TTransportException) e.getCause()).getType() == TTransportException.END_OF_FILE) {
+                    final int transportExceptionType = ((TTransportException) e
+                            .getCause()).getType();
+                    if ((transportExceptionType == TTransportException.END_OF_FILE)
+                            || (transportExceptionType == TTransportException.UNKNOWN)) {
                         printError = false;
                     }
                 }
