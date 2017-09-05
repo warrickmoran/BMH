@@ -7,7 +7,7 @@
 Name: awips2-neospeech-english-and-spanish
 Summary: AWIPS II BMH Installation
 Version: %{_version}
-Release: 3
+Release: 4
 Group: AWIPSII
 BuildRoot: %{_build_root}
 BuildArch: x86_64
@@ -55,7 +55,7 @@ if [ $? -ne 0 ]; then
    exit 1
 fi
 
-_all_license=%{_baseline_workspace}/neospeech/verification_paulvioleta_07102017.txt
+_all_license=%{_baseline_workspace}/neospeech/verification_paulvioleta_07102019.txt
 cp -v ${_all_license} %{_build_root}/awips2/bmh/neospeech/verify/verification.txt
 
 %pre
