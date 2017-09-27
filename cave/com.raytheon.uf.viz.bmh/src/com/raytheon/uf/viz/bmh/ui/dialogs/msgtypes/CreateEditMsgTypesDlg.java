@@ -112,6 +112,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  *                                     regardless of area selection.
  * Jul 29, 2016   5766     bkowal      Updates to support periodic cycles.
  * Jan 19, 2017   6078     bkowal      Removed the DMO message creation restriction.
+ * Jun 15, 2017  19623     xwei        Removed call to resetSameTransmiters() once AreaSelectionDlg is closed.
  * </pre>
  * 
  * @author lvenable
@@ -654,7 +655,6 @@ public class CreateEditMsgTypesDlg extends CaveSWTDialog {
                     public void dialogClosed(Object returnValue) {
                         if (returnValue instanceof AreaSelectionSaveData) {
                             areaData = (AreaSelectionSaveData) returnValue;
-                            resetSameTransmiters();
                         }
                     }
                 });

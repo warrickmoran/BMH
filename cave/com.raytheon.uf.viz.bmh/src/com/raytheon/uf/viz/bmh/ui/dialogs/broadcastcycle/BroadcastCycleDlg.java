@@ -28,6 +28,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -90,6 +91,10 @@ import com.raytheon.uf.common.bmh.notify.config.ResetNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupConfigNotification;
 import com.raytheon.uf.common.bmh.notify.config.TransmitterGroupIdentifier;
 import com.raytheon.uf.common.bmh.request.ForceSuiteChangeRequest;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest;
+import com.raytheon.uf.common.bmh.request.InputMessageResponse;
+import com.raytheon.uf.common.bmh.request.InputMessageRequest.InputMessageAction;
+import com.raytheon.uf.common.bmh.same.SAMEToneTextBuilder;
 import com.raytheon.uf.common.jms.notification.INotificationObserver;
 import com.raytheon.uf.common.jms.notification.NotificationException;
 import com.raytheon.uf.common.jms.notification.NotificationMessage;
@@ -114,6 +119,7 @@ import com.raytheon.uf.viz.bmh.ui.dialogs.AbstractBMHDialog;
 import com.raytheon.uf.viz.bmh.ui.dialogs.DlgInfo;
 import com.raytheon.uf.viz.bmh.ui.dialogs.broadcastcycle.MonitorInlineThread.DisconnectListener;
 import com.raytheon.uf.viz.bmh.ui.dialogs.dac.DacDataManager;
+import com.raytheon.uf.viz.bmh.ui.dialogs.msgtypes.MessageTypeDataManager;
 import com.raytheon.uf.viz.bmh.ui.dialogs.suites.SuiteDataManager;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioPlaybackCompleteNotification;
 import com.raytheon.uf.viz.bmh.ui.recordplayback.AudioRecordPlaybackNotification;
@@ -217,6 +223,7 @@ import com.raytheon.viz.ui.dialogs.ICloseCallback;
  * Mar 25, 2016  5504      bkowal      Fix GUI sizing issues.
  * Apr 04, 2016  5504      bkowal      Updated for compatibility with TableComp changes.
  * Jul 25, 2016  5767      bkowal      Utilize {@link VizBroadcastCycleMessageExpirationUtil}
+ * May 17, 2017  19315      xwei       Updated opened(), by calling checkFutureInputMessages() before loading data. 
  * </pre>
  * 
  * @author mpduff
@@ -355,12 +362,14 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
      *            The parent shell
      */
     public BroadcastCycleDlg(Shell parent) {
-        super(parent, SWT.DIALOG_TRIM | SWT.MIN | SWT.MAX | SWT.RESIZE,
+    	
+    	super(parent, SWT.DIALOG_TRIM | SWT.MIN | SWT.MAX | SWT.RESIZE,
                 CAVE.INDEPENDENT_SHELL | CAVE.PERSPECTIVE_INDEPENDENT
                         | CAVE.DO_NOT_BLOCK);
         this.dataManager = new BroadcastCycleDataManager();
         this.dacDataManager = new DacDataManager();
         setText(DlgInfo.BROADCAST_CYCLE.getTitle());
+        
     }
 
     @Override
@@ -378,6 +387,16 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
 
     @Override
     protected void opened() {
+    	
+    	// Warn the user if there are any input messages scheduled to play 24 hours in the future
+        if ( checkFutureInputMessages() > 0 ) {
+            String msg = "There are one or more weather messages scheduled to play more than 24 hours in the future. Please open the Select Input Message dialog for detailed information.";
+            MessageBox mb = new MessageBox(getShell(), SWT.OK | SWT.ICON_WARNING);
+            mb.setText("Future Messages");
+            mb.setMessage(msg);
+            mb.open();
+        }
+        
         shell.setMinimumSize(shell.getSize());
 
         BMHDialogNotificationManager.getInstance().register(this);
@@ -398,6 +417,73 @@ public class BroadcastCycleDlg extends AbstractBMHDialog implements
         initialTablePopulation();
     }
 
+    
+    /**
+     * Check the number of input messages scheduled to play 24 hours in the future.
+     */
+    private int checkFutureInputMessages() {
+
+        InputMessageRequest imRequest = new InputMessageRequest();
+        imRequest.setAction(InputMessageAction.UnexpiredMessages);
+        imRequest.setTime(TimeUtil.newGmtCalendar());
+        InputMessageResponse imResponse = null;
+        List<InputMessage> tmpInputMsgList = null;
+
+        try {
+            imResponse = (InputMessageResponse) BmhUtils.sendRequest(imRequest);
+            tmpInputMsgList = imResponse.getInputMessageList();
+
+            if (tmpInputMsgList == null) {
+                return 0;
+            }
+
+        } catch (Exception e) {
+            statusHandler
+                    .error("Error retrieving unexpired input messages from the database: ",
+                            e);
+           
+            return 0;
+        }
+
+        final MessageTypeDataManager mtdm = new MessageTypeDataManager();
+        final Set<String> staticAfosIds;
+        try {
+            staticAfosIds = mtdm.getStaticMessageAfosIds();
+        } catch (Exception e) {
+            statusHandler
+                    .error("Failed to retrieve the afos ids associated with static message types.",
+                            e);
+            return 0;
+        }
+        
+        int counter = 0;
+        imRequest.getTime().add(Calendar.DATE, 1);  // add 24 hours from now for comparison later
+        
+        Iterator<InputMessage> it = tmpInputMsgList.iterator();
+        while (it.hasNext()) {
+        	InputMessage tempIM = it.next();
+            final String afosId = tempIM.getAfosid();
+            /*
+             * Also filter demo messages. They do not have a unique designation,
+             * so they must be filtered using inspection of the afos id.
+             */
+            if ( staticAfosIds.contains(afosId) || 
+            	 ( afosId != null && afosId.length() >= 6 && SAMEToneTextBuilder.DEMO_EVENT.equals(afosId.substring(3, 6)) )
+            	 ) {
+            	
+            	continue;
+            	
+            }else if ( tempIM.getActive() && 
+            		   tempIM.getEffectiveTime().getTime().after( imRequest.getTime().getTime() ) ){
+            	
+            	counter++;
+            }
+        }
+        
+        return counter;
+    }
+    
+    
     /*
      * (non-Javadoc)
      * 

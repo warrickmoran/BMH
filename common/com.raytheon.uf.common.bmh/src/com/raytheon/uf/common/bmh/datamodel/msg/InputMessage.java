@@ -104,9 +104,13 @@ import com.raytheon.uf.common.time.util.TimeUtil;
  * Nov 16, 2015  5127     rjpeter     Added insertTime and a getActiveInputMessagesWithAfosidAndAreaCodesAndNoMrd
  * Jul 29, 2016 5766      bkowal      Added {@link #cycles}.
  * Aug 04, 2016  5766     bkowal      Include {@link #cycles} in {@link #hashCode()} and {@link #equals(Object)}.
+<<<<<<< HEAD
+ * May 17, 2017  19315      xwei      Updated GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY & UNEXPIRED_QUERY so they will return effectiveTime
+=======
  * Jan 19, 2017  6078     bkowal      Updated {@link #GET_INPUT_MSGS_ID_NAME_AFOS_CREATION} and
  *                                    {@link #UNEXPIRED_QUERY_NAME} to retrieve the origin column.
  * Feb 24, 2017  6030     bkowal      Added {@link #MESSAGE_NAME_LENGTH}.
+>>>>>>> origin/omaha_17.3.1
  * </pre>
  * 
  * @author bsteffen
@@ -139,7 +143,8 @@ public class InputMessage {
 
     public static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION = "getInputMsgIdNameAfosCreation";
 
-    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime, active, origin FROM InputMessage im";
+
+    protected static final String GET_INPUT_MSGS_ID_NAME_AFOS_CREATION_QUERY = "select id, name, afosid, creationTime, active, effectiveTime, origin FROM InputMessage im ORDER BY im.effectiveTime ASC";    
 
     /**
      * Named query to pull all messages with a matching afosid and with a valid
@@ -161,7 +166,7 @@ public class InputMessage {
      */
     public static final String UNEXPIRED_QUERY_NAME = "getNonExpiredMessages";
 
-    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active, origin FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true)";
+    protected static final String UNEXPIRED_QUERY = "select id, name, afosid, creationTime, active, effectiveTime, origin FROM InputMessage m WHERE m.expirationTime >= :currentTime OR (m.expirationTime is null AND m.validHeader = true) ORDER BY m.effectiveTime ASC";   
 
     /**
      * Named query to retrieve messages that have a specific afosid and
