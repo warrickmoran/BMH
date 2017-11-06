@@ -1,0 +1,24 @@
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+    http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <camelContext id="clusteredBMHDatabaseMonitor" xmlns="http://camel.apache.org/schema/spring"
+        errorHandlerRef="errorHandler">
+        <!-- Route to periodically check the health of the database -->
+        <route id="clusteredBMHDatabaseMonitorRoute">
+            <from
+                uri="timer://bmhDatabaseMonitor?period=2h&amp;delay=30m&amp;fixedRate=true" />
+            <doTry>
+                <bean ref="dbMonitorRegistry" method="runMonitors" />
+                <doCatch>
+                    <exception>java.lang.Throwable</exception>
+                    <to uri="log:databaseMonitor?level=ERROR" />
+                </doCatch>
+            </doTry>
+        </route>
+    </camelContext>
+
+    <bean factory-bean="contextManager" factory-method="registerClusteredContext">
+        <constructor-arg ref="clusteredBMHDatabaseMonitor" />
+    </bean>
+</beans>
