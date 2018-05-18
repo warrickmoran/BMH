@@ -75,7 +75,7 @@ public class BMHJmsDestinations extends AbstractBMHJMSDestinations {
     }
 
     public static String getStatusDestination(
-            final AbstractBMHServerRequest request) {
+    		final AbstractBMHServerRequest request) {
         return getStatusDestination(request.isOperational());
     }
 
@@ -127,5 +127,18 @@ public class BMHJmsDestinations extends AbstractBMHJMSDestinations {
     public static String getBMHLdadDestination(
             final AbstractBMHServerRequest request) {
         return getBMHLdadDestination(request.isOperational());
+    }
+    
+    /**
+     * CCastro */ 
+        
+    public static String getBMHEdgeDestination(final boolean operational) {
+        return String.format(jmsFormatStr, getJmsQueue(operational),
+                instance.getBMHEdgeURI(operational));
+    }
+    
+    public static String getBMHEdgeDestination(
+            final AbstractBMHServerRequest request) {
+        return getBMHEdgeDestination(request.isOperational());
     }
 }

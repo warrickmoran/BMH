@@ -93,6 +93,7 @@ import com.raytheon.uf.common.time.util.TimeUtil;
 import com.raytheon.uf.common.util.CollectionUtil;
 import com.raytheon.uf.common.util.file.IOPermissionsHelper;
 import com.raytheon.uf.edex.bmh.BMHConstants;
+import com.raytheon.uf.edex.bmh.BMHJmsDestinations;
 import com.raytheon.uf.edex.bmh.dao.AbstractBMHDao;
 import com.raytheon.uf.edex.bmh.dao.AreaDao;
 import com.raytheon.uf.edex.bmh.dao.BroadcastMsgDao;
@@ -105,6 +106,7 @@ import com.raytheon.uf.edex.bmh.dao.ValidatedMessageDao;
 import com.raytheon.uf.edex.bmh.dao.ZoneDao;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.ErrorActivity.BMH_COMPONENT;
+import com.raytheon.uf.edex.bmh.msg.logging.MessageActivity.MESSAGE_ACTIVITY;
 import com.raytheon.uf.edex.bmh.msg.logging.IMessageLogger;
 import com.raytheon.uf.edex.bmh.replace.ReplacementManager;
 import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
@@ -114,6 +116,7 @@ import com.raytheon.uf.edex.core.IContextStateProcessor;
 import com.raytheon.uf.edex.database.cluster.ClusterLockUtils.LockState;
 import com.raytheon.uf.edex.database.cluster.ClusterLocker;
 import com.raytheon.uf.edex.database.cluster.ClusterTask;
+import com.raytheon.uf.edex.bmh.edge.EdgeDisseminator;
 
 /**
  * 
@@ -260,6 +263,7 @@ public class PlaylistManager implements IContextStateProcessor {
     private final ReplacementManager replacementManager;
 
     private final IMessageLogger messageLogger;
+    private EdgeDisseminator edgeDisseminator;
 
     public PlaylistManager(final IMessageLogger messageLogger)
             throws IOException {
@@ -284,6 +288,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 FilePermissionUtils.DIRECTORY_PERMISSIONS_ATTR);
         replacementManager = new ReplacementManager();
         replacementManager.setMessageLogger(messageLogger);
+        edgeDisseminator = new EdgeDisseminator(messageLogger);
     }
 
     /**
@@ -699,15 +704,27 @@ public class PlaylistManager implements IContextStateProcessor {
             newMessage(message, group);
         }
         refreshReplaced(needsRefresh, group);
+//        try {
+//			processEdge(group);
+//		} catch (EdexException | SerializationException e)  {
+//			statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+//                    "Unable to send group to Edge1.", e);
+//		} catch (Exception e) {
+//			statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+//                    "Unable to send group to Edge2.", e);
+//		}
     }
+        
+        
+    
 
     private void newMessage(BroadcastMsg msg, ITraceable traceable) {
         TransmitterGroup group = msg.getTransmitterGroup();
-        if (!group.isEnabled()) {
-            logBroadcastMsgInfo(traceable, msg, "group " + group.getName()
-                    + " not enabled for new message.");
-            return;
-        }
+//        if (!group.isEnabled()) {
+//            logBroadcastMsgInfo(traceable, msg, "group " + group.getName()
+//                    + " not enabled for new message.");
+//            return;
+//        }
         if (Boolean.FALSE.equals(msg.getInputMessage().getActive())) {
             logBroadcastMsgInfo(traceable, msg, "new message not active.");
             return;
@@ -908,7 +925,7 @@ public class PlaylistManager implements IContextStateProcessor {
 
     private DacPlaylist writePlaylistFile(Playlist playlist,
             Calendar latestTriggerTime, AbstractBMHProcessingTimeEvent event,
-            ITraceable traceable, BroadcastMsg replacedMessage) {
+            ITraceable traceable, BroadcastMsg replacedMessage) {    	
         return this.writePlaylistFile(playlist, latestTriggerTime, event,
                 traceable, replacedMessage, null);
     }
@@ -962,7 +979,16 @@ public class PlaylistManager implements IContextStateProcessor {
                     playlistPath, FilePermissionUtils.FILE_PERMISSIONS_SET)) {
                 jaxbManager.marshalToStream(dacList, os);
             }
-            this.messageLogger.logPlaylistActivity(traceable, dacList);
+            this.messageLogger.logPlaylistActivity(traceable, dacList); 
+            try {
+            	edgeDisseminator.sendToEdge(dacList);
+    		} catch (EdexException | SerializationException e)  {
+    			statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                        "Unable to send list to Edge.", e);
+    		} catch (Exception e) {
+    			statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+                        "Unable to send list to Edge.", e);
+    		}
         } catch (Exception e) {
             statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
                     traceMsg + "Unable to write playlist file.", e);
@@ -987,6 +1013,7 @@ public class PlaylistManager implements IContextStateProcessor {
                 EventBus.publish(event);
             }
         }
+        
         return dacList;
     }
 
@@ -1083,6 +1110,7 @@ public class PlaylistManager implements IContextStateProcessor {
                     dacMetadata.addSoundFile(fragment.getOutputName());
                 }
                 dacMetadata.setName(input.getName());
+                dacMetadata.setBroadcastId(broadcast.getId());
                 dacMetadata.setStart(broadcast.getEffectiveTime());
                 String afosid = input.getAfosid();
                 MessageType messageType = messageTypeDao.getByAfosId(afosid);
@@ -1249,6 +1277,8 @@ public class PlaylistManager implements IContextStateProcessor {
                         messageMetadataFile,
                         FilePermissionUtils.FILE_PERMISSIONS_SET)) {
                     jaxbManager.marshalToStream(dacMetadata, os);
+                    //CCastro Prototype
+                    edgeDisseminator.sendToEdge(dacMetadata);
                 }
                 statusHandler.info("Wrote message metadata file: "
                         + messageMetadataFile.toString() + ".");
@@ -1373,5 +1403,64 @@ public class PlaylistManager implements IContextStateProcessor {
             return forcedType.compareTo(testType) <= 0;
         }
     }
+    
+    
+//    public void processEdge(BroadcastMsgGroup group) throws Exception {
+//		if (group == null) {
+//			throw new Exception(
+//					"Receieved an empty playlist");			
+//		}
+//		try {
+//			this.sendToDestination(BMHJmsDestinations.getBMHEdgeDestination(operational),
+//					SerializationUtil.transformToThrift(group));
+////			this.sendToDestination(BMHJmsDestinations.getBMHEdgeDestination(operational),
+////					jaxbManager.marshalToXml(group));
+//						
+//		}
+//		catch (EdexException | SerializationException e) {
+//            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+//                    "Unable to send playlist notification.", e);
+//		}
+//
+//	}
+//    
+//	public void processEdge(DacPlaylist playlist) throws Exception {
+//		if (playlist == null) {
+//			throw new Exception(
+//					"Receieved an empty playlist");			
+//		}
+//		try {			
+//			this.sendToDestination(BMHJmsDestinations.getBMHEdgeDestination(operational),
+//					jaxbManager.marshalToXml(playlist));
+//						
+//		}
+//		catch (EdexException e) {
+//            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+//                    "Unable to send playlist notification.", e);
+//		}
+//
+//	}
+//	
+//	public void processEdge(DacPlaylistMessageMetadata messageMetadata) throws Exception {
+//		if (messageMetadata == null) {
+//			throw new Exception(
+//					"Receieved an empty messageMetadata");			
+//		}
+//		try {
+//			this.sendToDestination(BMHJmsDestinations.getBMHEdgeDestination(operational),
+//					jaxbManager.marshalToXml(messageMetadata));
+//						
+//		}
+//		catch (EdexException e) {
+//            statusHandler.error(BMH_CATEGORY.PLAYLIST_MANAGER_ERROR,
+//                    "Unable to send playlist notification.", e);
+//		}
+//
+//	}
+//
+//	private void sendToDestination(final String destinationURI,
+//			final Object message) throws EdexException {
+//		EDEXUtil.getMessageProducer().sendAsyncUri(destinationURI, message);
+//	}
 
 }

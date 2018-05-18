@@ -78,6 +78,10 @@ public abstract class AbstractBMHJMSDestinations {
     private static final String BMH_LDAD = "BMH.LDAD";
 
     private static final String BMH_PRACTICE_LDAD = "BMH.Practice.LDAD";
+    
+    /* CCastro BMH Edge Dissemination Destinations */
+
+    private static final String BMH_EDGE = "BMH.EDGE";  
 
     /**
      * 
@@ -165,5 +169,18 @@ public abstract class AbstractBMHJMSDestinations {
      */
     protected String getBMHLdadURI(final boolean operational) {
         return (operational) ? BMH_LDAD : BMH_PRACTICE_LDAD;
+    }
+    
+    /**CCastro
+     * Returns the BMH Edge Dissemination URI. Product files are posted to and
+     * read from this location.
+     * 
+     * @param operational
+     *            true indicates return operational uri, false indicates return
+     *            practice uri
+     * @return the request jms uri
+     */
+    protected String getBMHEdgeURI(final boolean operational) {
+        return (operational) ? BMH_EDGE : BMH_EDGE;
     }
 }

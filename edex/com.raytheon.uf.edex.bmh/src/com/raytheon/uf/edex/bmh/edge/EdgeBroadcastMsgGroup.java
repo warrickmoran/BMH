@@ -17,10 +17,11 @@
  * See the AWIPS II Master Rights File ("Master Rights File.pdf") for
  * further licensing information.
  **/
-package com.raytheon.uf.common.bmh.datamodel.msg;
+package com.raytheon.uf.edex.bmh.edge;
 
 import java.util.List;
 
+import com.raytheon.uf.common.bmh.datamodel.msg.BroadcastMsg;
 import com.raytheon.uf.common.bmh.trace.ITraceable;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerialize;
 import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
@@ -48,7 +49,7 @@ import com.raytheon.uf.common.serialization.annotations.DynamicSerializeElement;
  * @version 1.0
  */
 @DynamicSerialize
-public class BroadcastMsgGroup implements ITraceable {
+public class EdgeBroadcastMsgGroup implements ITraceable {
 
 	@DynamicSerializeElement
 	private List<BroadcastMsg> messages;
@@ -59,11 +60,11 @@ public class BroadcastMsgGroup implements ITraceable {
     @DynamicSerializeElement
     private String traceId;
 
-    public BroadcastMsgGroup() {
+    public EdgeBroadcastMsgGroup() {
 
     }
 
-    public BroadcastMsgGroup(String traceId, List<BroadcastMsg> messages) {
+    public EdgeBroadcastMsgGroup(String traceId, List<BroadcastMsg> messages) {
         this.traceId = traceId;
         this.messages = messages;
     }
