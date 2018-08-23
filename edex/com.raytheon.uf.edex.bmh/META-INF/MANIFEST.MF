@@ -9,6 +9,7 @@ Export-Package: com.raytheon.uf.edex.bmh,
  com.raytheon.uf.edex.bmh.audio,
  com.raytheon.uf.edex.bmh.comms,
  com.raytheon.uf.edex.bmh.dao,
+ com.raytheon.uf.edex.bmh.edge,
  com.raytheon.uf.edex.bmh.generate.tones,
  com.raytheon.uf.edex.bmh.handler,
  com.raytheon.uf.edex.bmh.msg,
@@ -43,4 +44,8 @@ Require-Bundle: com.raytheon.uf.common.bmh,
  com.raytheon.uf.edex.stats;bundle-version="1.14.0",
  com.raytheon.uf.common.dataplugin;bundle-version="1.14.0",
  org.apache.http;bundle-version="4.3.5"
-Import-Package: com.raytheon.edex.site
+Import-Package: com.raytheon.edex.site,
+ com.raytheon.uf.viz.core.comm,
+ javax.jms,
+ org.apache.qpid.client,
+ org.apache.qpid.url

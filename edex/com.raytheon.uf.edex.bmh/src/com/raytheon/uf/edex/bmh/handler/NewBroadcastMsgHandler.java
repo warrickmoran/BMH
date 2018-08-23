@@ -77,6 +77,7 @@ import com.raytheon.uf.edex.bmh.status.BMHStatusHandler;
 import com.raytheon.uf.edex.bmh.status.IBMHStatusHandler;
 import com.raytheon.uf.edex.core.EDEXUtil;
 import com.raytheon.uf.edex.core.EdexException;
+import com.raytheon.uf.edex.bmh.edge.EdgeDisseminator;
 
 /**
  * Handles the creation and dissemination of user-generated weather messages.
@@ -149,6 +150,9 @@ public class NewBroadcastMsgHandler
 
     private final LdadValidator practiceLdadCheck;
 
+    private EdgeDisseminator edgeDisseminator;
+
+
     public NewBroadcastMsgHandler(final LdadValidator ldadCheck,
             final LdadValidator practiceLdadCheck,
             final IMessageLogger opMessageLogger,
@@ -176,6 +180,7 @@ public class NewBroadcastMsgHandler
                 return;
             }
         }
+        edgeDisseminator = new EdgeDisseminator(this.opMessageLogger);
 
         statusHandler.info("Using Weather Messages audio directory: "
                 + wxMessagesPath.toString());
@@ -626,6 +631,12 @@ public class NewBroadcastMsgHandler
 
         Path audioFilePath = datedWxMsgDirectory.resolve(fileName.toString());
         this.writeOutputAudio(audio, audioFilePath, traceId);
+        try {
+        	edgeDisseminator.sendToEdge(audio, audioFilePath.getFileName().toString());
+		} catch (Exception e) {
+			statusHandler.error(BMH_CATEGORY.UNKNOWN,
+                    "Unable to send audio file to Edge.", e);
+		}
 
         return audioFilePath;
     }

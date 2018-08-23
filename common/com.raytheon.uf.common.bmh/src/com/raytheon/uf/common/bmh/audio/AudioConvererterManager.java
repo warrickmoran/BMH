@@ -30,8 +30,10 @@ import java.util.HashMap;
 import java.util.Queue;
 import java.util.Set;
 
+import com.raytheon.uf.common.bmh.audio.impl.Mp3AudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.PcmAudioConverter;
 import com.raytheon.uf.common.bmh.audio.impl.UlawAudioConverter;
+import com.raytheon.uf.common.bmh.audio.impl.WavAudioConverter;
 import com.raytheon.uf.common.status.IUFStatusHandler;
 import com.raytheon.uf.common.status.UFStatus;
 
@@ -108,6 +110,8 @@ public class AudioConvererterManager {
         // then a spring-based registration process would be beneficial.
         this.registerConverter(new UlawAudioConverter());
         this.registerConverter(new PcmAudioConverter());
+        this.registerConverter(new Mp3AudioConverter());
+        this.registerConverter(new WavAudioConverter());
     }
 
     /**
@@ -124,10 +128,10 @@ public class AudioConvererterManager {
             try {
                 converter.verifyCompatibility();
             } catch (ConversionNotSupportedException e) {
-                statusHandler.error(
+                /*statusHandler.error(
                         "Failed to register an audio converter for the "
                                 + converter.getOutputFormat().toString()
-                                + " format.", e);
+                                + " format.", e);*/
                 return;
             }
 
@@ -141,10 +145,10 @@ public class AudioConvererterManager {
             }
             this.registeredAudioConverters.put(converter.getOutputFormat(),
                     converter);
-            statusHandler
+            /*statusHandler
                     .info("Successfully registered an audio converter for the "
                             + converter.getOutputFormat().toString()
-                            + " format.");
+                            + " format.");*/
 
             this.buildVerifyConversionChains(converter);
         }
@@ -177,14 +181,14 @@ public class AudioConvererterManager {
                         "Found audio conversion path: ");
                 sb.append(supportedFormat.name()).append(" -> ")
                         .append(converter.getOutputFormat().name()).append(".");
-                statusHandler.info(sb.toString());
+             //   statusHandler.info(sb.toString());
             } else {
                 StringBuilder sb = new StringBuilder(
                         "Unable to apply a direct conversion from: ");
                 sb.append(supportedFormat.name()).append(" to ")
                         .append(converter.getOutputFormat().name())
                         .append(" ...");
-                statusHandler.info(sb.toString());
+               // statusHandler.info(sb.toString());
                 if (this.permutateConversionChain(supportedFormat,
                         converter.getOutputFormat()) == false) {
                     unsupportedConversionPaths.add(new ChainedConversionKey(

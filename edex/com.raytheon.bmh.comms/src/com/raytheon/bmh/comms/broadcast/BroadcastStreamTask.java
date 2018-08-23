@@ -102,7 +102,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
     protected final LiveBroadcastStartCommand command;
 
-    protected final TransmitterGroupManager tgManager;
+    //CCastro protected final TransmitterGroupManager tgManager;
 
     protected volatile STATE state;
 
@@ -130,8 +130,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.clusterServer = clusterServer;
         this.dacServer = dacServer;
         this.command = command;
-        this.tgManager = new TransmitterGroupManager(
-                this.command.getTransmitterGroups());
+      //CCastro  this.tgManager = new TransmitterGroupManager(this.command.getTransmitterGroups());
     }
 
     private static String determineName(final LiveBroadcastStartCommand command) {
@@ -143,7 +142,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     private void handleStateTransition() {
         logger.info("Broadcast {} state transition to: {}", this.getName(),
                 this.state.toString());
-        logger.info("CURRENT MANAGED STATE: {}", this.tgManager.toString());
+ //CCastro       logger.info("CURRENT MANAGED STATE: {}", this.tgManager.toString());
 
         if ((this.state == STATE.READY) || (this.state == STATE.TRIGGER)) {
             /**
@@ -153,18 +152,18 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
              * provides time for the dac transmits associated with the managed
              * {@link TransmitterGroup}s to provide responses.
              */
-            try {
-                /*
+            /*try {
+                
                  * lock should be available immediately or else it is already
                  * locked.
-                 */
+                 
                 if (this.communicationLock
                         .tryAcquire(10, TimeUnit.MILLISECONDS) == false) {
-                    logger.warn("The Communication Lock is currently already locked. Expected State ... Continuing");
+                    logger.warn("The Communication Lock is currently already locked. Expected State 2... Continuing");
                 }
             } catch (InterruptedException e) {
                 logger.warn("Broadcast Stream Task was interrupted while waiting for the Communication Lock.");
-            }
+            }*/
         }
 
         switch (this.state) {
@@ -205,13 +204,13 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * transmitters across multiple systems?
          * ..........................................
          */
-        for (TransmitterGroup transmitterGrp : this.command
+        /* CCastrofor (TransmitterGroup transmitterGrp : this.command
                 .getTransmitterGroups()) {
             if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
                 continue;
             }
             this.tgManager.claimResponsibility(transmitterGrp);
-        }
+        }*?
 
         /**
          * We will only acquire the communication lock if there are other
@@ -221,7 +220,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             try {
                 if (this.communicationLock
                         .tryAcquire(10, TimeUnit.MILLISECONDS) == false) {
-                    logger.warn("The Communication Lock is currently already locked. Expected State ... Continuing");
+                    logger.warn("The Communication Lock is currently already locked. Expected State 1 ... Continuing");
                 }
             } catch (InterruptedException e) {
                 logger.warn("Broadcast Stream Task was interrupted while waiting for the Communication Lock.");
@@ -233,16 +232,15 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * can access or that a different cluster member can access.
          */
         if (((count > 0) && (this.communicationWait(this
-                .calculateWaitDuration()) == false))
-                || (this.tgManager.allTransmittersAssigned() == false)) {
+                .calculateWaitDuration()) == false))){
+             //CCastro   || (this.tgManager.allTransmittersAssigned() == false)) {
             final String preText = "Failed to start broadcast "
                     + this.getName()
                     + ". Unable to access the following transmitter groups: ";
-            final String clientMsg = this.buildTransmitterListMsg(preText,
-                    this.tgManager.getUnassignedTransmitters());
+   //CCastro         final String clientMsg = this.buildTransmitterListMsg(preText,this.tgManager.getUnassignedTransmitters());
 
             // failure
-            this.notifyShareholdersProblem(clientMsg);
+          //CCastro     this.notifyShareholdersProblem(clientMsg);
 
             /*
              * due to the fact that we are only in the initialization phase, we
@@ -252,11 +250,11 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
              * after a successful initialization.
              */
             // build and submit a stop command.
-            LiveBroadcastCommand command = new LiveBroadcastCommand();
+          /* CCastro LiveBroadcastCommand command = new LiveBroadcastCommand();
             command.setAction(ACTION.STOP);
             command.setBroadcastId(this.getName());
             command.setMsgSource(MSGSOURCE.COMMS);
-            this.handleStopCommand(command);
+            this.handleStopCommand(command);*/
 
             return;
         }
@@ -280,7 +278,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setStatus(true);
         status.setBroadcastId(this.getName());
-        status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
+      //CCastro status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
 
         if (this.sendClientReplyMessage(status)) {
             this.state = STATE.LIVE;
@@ -322,7 +320,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.clusterServer
                 .sendDataToAll(new ClusteredBroadcastTransitionTrigger(this
                         .getName()));
-        this.sendStartCmdToDacs();
+      //CCastrothis.sendStartCmdToDacs();
 
         /*
          * give dac transmits and member comms managers some amount of time to
@@ -334,12 +332,11 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         /*
          * verify all transmitter groups are available for streaming.
          */
-        if ((this.communicationWait(this.calculateWaitDuration()) == false)
-                || (this.tgManager
-                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE) == false)) {
+      /*CCastro if ((this.communicationWait(this.calculateWaitDuration()) == false)){
+  ||  (this.tgManager.doAllTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE) == false)) {
             StringBuilder msgBuilder = new StringBuilder(
-                    "Failed to start broadcast " + this.getName() + ".");
-            if (this.tgManager
+                    "Failed to start broadcast 1 " + this.getName() + ".");
+            /*CCastro if (this.tgManager
                     .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.UNKNOWN)) {
                 msgBuilder
                         .append(this
@@ -359,7 +356,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             }
 
             // failure
-            this.notifyShareholdersProblem(msgBuilder.toString());
+            this.notifyShareholdersProblem(msgBuilder.toString());*/
 
             /*
              * due to the fact that we are only in the initialization phase, we
@@ -367,7 +364,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
              * cluster members that they will need to be shutdown because Viz
              * will only initiate the shutdown if an error occurs at any point
              * after a successful initialization.
-             */
+             
             // build and submit a stop command.
             LiveBroadcastCommand command = new LiveBroadcastCommand();
             command.setAction(ACTION.STOP);
@@ -376,20 +373,18 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             this.handleStopCommand(command);
 
             return;
-        }
-
+        }*/
         this.state = STATE.TRIGGER;
     }
 
     protected void sendStartCmdToDacs() {
-        for (TransmitterGroup transmitterGroup : this.tgManager
-                .getManagedTransmitters()) {
+         for (TransmitterGroup transmitterGroup : this.getTransmitterGroups()) {
             if (this.streamingServer.isDacConnected(transmitterGroup.getName()) == false) {
                 /*
                  * for now assume that the dac transmit was given to another
                  * comms manager.
-                 */
-                this.tgManager.forfeitResponsibility(transmitterGroup);
+                */ 
+               //CCastro this.tgManager.forfeitResponsibility(transmitterGroup);
                 continue;
             }
             BroadcastTransmitterConfiguration config = this.command
@@ -423,7 +418,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         this.clusterServer
                 .sendDataToAll(new ClusteredBroadcastTransitionTrigger(this
                         .getName()));
-        this.sendCmdToDacs(ACTION.TRIGGER);
+        //CCastrothis.sendCmdToDacs(ACTION.TRIGGER);
 
         /*
          * verify all transmitter groups are now available to start streaming -
@@ -431,11 +426,11 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * playback has been paused.
          */
         if ((this.communicationWait(this.calculateWaitDuration()) == false)
-                || (this.tgManager
-                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.READY) == false)) {
+                /*CCastro || (this.tgManager
+                        .doAllTransmittersHaveStreamStatus(STREAMING_STATUS.READY) == false)*/) {
             StringBuilder msgBuilder = new StringBuilder(
                     "Failed to start broadcast " + this.getName() + ".");
-            if (this.tgManager
+            /*CCastro if (this.tgManager
                     .doAnyTransmittersHaveStreamStatus(STREAMING_STATUS.AVAILABLE)) {
                 msgBuilder
                         .append(this
@@ -453,7 +448,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                                         this.tgManager
                                                 .getTransmittersWithStreamStatus(STREAMING_STATUS.BUSY)));
             }
-
+*/
             // failure
             this.notifyShareholdersProblem(msgBuilder.toString());
 
@@ -472,13 +467,13 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     }
 
     protected void sendCmdToDacs(ACTION cmdAction) {
-        for (TransmitterGroup transmitterGrp : this.tgManager
+        /*CCastro for (TransmitterGroup transmitterGrp : this.tgManager
                 .getManagedTransmitters()) {
             if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
-                /*
+                
                  * for now assume that the dac transmit was given to another
                  * comms manager.
-                 */
+                 
                 this.tgManager.forfeitResponsibility(transmitterGrp);
                 continue;
             }
@@ -488,7 +483,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
             command.setMsgSource(MSGSOURCE.COMMS);
             command.setAction(cmdAction);
             this.dacServer.sendToDac(transmitterGrp.getName(), command);
-        }
+        }*/
     }
 
     protected void stopBroadcast() {
@@ -606,7 +601,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
     }
 
     private void streamDacAudio(LiveBroadcastPlayCommand playCommand) {
-        logger.info(
+        /*CCastro logger.info(
                 "Streaming {} packets of audio to the dac for Broadcast {}.",
                 playCommand.getAudio().size(), this.getName());
 
@@ -614,7 +609,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         for (TransmitterGroup transmitterGroup : this.tgManager
                 .getManagedTransmitters()) {
             this.dacServer.sendToDac(transmitterGroup.getName(), playCommand);
-        }
+        }*/
     }
 
     protected void handleMessageInternal(ILiveBroadcastMessage msg) {
@@ -650,7 +645,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                  * determine which transmitters other comms managers are
                  * managing.
                  */
-                for (TransmitterGroup tg : msg.getTransmitterGroups()) {
+                /*CCastro for (TransmitterGroup tg : msg.getTransmitterGroups()) {
                     this.tgManager.giveResponsibility(tg);
                 }
 
@@ -659,16 +654,16 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
 
                 // if all transmitters have now been accounted for, unlock
                 if (this.tgManager.allTransmittersAssigned()) {
-                    /*
+                    
                      * Note: at this point, we may not have necessarily received
                      * a response from every cluster member (granted this design
                      * does allow for more than one additional cluster member).
                      * But, if all transmitters have been accounted for, there
                      * is no reason to wait for other cluster members to
                      * respond.
-                     */
+                     
                     this.communicationLock.release();
-                }
+                }*/
                 break;
             case READY:
             case TRIGGER:
@@ -683,19 +678,18 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                 } else {
                     newStatus = STREAMING_STATUS.BUSY;
                 }
-                for (TransmitterGroup tg : msg.getTransmitterGroups()) {
+                /*CCastrofor (TransmitterGroup tg : msg.getTransmitterGroups()) {
                     this.tgManager.updateStreamStatus(tg, newStatus);
-                }
+                }*/
 
-                logger.info("UPDATED MANAGED STATE: {}",
-                        this.tgManager.toString());
+                logger.info("UPDATED MANAGED STATE: {}",newStatus.toString()); //CCastro this.tgManager.toString());
 
                 STREAMING_STATUS nonDesiredStatus = (this.state == STATE.READY) ? STREAMING_STATUS.UNKNOWN
                         : STREAMING_STATUS.AVAILABLE;
-                if (this.tgManager
+                /* CCastro if (this.tgManager
                         .doAnyTransmittersHaveStreamStatus(nonDesiredStatus) == false) {
                     this.communicationLock.release();
-                }
+                }*/
                 break;
             default:
                 if (status.getStatus() == false) {
@@ -768,13 +762,13 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                  */
                 streamingStatus = STREAMING_STATUS.BUSY;
             }
-            for (TransmitterGroup tg : status.getTransmitterGroups()) {
+            /*CCastro for (TransmitterGroup tg : status.getTransmitterGroups()) {
                 this.tgManager.updateStreamStatus(tg, streamingStatus);
-            }
-            logger.info("UPDATED MANAGED STATE: {}", this.tgManager.toString());
+            }*/
+            logger.info("UPDATED MANAGED STATE: {}", streamingStatus.toString());
 
             // have all transmitters been accounted for?
-            if (this.isPrimary()
+            /*CCastroif (this.isPrimary()
                     && (this.tgManager
                             .doAnyTransmittersHaveStreamStatus(notWantedStatus) == false)) {
                 this.communicationLock.release();
@@ -782,7 +776,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
                     && (this.tgManager
                             .doManagedTransmittersHaveStreamStatus(notWantedStatus) == false)) {
                 this.communicationLock.release();
-            }
+            }*/
 
             break;
         case LIVE:
@@ -846,14 +840,14 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         command.setBroadcastId(this.getName());
         command.setMsgSource(MSGSOURCE.COMMS);
         command.setAction(ACTION.STOP);
-        for (TransmitterGroup transmitterGroup : this.tgManager
+        /*CCastro for (TransmitterGroup transmitterGroup : this.tgManager
                 .getManagedTransmitters()) {
             if (this.streamingServer.isDacConnected(transmitterGroup.getName()) == false) {
                 this.dacMsgFailed(transmitterGroup);
                 continue;
             }
             this.dacServer.sendToDac(transmitterGroup.getName(), command);
-        }
+        }*/
     }
 
     private void shutdownBroadcastOnError() {
@@ -971,16 +965,15 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
      */
     protected void notifyClusterMembersDacStatus(
             final STREAMING_STATUS statusToCheck, final boolean indicatesSuccess) {
-        if (this.tgManager.doAnyTransmittersHaveStreamStatus(statusToCheck) == false) {
+        /*CCastro if(this.tgManager.doAnyTransmittersHaveStreamStatus(statusToCheck) == false) {
             return;
-        }
+        }*/
 
         BroadcastStatus status = new BroadcastStatus();
         status.setBroadcastId(this.getName());
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setStatus(indicatesSuccess);
-        status.setTransmitterGroups(this.tgManager
-                .getTransmittersWithStreamStatus(statusToCheck));
+      //CCastro  status.setTransmitterGroups(this.tgManager.getTransmittersWithStreamStatus(statusToCheck));
         this.clusterServer.sendDataToAll(status);
     }
 
@@ -998,7 +991,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
         status.setBroadcastId(this.getName());
         status.setMsgSource(MSGSOURCE.COMMS);
         status.setStatus(true);
-        status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
+       //CCastro status.setTransmitterGroups(this.tgManager.getManagedTransmitters());
         this.clusterServer.sendDataToAll(status);
     }
 
@@ -1035,7 +1028,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * Note: if a dac transmit switches servers during the first phase of
          * live stream initialization, the initialization will most likely fail.
          */
-        this.tgManager.claimResponsibility(tg);
+       //CCastro this.tgManager.claimResponsibility(tg);
     }
 
     /*
@@ -1060,7 +1053,7 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
          * Note: if a dac transmit switches servers during the first phase of
          * live stream initialization, the initialization will most likely fail.
          */
-        this.tgManager.forfeitResponsibility(tg);
+       //CCastro this.tgManager.forfeitResponsibility(tg);
     }
 
     /**
@@ -1070,8 +1063,10 @@ public class BroadcastStreamTask extends AbstractBroadcastingTask {
      * @return the amount of time to wait in milliseconds.
      */
     protected long calculateWaitDuration() {
-        long duration = this.command.getTransmitterGroups().size()
-                * PER_TRANSMITTER_WAIT_DURATION;
+        /*CCastro long duration = this.command.getTransmitterGroups().size()
+                * PER_TRANSMITTER_WAIT_DURATION;*/
+        long duration = 10 * PER_TRANSMITTER_WAIT_DURATION;
+
 
         /*
          * if this is the trigger step, we will want to increase the wait

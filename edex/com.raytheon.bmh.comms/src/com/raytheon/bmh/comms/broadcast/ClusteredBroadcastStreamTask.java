@@ -99,7 +99,7 @@ public class ClusteredBroadcastStreamTask extends BroadcastStreamTask {
             if (this.streamingServer.isDacConnected(transmitterGrp.getName()) == false) {
                 continue;
             }
-            this.tgManager.claimResponsibility(transmitterGrp);
+           //CCastro this.tgManager.claimResponsibility(transmitterGrp);
         }
 
         this.notifyClusterMembersDacResponsibility();
